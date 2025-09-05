@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run: Sim Once",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/app.py",
+      "console": "integratedTerminal",
+      "args": ["--sim", "--once"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Run: Sim Loop",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/app.py",
+      "console": "integratedTerminal",
+      "args": ["--sim"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Run: Matrix Loop (Pi)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/app.py",
+      "console": "integratedTerminal",
+      "args": [],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

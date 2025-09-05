@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Create venv",
+      "type": "shell",
+      "command": "python3 -m venv .venv",
+      "problemMatcher": []
+    },
+    {
+      "label": "Install requirements",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && pip install -r requirements.txt'",
+      "problemMatcher": [],
+      "dependsOn": ["Create venv"]
+    },
+    {
+      "label": "Run (sim once)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && python app.py --sim --once'",
+      "dependsOn": ["Install requirements"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Run (matrix loop)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && python app.py'",
+      "dependsOn": ["Install requirements"],
+      "problemMatcher": []
+    }
+  ]
+}

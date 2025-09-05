@@ -1,0 +1,23 @@
+{
+  "favorites": [
+    { "name": "Seattle Storm", "id": "18", "abbr": "SEA" },
+    { "name": "Minnesota Lynx", "abbr": "MIN" },
+    { "name": "Chicago Sky", "abbr": "CHI" }
+  ],
+  "timezone": "America/Los_Angeles",
+  "matrix": {
+    "width": 64,
+    "height": 32,
+    "chain_length": 1,
+    "parallel": 1,
+    "gpio_slowdown": 2,
+    "hardware_mapping": "adafruit-hat",
+    "brightness": 80,
+    "pwm_bits": 11
+  },
+  "refresh": {
+    "pregame_sec": 30,
+    "ingame_sec": 5,
+    "final_sec": 60
+  }
+}
