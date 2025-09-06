@@ -15,6 +15,18 @@
       "dependsOn": ["Create venv"]
     },
     {
+      "label": "Install rgbmatrix (bindings)",
+      "type": "shell",
+      "command": "bash -lc 'bash scripts/install_rgbmatrix.sh'",
+      "problemMatcher": []
+    },
+    {
+      "label": "Hardware Self-Test (demo.py)",
+      "type": "shell",
+      "command": "bash -lc 'bash scripts/hardware_self_test.sh'",
+      "problemMatcher": []
+    },
+    {
       "label": "Run (sim once)",
       "type": "shell",
       "command": "bash -lc 'source .venv/bin/activate && python app.py --sim --once'",

@@ -14,6 +14,14 @@ Quick Start
 - Run on Pi with matrix:
   - `python app.py`
 
+Hardware & Bindings
+- Install rgbmatrix (Python bindings) on the Pi:
+  - `bash scripts/install_rgbmatrix.sh`
+- Self-test your panel/HAT with upstream demo:
+  - `bash scripts/hardware_self_test.sh`
+  - Defaults read from `.env` (64x32, adafruit-hat, brightness 80). Override with flags like `--rows 32 --cols 64`.
+  - The demo runs with `sudo -E` (required for GPIO access).
+
 Config
 - JSON: `config/favorites.json` controls favorites, timezone, matrix, refresh.
 - .env overrides: MATRIX_WIDTH, MATRIX_HEIGHT, TIMEZONE, REFRESH_* and more (see `.env.example`).
@@ -30,3 +38,9 @@ Notes
 - ESPN endpoints used are unofficial and may change. Poll cadences are conservative and configurable.
 - Renderer falls back to simulation automatically if `rgbmatrix` is missing.
 
+VS Code Tasks
+- Terminal → Run Task…
+  - "Create venv" → "Install requirements"
+  - "Install rgbmatrix (bindings)"
+  - "Hardware Self-Test (demo.py)"
+  - "Run (sim once)" or "Run (matrix loop)"
