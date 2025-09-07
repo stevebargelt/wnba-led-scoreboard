@@ -120,6 +120,36 @@ Agent & Cloud Admin (Preview)
      - Then:
        - `sudo cp scripts/systemd/wnba-led-agent.service /etc/systemd/system/`
        - `sudo systemctl daemon-reload && sudo systemctl enable --now wnba-led-agent.service`
-   - For local testing without systemd, export in shell before running the agent:
-     - `export SUPABASE_URL=... SUPABASE_ANON_KEY=... DEVICE_ID=...`
-     - `python -m src.agent.agent`
+  - For local testing without systemd, export in shell before running the agent:
+    - `export SUPABASE_URL=... SUPABASE_ANON_KEY=... DEVICE_ID=...`
+    - `python -m src.agent.agent`
+
+ Create a Supabase User and Device ID (Step‑by‑Step)
+ 1) Create (or identify) an Auth user
+    - Dashboard → Authentication → Users → “Add user”
+      - Enter your email (and password if you prefer “Add user with password”), or use “Invite” to send a magic link. Either way, the user will appear in the Users list.
+    - After the user is created, click the user row and copy their “User ID” (UUID). This is the value stored in `auth.users.id` and will become `owner_user_id` for your device.
+    - SQL alternative (in Dashboard → SQL editor):
+      - `select id, email from auth.users order by created_at desc;`
+
+ 2) Create a device row owned by that user
+    - Table Editor (Dashboard → Database → Tables → public.devices): “Insert row”
+      - Set `name` (e.g., `Pi-LivingRoom`)
+      - Set `owner_user_id` to the user UUID from step 1
+      - Save → copy the generated `id` (UUID)
+    - SQL alternative (Dashboard → SQL editor):
+      - `insert into public.devices (name, owner_user_id) values ('Pi-LivingRoom', '<USER_UUID>') returning id, name;`
+      - Copy the returned `id`
+
+ 3) Set the agent env on the Pi
+    - Use the device UUID as `DEVICE_ID` in `/etc/wnba-led-agent.env` (or export in shell for manual runs):
+      - `DEVICE_ID=<UUID from devices.id>`
+    - Keep `SUPABASE_URL` and `SUPABASE_ANON_KEY` from Dashboard → Settings → API
+    - Optional: `SUPABASE_REALTIME_URL=wss://<project-ref>.supabase.co/realtime/v1/websocket`
+    - Optional (production): `DEVICE_TOKEN` = a device‑scoped JWT that includes a `device_id` claim
+
+ 4) Verify connectivity (quick test)
+    - Start the agent on the Pi
+    - From your dev machine, publish a command:
+      - `python scripts/publish_command.py --device-id <UUID> --type PING --realtime-url wss://<project-ref>.supabase.co/realtime/v1/websocket --apikey <ANON_KEY>`
+    - Check the agent logs for “PING received”
