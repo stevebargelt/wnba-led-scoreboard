@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from .realtime import RealtimeClient, RealtimeConfig
 
 @dataclass
 class AgentConfig:
@@ -31,6 +32,7 @@ class DeviceAgent:
     def __init__(self, cfg: AgentConfig):
         self.cfg = cfg
         self._stop = False
+        self._rt: Optional[RealtimeClient] = None
 
     def stop(self):
         self._stop = True
@@ -38,6 +40,17 @@ class DeviceAgent:
     def run(self):
         print("[agent] starting (skeleton)")
         print(f"[agent] device_id={self.cfg.device_id} supabase_url={bool(self.cfg.supabase_url)}")
+        # Start realtime if configured
+        if self.cfg.supabase_url and self.cfg.device_id and self.cfg.supabase_anon_key:
+            # Compose realtime URL; callers should pass full wss URL via SUPABASE_REALTIME_URL to override
+            rt_url = os.getenv("SUPABASE_REALTIME_URL") or self.cfg.supabase_url.rstrip("/") + "/realtime/v1/websocket?vsn=1.0.0"
+            topic = f"device:{self.cfg.device_id}"
+            self._rt = RealtimeClient(
+                RealtimeConfig(url=rt_url, apikey=self.cfg.supabase_anon_key, access_token=self.cfg.device_token, topic=topic),
+                on_message=self._handle_message,
+            )
+            self._rt.start()
+
         # Placeholder loop
         while not self._stop:
             time.sleep(5)
@@ -63,6 +76,53 @@ class DeviceAgent:
             os.utime(self.cfg.config_path, None)
         except Exception:
             pass
+
+    # Message format: {"type": "APPLY_CONFIG"|"RESTART"|"FETCH_ASSETS"|"SELF_TEST"|"PING", "payload": {...}}
+    def _handle_message(self, msg: dict) -> None:
+        mtype = (msg.get("type") or "").upper()
+        payload = msg.get("payload") or {}
+        print(f"[agent] received message: {mtype}")
+        if mtype == "APPLY_CONFIG":
+            try:
+                content = payload if isinstance(payload, dict) else {}
+                pid = None
+                if isinstance(content.get("__scoreboard_pid__"), int):  # optional testing hook
+                    pid = content.pop("__scoreboard_pid__")
+                self.apply_config(content, scoreboard_pid=pid)
+            except Exception as e:
+                print(f"[agent] APPLY_CONFIG error: {e}")
+        elif mtype == "RESTART":
+            self._restart_service(payload.get("service") or os.getenv("SCOREBOARD_SERVICE", "wnba-led.service"))
+        elif mtype == "FETCH_ASSETS":
+            self._run_fetch_assets()
+        elif mtype == "SELF_TEST":
+            self._run_self_test()
+        elif mtype == "PING":
+            print("[agent] PING received")
+
+    def _restart_service(self, service: str) -> None:
+        import subprocess
+        try:
+            subprocess.run(["sudo", "systemctl", "restart", service], check=True)
+            print(f"[agent] restarted {service}")
+        except Exception as e:
+            print(f"[agent] restart failed: {e}")
+
+    def _run_fetch_assets(self) -> None:
+        import subprocess
+        try:
+            subprocess.run([sys.executable, "scripts/fetch_wnba_assets.py"], check=True)
+            print("[agent] fetched assets")
+        except Exception as e:
+            print(f"[agent] fetch assets failed: {e}")
+
+    def _run_self_test(self) -> None:
+        import subprocess
+        try:
+            subprocess.run(["bash", "scripts/hardware_self_test.sh"], check=True)
+            print("[agent] self-test invoked")
+        except Exception as e:
+            print(f"[agent] self-test failed: {e}")
 
 
 def main(argv: list[str]) -> int:
@@ -95,4 +155,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))
-

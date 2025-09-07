@@ -1,0 +1,16 @@
+[Unit]
+Description=WNBA LED Agent (cloud admin)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/wnba-led-agent.env
+WorkingDirectory=/home/pi/wnba-led-scoreboard
+ExecStart=/usr/bin/bash -lc '/home/pi/wnba-led-scoreboard/.venv/bin/python -m src.agent.agent'
+Restart=always
+RestartSec=3
+User=pi
+
+[Install]
+WantedBy=multi-user.target

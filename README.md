@@ -74,3 +74,11 @@ Render Layouts
 - Stacked (default): two rows with mini logos (≈10px), abbr, right‑aligned scores; clock bottom center.
 - Big‑logos: 20×20 logos (home left, away right); center column shows period, two text rows (abbr+score), and clock.
   - Use with `.env`: `LIVE_LAYOUT=big-logos` (uses banner logo variant, scaled to fit 20×20).
+Agent & Cloud Admin (Preview)
+- Device Agent (skeleton) subscribes to a Supabase Realtime channel and applies config/commands.
+- Install extra dependency for Realtime: `pip install websocket-client` (already in requirements).
+- Env vars (or `/etc/wnba-led-agent.env`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DEVICE_ID`, `DEVICE_TOKEN?`, `CONFIG_PATH`, `SCOREBOARD_SERVICE`.
+- Systemd unit template: `scripts/systemd/wnba-led-agent.service` and env example `scripts/systemd/wnba-led-agent.env.example`.
+- Start locally:
+  - `python -m src.agent.agent` (skeleton loop)
+  - Apply a config file: `python -m src.agent.agent apply config/favorites.json --pid <scoreboard-pid>`
