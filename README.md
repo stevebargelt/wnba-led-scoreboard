@@ -93,3 +93,33 @@ Agent & Cloud Admin (Preview)
    - Deploy `supabase/functions/publish-command/index.ts` via Supabase CLI.
    - Set function env: `SUPABASE_REALTIME_URL`, `SUPABASE_ANON_KEY`.
    - Invoke with JSON body `{ "device_id": "<uuid>", "type": "APPLY_CONFIG", "payload": { ... } }`.
+
+ Supabase Env Setup
+ - Where to find values (Supabase Dashboard → Settings → API):
+   - `SUPABASE_URL`: Project URL (looks like `https://<project-ref>.supabase.co`)
+   - `SUPABASE_ANON_KEY`: “anon public” API key
+   - `SUPABASE_REALTIME_URL` (optional): `wss://<project-ref>.supabase.co/realtime/v1/websocket`
+ - Device identity:
+   - `DEVICE_ID`: the `id` (UUID) from a row in `public.devices`
+     - Create via Table editor (insert row with `name` and your `owner_user_id`) or SQL:
+       - `insert into public.devices (name, owner_user_id) values ('Pi-LivingRoom', '<your-auth-user-uuid>') returning id;`
+     - Find your `owner_user_id` under Dashboard → Authentication → Users → copy your UUID
+   - `DEVICE_TOKEN` (optional, for tighter security): device-scoped JWT that carries `device_id` in its claims
+     - For initial testing, you can omit this and rely on `SUPABASE_ANON_KEY` for Realtime access
+     - For production, mint a device JWT from an Edge Function or server with claim `{ device_id: '<DEVICE_ID>' }`
+ - Where to set values on the Pi:
+   - Systemd env file (recommended): `/etc/wnba-led-agent.env`
+     - Example:
+       - `SUPABASE_URL=https://<project-ref>.supabase.co`
+       - `SUPABASE_ANON_KEY=ey...`
+       - `SUPABASE_REALTIME_URL=wss://<project-ref>.supabase.co/realtime/v1/websocket`
+       - `DEVICE_ID=<uuid-from-devices-table>`
+       - `DEVICE_TOKEN=ey...`  (optional)
+       - `CONFIG_PATH=/home/pi/wnba-led-scoreboard/config/favorites.json`
+       - `SCOREBOARD_SERVICE=wnba-led.service`
+     - Then:
+       - `sudo cp scripts/systemd/wnba-led-agent.service /etc/systemd/system/`
+       - `sudo systemctl daemon-reload && sudo systemctl enable --now wnba-led-agent.service`
+   - For local testing without systemd, export in shell before running the agent:
+     - `export SUPABASE_URL=... SUPABASE_ANON_KEY=... DEVICE_ID=...`
+     - `python -m src.agent.agent`
