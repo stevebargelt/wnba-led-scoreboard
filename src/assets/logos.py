@@ -9,7 +9,8 @@ from PIL import Image, ImageOps
 from .teams import registry as team_registry
 
 
-ASSETS_DIR = Path("assets")
+BASE_DIR = Path(__file__).resolve().parents[2]
+ASSETS_DIR = BASE_DIR / "assets"
 LOGOS_DIR = ASSETS_DIR / "logos"
 VARIANTS_DIR = LOGOS_DIR / "variants"
 

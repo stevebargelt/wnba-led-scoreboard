@@ -8,7 +8,8 @@ from typing import Any, Dict, List
 import requests
 from PIL import Image
 
-ASSETS_DIR = Path("assets")
+BASE_DIR = Path(__file__).resolve().parents[1]
+ASSETS_DIR = BASE_DIR / "assets"
 LOGOS_DIR = ASSETS_DIR / "logos"
 VARIANTS_DIR = LOGOS_DIR / "variants"
 TEAMS_JSON = ASSETS_DIR / "teams.json"
@@ -113,4 +114,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

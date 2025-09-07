@@ -33,6 +33,12 @@
       "problemMatcher": []
     },
     {
+      "label": "Check assets (favorites/logos)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && python scripts/check_assets.py'",
+      "problemMatcher": []
+    },
+    {
       "label": "Run (sim once)",
       "type": "shell",
       "command": "bash -lc 'source .venv/bin/activate && python app.py --sim --once'",

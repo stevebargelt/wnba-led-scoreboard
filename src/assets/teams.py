@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import Dict, Optional
 
 
-ASSETS_DIR = Path("assets")
+BASE_DIR = Path(__file__).resolve().parents[2]
+ASSETS_DIR = BASE_DIR / "assets"
 TEAMS_JSON = ASSETS_DIR / "teams.json"
 
 
@@ -58,4 +59,3 @@ class TeamRegistry:
 
 
 registry = TeamRegistry()
-
