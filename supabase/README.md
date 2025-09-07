@@ -25,3 +25,9 @@ Notes
 - These migrations reference `auth.users`, which exists in Supabase projects (Auth enabled). If you’re running locally, ensure `supabase start` has initialized Auth.
 - The migration also adds `public.events` to the `supabase_realtime` publication so you can stream DB events if desired.
 
+Deploy Edge Functions
+- Ensure your project is linked (see Prereqs), then deploy the action publisher function:
+  - `supabase functions deploy on-action`
+  - Set function env variables in the Supabase Dashboard → Edge Functions → on-action → Settings:
+    - `SUPABASE_REALTIME_URL` = `wss://<project-ref>.supabase.co/realtime/v1/websocket`
+    - `SUPABASE_ANON_KEY` = your anon public key
