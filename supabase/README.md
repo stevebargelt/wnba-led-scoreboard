@@ -1,0 +1,27 @@
+Supabase Setup
+
+Overview
+- This repo includes SQL migrations under `supabase/migrations` designed for Supabase CLI.
+- Filenames must start with a 14‑digit timestamp (`YYYYMMDDHHMMSS_*.sql`) to be picked up by `supabase db push`.
+
+Prereqs
+- Install the Supabase CLI: https://supabase.com/docs/guides/cli
+- Log in and link your project:
+  - `supabase login`
+  - `supabase link --project-ref <your-project-ref>`
+
+Apply Migrations
+- Run: `supabase db push`
+  - This applies all migrations in `supabase/migrations` to your linked project.
+- Alternatively, copy the contents of a migration file into the Supabase SQL Editor and execute.
+
+Verify Schema
+- In the SQL editor, run:
+  - `select table_name from information_schema.tables where table_schema = 'public' and table_name in ('devices','configs','events');`
+  - You should see `devices`, `configs`, and `events` listed.
+- Check RLS policies under Table Editor → Row Level Security.
+
+Notes
+- These migrations reference `auth.users`, which exists in Supabase projects (Auth enabled). If you’re running locally, ensure `supabase start` has initialized Auth.
+- The migration also adds `public.events` to the `supabase_realtime` publication so you can stream DB events if desired.
+
