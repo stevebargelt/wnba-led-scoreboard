@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '../lib/supabaseClient'
 
 type Device = { id: string; name: string; last_seen_ts: string | null }
 
 export default function Home() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [session, setSession] = useState<any>(null)
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -28,10 +30,25 @@ export default function Home() {
     })()
   }, [session])
 
-  const sendMagicLink = async () => {
-    if (!email) return
-    await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } })
-    alert('Check your email for the sign-in link')
+  const signIn = async () => {
+    setMessage('')
+    if (!email || !password) {
+      setMessage('Email and password required')
+      return
+    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) setMessage(error.message)
+  }
+
+  const signUp = async () => {
+    setMessage('')
+    if (!email || !password) {
+      setMessage('Email and password required')
+      return
+    }
+    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
+    if (error) setMessage(error.message)
+    else setMessage('Sign-up complete. Check your email for confirmation (if required).')
   }
 
   return (
@@ -39,9 +56,16 @@ export default function Home() {
       <h1>WNBA LED Web Admin</h1>
       {!session ? (
         <section>
-          <h3>Sign in</h3>
-          <input placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <button onClick={sendMagicLink}>Send magic link</button>
+          <h3>Sign in (email + password)</h3>
+          <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column', maxWidth: 320 }}>
+            <input placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input placeholder="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <button onClick={signIn}>Sign in</button>
+              <button onClick={signUp}>Sign up</button>
+            </div>
+            {message && <small>{message}</small>}
+          </div>
         </section>
       ) : (
         <section>
@@ -61,4 +85,3 @@ export default function Home() {
     </main>
   )
 }
-

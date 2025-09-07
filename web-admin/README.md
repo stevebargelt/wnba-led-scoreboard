@@ -8,6 +8,13 @@ Prereqs
 - Node 18+
 - Set env from `.env.local.example` → `.env.local` (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, FUNCTION URLs)
 
+Auth Setup
+- In Supabase Dashboard → Authentication → Providers → Email:
+  - Enable Email provider.
+  - Enable “Email + Password”.
+  - For development, you can disable email confirmations to simplify testing; otherwise new sign-ups will require email confirmation.
+  - Optionally keep Magic Link enabled; the UI now uses email+password by default.
+
 Install & Run
 - `cd web-admin`
 - `npm install` (or `pnpm i`/`yarn`)
@@ -20,4 +27,3 @@ Pages
 Config
 - Update `.env.local` with your Supabase values and deployed function URLs.
 - Functions: `on-config-write` and `on-action` must be deployed in your Supabase project.
-
