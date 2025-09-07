@@ -86,48 +86,44 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
     ax = max(1, min(ax, w - atw - 2))
     draw.text((ax, ay), aabbr, fill=(220, 220, 220), font=font_small)
 
-    # 5) Middle column for scores
+    # 5) Scores: left-right near logos (home on left, away on right)
     col_l = home_x + home_w + 3
     col_r = away_x - 3
     if col_r <= col_l:
         col_l, col_r = 22, w - 22
+    mid = (col_l + col_r) // 2
+    gap = 2
 
-    # Use small score font on short matrices to avoid overlap
     force_small = h <= 32
+    hscore = str(snap.home.score)
     ascore = str(snap.away.score)
+
+    h_font = font_small if force_small or len(hscore) > 2 else font_large
     a_font = font_small if force_small or len(ascore) > 2 else font_large
+    hstw, hsth = _text_size(draw, hscore, h_font)
     astw, asth = _text_size(draw, ascore, a_font)
 
-    hscore = str(snap.home.score)
-    h_font = font_small if force_small or len(hscore) > 2 else font_large
-    hstw, hsth = _text_size(draw, hscore, h_font)
+    left_width = max(2, (mid - gap) - col_l)
+    right_width = max(2, col_r - (mid + gap))
 
-    mid_top = y_logo_top
-    mid_bottom = y_abbr - 2
-    # If there isn't enough space, compress but never overlap
-    total_scores_h = asth + 1 + hsth
-    band_h = max(4, mid_bottom - mid_top)
-    if total_scores_h > band_h:
-        # Force small fonts if not already
-        if a_font is not font_small or h_font is not font_small:
-            a_font = h_font = font_small
-            astw, asth = _text_size(draw, ascore, a_font)
-            hstw, hsth = _text_size(draw, hscore, h_font)
-            total_scores_h = asth + 1 + hsth
-        # Recompute band
-        band_h = max(4, y_abbr - 2 - y_logo_top)
+    # If a score doesn't fit its half, force small font
+    if hstw > left_width and h_font is not font_small:
+        h_font = font_small
+        hstw, hsth = _text_size(draw, hscore, h_font)
+    if astw > right_width and a_font is not font_small:
+        a_font = font_small
+        astw, asth = _text_size(draw, ascore, a_font)
 
-    # Place away score near top of band, home score near bottom
-    row1_y = mid_top
-    row2_y = mid_bottom - hsth
-    # Ensure minimum gap
-    if row2_y < row1_y + asth + 1:
-        row2_y = row1_y + asth + 1
-        if row2_y + hsth > mid_bottom:
-            row1_y = max(mid_top, mid_bottom - (asth + 1 + hsth))
+    # Vertical alignment: center within logo band, but keep above abbreviations
+    max_score_h = max(hsth, asth)
+    score_y = y_logo_top + max(0, (logo_h - max_score_h) // 2)
+    if score_y + max_score_h > y_abbr - 1:
+        score_y = max(y_logo_top, y_abbr - 1 - max_score_h)
 
-    # Center horizontally in column
-    ax_x = (col_l + col_r - astw) // 2
-    hx_x = (col_l + col_r - hstw) // 2
-    draw.text((ax_x, row1_y), ascore, fill=(255, 255, 255), font=a_font)
-    draw.text((hx_x, row2_y), hscore, fill=(255, 255, 255), font=h_font)
+    # Home score: right-aligned to mid-gap
+    hx_x = max(col_l, (mid - gap) - hstw)
+    # Away score: left-aligned to mid+gap
+    ax_x = min(col_r - astw, mid + gap)
+
+    draw.text((hx_x, score_y), hscore, fill=(255, 255, 255), font=h_font)
+    draw.text((ax_x, score_y), ascore, fill=(255, 255, 255), font=a_font)
