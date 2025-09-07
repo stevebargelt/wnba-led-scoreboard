@@ -23,7 +23,7 @@ def draw_final(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, 
 
     alogo = get_logo(snap.away.id, snap.away.abbr, variant="mini")
     if alogo:
-        draw.bitmap((logo_x, top_y), alogo, fill=None)
+        img.paste(alogo, (logo_x, top_y), alogo)
     else:
         draw.rectangle((logo_x, top_y, logo_x + 10, top_y + 10), outline=(100, 100, 100))
     draw.text((abbr_x, top_y + 1), snap.away.abbr[:4], fill=(200, 200, 200), font=font_small)
@@ -33,7 +33,7 @@ def draw_final(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, 
 
     hlogo = get_logo(snap.home.id, snap.home.abbr, variant="mini")
     if hlogo:
-        draw.bitmap((logo_x, bot_y), hlogo, fill=None)
+        img.paste(hlogo, (logo_x, bot_y), hlogo)
     else:
         draw.rectangle((logo_x, bot_y, logo_x + 10, bot_y + 10), outline=(100, 100, 100))
     draw.text((abbr_x, bot_y + 1), snap.home.abbr[:4], fill=(200, 200, 200), font=font_small)

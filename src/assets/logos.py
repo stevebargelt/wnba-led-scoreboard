@@ -51,9 +51,14 @@ def get_logo(team_id: Optional[str], abbr: Optional[str], variant: str = "mini")
 
     # Prefer team_id
     meta = team_registry.get(team_id=team_id, abbr=abbr)
-    key_id = (team_id or (meta.id if meta else None) or (abbr or "")).upper()
-    if not key_id:
-        key_id = (abbr or "").upper()
+    # Prefer canonical meta.id if available, else provided team_id, else abbr
+    key_id: Optional[str] = None
+    if meta and meta.id:
+        key_id = str(meta.id)
+    elif team_id:
+        key_id = str(team_id)
+    elif abbr:
+        key_id = abbr.upper()
     if not key_id:
         return None
 
@@ -66,8 +71,9 @@ def get_logo(team_id: Optional[str], abbr: Optional[str], variant: str = "mini")
     orig_paths = []
     if meta and meta.logo:
         orig_paths.append(Path(meta.logo))
-    if team_id:
-        orig_paths.append(LOGOS_DIR / f"{key_id}.png")
+    # Try by canonical id
+    orig_paths.append(LOGOS_DIR / f"{key_id}.png")
+    # Fallback to abbr filename
     if abbr:
         orig_paths.append(LOGOS_DIR / f"{abbr.upper()}.png")
 
@@ -93,4 +99,3 @@ def get_logo(team_id: Optional[str], abbr: Optional[str], variant: str = "mini")
     except Exception:
         pass
     return out
-

@@ -16,11 +16,11 @@ def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot
     alogo = get_logo(snap.away.id, snap.away.abbr, variant="mini")
     hlogo = get_logo(snap.home.id, snap.home.abbr, variant="mini")
     if alogo:
-        draw.bitmap((2, top_y), alogo, fill=None)
+        img.paste(alogo, (2, top_y), alogo)
     if hlogo:
         # place on right
         lw, lh = hlogo.size
-        draw.bitmap((w - lw - 2, top_y), hlogo, fill=None)
+        img.paste(hlogo, (w - lw - 2, top_y), hlogo)
     draw.text(((w // 2) - 6, top_y + 1), "VS", fill=(200, 200, 200), font=font_small)
 
     # Middle: countdown
