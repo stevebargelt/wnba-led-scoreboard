@@ -5,7 +5,7 @@ import os
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from .types import AppConfig, FavoriteTeam, MatrixConfig, RefreshConfig
+from .types import AppConfig, FavoriteTeam, MatrixConfig, RefreshConfig, RenderConfig
 
 
 def env_bool(key: str, default: bool) -> bool:
@@ -41,12 +41,18 @@ def load_config(path: str) -> AppConfig:
         final_sec=int(os.getenv("REFRESH_FINAL_SEC", r.get("final_sec", 60))),
     )
 
+    rend = raw.get("render", {})
+    render = RenderConfig(
+        live_layout=os.getenv("LIVE_LAYOUT", rend.get("live_layout", "stacked")),
+        logo_variant=os.getenv("LOGO_VARIANT", rend.get("logo_variant", "mini")),
+    )
+
     cfg = AppConfig(
         favorites=favorites,
         timezone=tzname,
         matrix=matrix,
         refresh=refresh,
+        render=render,
     )
     cfg.tz = ZoneInfo(tzname)
     return cfg
-

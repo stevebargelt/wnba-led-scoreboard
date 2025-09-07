@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from zoneinfo import ZoneInfo
 from typing import List, Optional
 
@@ -32,9 +32,16 @@ class RefreshConfig:
 
 
 @dataclass
+class RenderConfig:
+    live_layout: str = "stacked"  # "stacked" or "big-logos"
+    logo_variant: str = "mini"     # "mini" or "banner"
+
+
+@dataclass
 class AppConfig:
     favorites: List[FavoriteTeam]
     timezone: str
     matrix: MatrixConfig
     refresh: RefreshConfig
+    render: RenderConfig = field(default_factory=RenderConfig)
     tz: Optional[ZoneInfo] = None

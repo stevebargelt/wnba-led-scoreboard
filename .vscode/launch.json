@@ -29,6 +29,18 @@
       "cwd": "${workspaceFolder}"
     },
     {
+      "name": "Run: Demo Sim (Big Logos)",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/app.py",
+      "console": "integratedTerminal",
+      "args": ["--sim", "--demo"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "LIVE_LAYOUT": "big-logos"
+      }
+    },
+    {
       "name": "Run: Matrix Loop (Pi)",
       "type": "python",
       "request": "launch",

@@ -64,3 +64,13 @@ VS Code Tasks
   - "Hardware Self-Test (demo.py)"
   - "Fetch WNBA assets (logos/colors)"
   - "Run (sim once)", "Run (demo sim)", or "Run (matrix loop)"
+
+Render Layouts
+- Configure in `config/favorites.json` under a new `render` block, or via `.env` overrides.
+- Options:
+  - `render.live_layout`: `stacked` (default) or `big-logos`
+  - `render.logo_variant`: `mini` or `banner` (default `mini`)
+  - `.env` equivalents: `LIVE_LAYOUT`, `LOGO_VARIANT`
+- Stacked (default): two rows with mini logos (≈10px), abbr, right‑aligned scores; clock bottom center.
+- Big‑logos: 20×20 logos (home left, away right); center column shows period, two text rows (abbr+score), and clock.
+  - Use with `.env`: `LIVE_LAYOUT=big-logos` (uses banner logo variant, scaled to fit 20×20).

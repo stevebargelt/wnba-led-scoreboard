@@ -12,6 +12,7 @@ from src.model.game import GameSnapshot
 from .scenes.pregame import draw_pregame
 from .scenes.live import draw_live
 from .scenes.final import draw_final
+from .scenes.live_big import draw_live_big
 
 
 class Renderer:
@@ -76,15 +77,19 @@ class Renderer:
 
     def render_pregame(self, snap: GameSnapshot, now_local: datetime):
         self.clear((0, 0, 0))
-        draw_pregame(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large)
+        draw_pregame(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant=self.cfg.render.logo_variant)
 
     def render_live(self, snap: GameSnapshot, now_local: datetime):
         self.clear((0, 0, 0))
-        draw_live(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large)
+        if (self.cfg.render.live_layout or "stacked").lower() == "big-logos":
+            # Big-logos scene uses 20x20 target; override to banner variant
+            draw_live_big(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant="banner")
+        else:
+            draw_live(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant=self.cfg.render.logo_variant)
 
     def render_final(self, snap: GameSnapshot, now_local: datetime):
         self.clear((0, 0, 0))
-        draw_final(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large)
+        draw_final(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant=self.cfg.render.logo_variant)
 
     def flush(self):
         if self.sim or self._matrix is None:
@@ -99,4 +104,3 @@ class Renderer:
     def close(self):
         # Nothing to close for now
         pass
-

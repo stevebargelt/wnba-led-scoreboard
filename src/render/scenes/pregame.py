@@ -8,13 +8,13 @@ from src.assets.logos import get_logo
 
 
 def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, now_local: datetime,
-                 font_small: ImageFont.ImageFont, font_large: ImageFont.ImageFont):
+                 font_small: ImageFont.ImageFont, font_large: ImageFont.ImageFont, logo_variant: str = "mini"):
     w, h = img.size
     # Top row: logos + VS
     w, h = img.size
     top_y = 2
-    alogo = get_logo(snap.away.id, snap.away.abbr, variant="mini")
-    hlogo = get_logo(snap.home.id, snap.home.abbr, variant="mini")
+    alogo = get_logo(snap.away.id, snap.away.abbr, variant=logo_variant or "mini")
+    hlogo = get_logo(snap.home.id, snap.home.abbr, variant=logo_variant or "mini")
     if alogo:
         img.paste(alogo, (2, top_y), alogo)
     if hlogo:

@@ -8,7 +8,7 @@ from src.assets.logos import get_logo
 
 
 def draw_live(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, now_local: datetime,
-              font_small: ImageFont.ImageFont, font_large: ImageFont.ImageFont):
+              font_small: ImageFont.ImageFont, font_large: ImageFont.ImageFont, logo_variant: str = "mini"):
     w, h = img.size
     # Layout constants
     row_h = 12
@@ -19,7 +19,7 @@ def draw_live(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, n
     score_right_x = w - 1
 
     # Away row
-    alogo = get_logo(snap.away.id, snap.away.abbr, variant="mini")
+    alogo = get_logo(snap.away.id, snap.away.abbr, variant=logo_variant or "mini")
     if alogo:
         img.paste(alogo, (logo_x, top_y), alogo)
     else:
@@ -30,7 +30,7 @@ def draw_live(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, n
     draw.text((score_right_x - atw, top_y), ascore, fill=(255, 255, 255), font=font_large)
 
     # Home row
-    hlogo = get_logo(snap.home.id, snap.home.abbr, variant="mini")
+    hlogo = get_logo(snap.home.id, snap.home.abbr, variant=logo_variant or "mini")
     if hlogo:
         img.paste(hlogo, (logo_x, bot_y), hlogo)
     else:
