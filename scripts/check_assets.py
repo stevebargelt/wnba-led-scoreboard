@@ -3,9 +3,14 @@ import json
 import sys
 from pathlib import Path
 
-from src.config.loader import load_config
-from src.assets.teams import registry as team_registry, TEAMS_JSON
-from src.assets.logos import LOGOS_DIR, VARIANTS_DIR
+# Ensure repo root is on sys.path when running as a script
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.config.loader import load_config  # noqa: E402
+from src.assets.teams import registry as team_registry, TEAMS_JSON  # noqa: E402
+from src.assets.logos import LOGOS_DIR, VARIANTS_DIR  # noqa: E402
 
 
 def main():
@@ -40,4 +45,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
