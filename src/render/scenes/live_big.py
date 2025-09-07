@@ -21,75 +21,81 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
                   font_small: ImageFont.ImageFont, font_large: ImageFont.ImageFont, logo_variant: str = "banner"):
     w, h = img.size
 
-    # Status line at very top: period + clock (avoids bottom overlap)
+    # 1) Status line (period + clock) at very top
     period_label = "PRE" if snap.period <= 0 else ("OT" if snap.period > 4 else f"Q{snap.period}")
     clock = (snap.display_clock or "").strip()
     status = f"{period_label} {clock}".strip()
+    sth = 0
     if status:
         stw, sth = draw.textbbox((0, 0), status, font=font_small)[2:]
         draw.text(((w - stw) // 2, 0), status, fill=(200, 200, 200), font=font_small)
 
-    # Place logos below the status line, then abbreviations under logos
-    top_y = 1 + (sth if status else 0)
-    left_x = 1
+    # 2) Compute sizes and vertical bands
+    desired_logo_h = 20 if h > 32 else 16
+    # Abbreviation heights
+    habbr = snap.home.abbr[:4]
+    aabbr = snap.away.abbr[:4]
+    htw, hth = draw.textbbox((0, 0), habbr or "HOM", font=font_small)[2:]
+    atw, ath = draw.textbbox((0, 0), aabbr or "AWY", font=font_small)[2:]
+    abbr_h = max(hth, ath)
 
+    y_logo_top = 1 + sth
+    y_abbr = h - abbr_h - 1
+    max_logo_h = max(10, y_abbr - y_logo_top - 1)
+    logo_h = min(desired_logo_h, max_logo_h)
+
+    # 3) Paste logos (fit to computed height)
+    left_x = 1
+    home_x = left_x
     alogo = get_logo(snap.away.id, snap.away.abbr, variant=logo_variant or "banner")
     hlogo = get_logo(snap.home.id, snap.home.abbr, variant=logo_variant or "banner")
 
-    # Home logo on left
-    home_x = left_x
     if hlogo:
-        hlogo = _fit_logo(hlogo, 20, 20)
-        img.paste(hlogo, (home_x, top_y), hlogo)
+        hlogo = _fit_logo(hlogo, 20, logo_h)
+        img.paste(hlogo, (home_x, y_logo_top), hlogo)
         home_w, home_h = hlogo.size
     else:
-        home_w, home_h = 20, 20
-        draw.rectangle((home_x, top_y, home_x + home_w, top_y + home_h), outline=(100, 100, 100))
+        home_w, home_h = 20, logo_h
+        draw.rectangle((home_x, y_logo_top, home_x + home_w, y_logo_top + home_h), outline=(100, 100, 100))
 
-    # Away logo on right
     if alogo:
-        alogo = _fit_logo(alogo, 20, 20)
+        alogo = _fit_logo(alogo, 20, logo_h)
         away_w, away_h = alogo.size
         away_x = w - 1 - away_w
-        img.paste(alogo, (away_x, top_y), alogo)
+        img.paste(alogo, (away_x, y_logo_top), alogo)
     else:
-        away_w, away_h = 20, 20
+        away_w, away_h = 20, logo_h
         away_x = w - 1 - away_w
-        draw.rectangle((away_x, top_y, away_x + away_w, top_y + away_h), outline=(100, 100, 100))
+        draw.rectangle((away_x, y_logo_top, away_x + away_w, y_logo_top + away_h), outline=(100, 100, 100))
 
-    # Abbreviations under logos, centered under the image width
-    habbr = snap.home.abbr[:4]
-    htw, hth = draw.textbbox((0, 0), habbr, font=font_small)[2:]
+    # 4) Abbreviations anchored under the logos at bottom
     hx = home_x + max(0, (home_w - htw) // 2)
-    hy = min(h - hth - 1, top_y + home_h + 1)
+    hy = y_abbr
     draw.text((hx, hy), habbr, fill=(220, 220, 220), font=font_small)
 
-    aabbr = snap.away.abbr[:4]
-    atw, ath = draw.textbbox((0, 0), aabbr, font=font_small)[2:]
     ax = away_x + max(0, (away_w - atw) // 2)
-    ay = min(h - ath - 1, top_y + away_h + 1)
+    ay = y_abbr
     draw.text((ax, ay), aabbr, fill=(220, 220, 220), font=font_small)
 
-    # Center column between logos for period, scores, and clock
+    # 5) Middle column for scores
     col_l = home_x + home_w + 3
     col_r = away_x - 3
     if col_r <= col_l:
-        col_l, col_r = 22, w - 22  # fallback safe column
+        col_l, col_r = 22, w - 22
 
-    # Scores only (no abbr) stacked in column to prevent overlap
+    # Use small score font on short matrices to avoid overlap
+    force_small = h <= 32
     ascore = str(snap.away.score)
-    a_font = font_large if len(ascore) <= 2 else font_small
+    a_font = font_small if force_small or len(ascore) > 2 else font_large
     astw, asth = draw.textbbox((0, 0), ascore, font=a_font)[2:]
-    row1_y = top_y + 5
+    row1_y = y_logo_top + max(1, logo_h // 4)
     draw.text(((col_l + col_r - astw) // 2, row1_y), ascore, fill=(255, 255, 255), font=a_font)
 
     hscore = str(snap.home.score)
-    h_font = font_large if len(hscore) <= 2 else font_small
+    h_font = font_small if force_small or len(hscore) > 2 else font_large
     hstw, hsth = draw.textbbox((0, 0), hscore, font=h_font)[2:]
-    # Ensure second score sits well above the abbreviations under logos
-    row2_y = row1_y + max(asth, 10) + 2
-    max_abbr_y = max(hy + hth, ay + ath)
-    # Clamp row2 to be at least 2px above abbr lines if possible
-    if row2_y + hsth > max_abbr_y - 2:
-        row2_y = max(top_y + 2, max_abbr_y - 2 - hsth)
+    row2_y = max(row1_y + asth + 1, y_logo_top + logo_h // 2)
+    # Keep home score above abbreviations
+    if row2_y + hsth > y_abbr - 1:
+        row2_y = max(y_logo_top + 1, y_abbr - 1 - hsth)
     draw.text(((col_l + col_r - hstw) // 2, row2_y), hscore, fill=(255, 255, 255), font=h_font)
