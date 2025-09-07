@@ -4,14 +4,24 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
 from src.model.game import GameSnapshot
+from src.assets.logos import get_logo
 
 
 def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, now_local: datetime,
                  font_small: ImageFont.ImageFont, font_large: ImageFont.ImageFont):
     w, h = img.size
-    # Top row: AWAY vs HOME
-    title = f"{snap.away.abbr} @ {snap.home.abbr}"
-    draw.text((1, 1), title, fill=(255, 255, 255), font=font_small)
+    # Top row: logos + VS
+    w, h = img.size
+    top_y = 2
+    alogo = get_logo(snap.away.id, snap.away.abbr, variant="mini")
+    hlogo = get_logo(snap.home.id, snap.home.abbr, variant="mini")
+    if alogo:
+        draw.bitmap((2, top_y), alogo, fill=None)
+    if hlogo:
+        # place on right
+        lw, lh = hlogo.size
+        draw.bitmap((w - lw - 2, top_y), hlogo, fill=None)
+    draw.text(((w // 2) - 6, top_y + 1), "VS", fill=(200, 200, 200), font=font_small)
 
     # Middle: countdown
     secs = max(0, snap.seconds_to_start)
@@ -29,4 +39,3 @@ def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot
     # Bottom: tip time local
     tip = snap.start_time_local.strftime("Tip %I:%M %p").lstrip('0')
     draw.text((1, h - 9), tip, fill=(150, 150, 150), font=font_small)
-

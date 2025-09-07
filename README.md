@@ -25,6 +25,15 @@ Hardware & Bindings
   - Defaults read from `.env` (64x32, adafruit-hat, brightness 80). Override with flags like `--rows 32 --cols 64`.
   - The demo runs with `sudo -E` (required for GPIO access).
 
+Logos & Team Colors
+- Auto-fetch WNBA teams, logos, and colors from ESPN, and generate pre-sized variants:
+  - `source .venv/bin/activate && python scripts/fetch_wnba_assets.py`
+  - Outputs:
+    - `assets/teams.json` (id, abbr, name, primary/secondary colors, logo path)
+    - `assets/logos/{id}.png` original logos
+    - `assets/logos/variants/{id}_mini.png` (~10px tall), `{id}_banner.png` (~20px tall)
+- Rendering uses mini logos in live/final and mini logos in pregame flanking “VS”. Missing logos fall back to outlined boxes.
+
 Config
 - JSON: `config/favorites.json` controls favorites, timezone, matrix, refresh.
 - .env overrides: MATRIX_WIDTH, MATRIX_HEIGHT, TIMEZONE, REFRESH_* and more (see `.env.example`).
@@ -46,4 +55,5 @@ VS Code Tasks
   - "Create venv" → "Install requirements"
   - "Install rgbmatrix (bindings)"
   - "Hardware Self-Test (demo.py)"
+  - "Fetch WNBA assets (logos/colors)"
   - "Run (sim once)", "Run (demo sim)", or "Run (matrix loop)"

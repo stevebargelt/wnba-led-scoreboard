@@ -4,21 +4,43 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 
 from src.model.game import GameSnapshot
+from src.assets.logos import get_logo
 
 
 def draw_live(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, now_local: datetime,
               font_small: ImageFont.ImageFont, font_large: ImageFont.ImageFont):
     w, h = img.size
-    # Scores line
-    top = f"{snap.away.abbr} {snap.away.score}  {snap.home.abbr} {snap.home.score}"
-    draw.text((1, 1), top, fill=(255, 255, 255), font=font_small)
+    # Layout constants
+    row_h = 12
+    top_y = 1
+    bot_y = top_y + row_h
+    logo_x = 1
+    abbr_x = 13
+    score_right_x = w - 1
 
-    # Clock and period center
-    mid = f"P{snap.period} {snap.display_clock or ''}".strip()
-    tw, th = draw.textbbox((0, 0), mid, font=font_large)[2:]
-    draw.text(((w - tw) // 2, (h - th) // 2), mid, fill=(0, 255, 0), font=font_large)
+    # Away row
+    alogo = get_logo(snap.away.id, snap.away.abbr, variant="mini")
+    if alogo:
+        draw.bitmap((logo_x, top_y), alogo, fill=None)
+    else:
+        draw.rectangle((logo_x, top_y, logo_x + 10, top_y + 10), outline=(100, 100, 100))
+    draw.text((abbr_x, top_y + 1), snap.away.abbr[:4], fill=(200, 200, 200), font=font_small)
+    ascore = str(snap.away.score)
+    atw, _ = draw.textbbox((0, 0), ascore, font=font_large)[2:]
+    draw.text((score_right_x - atw, top_y), ascore, fill=(255, 255, 255), font=font_large)
 
-    # Status detail bottom
-    if snap.status_detail:
-        draw.text((1, h - 9), snap.status_detail[:20], fill=(150, 150, 150), font=font_small)
+    # Home row
+    hlogo = get_logo(snap.home.id, snap.home.abbr, variant="mini")
+    if hlogo:
+        draw.bitmap((logo_x, bot_y), hlogo, fill=None)
+    else:
+        draw.rectangle((logo_x, bot_y, logo_x + 10, bot_y + 10), outline=(100, 100, 100))
+    draw.text((abbr_x, bot_y + 1), snap.home.abbr[:4], fill=(200, 200, 200), font=font_small)
+    hscore = str(snap.home.score)
+    htw, _ = draw.textbbox((0, 0), hscore, font=font_large)[2:]
+    draw.text((score_right_x - htw, bot_y), hscore, fill=(255, 255, 255), font=font_large)
 
+    # Bottom center: clock + period
+    status = f"Q{snap.period} {snap.display_clock or ''}".strip()
+    stw, sth = draw.textbbox((0, 0), status, font=font_small)[2:]
+    draw.text(((w - stw) // 2, h - sth - 1), status, fill=(0, 255, 0), font=font_small)
