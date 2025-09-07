@@ -15,6 +15,18 @@
       "dependsOn": ["Create venv"]
     },
     {
+      "label": "Run Agent (skeleton)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && python -m src.agent.agent'",
+      "problemMatcher": []
+    },
+    {
+      "label": "Agent: Apply sample config",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && python -m src.agent.agent apply config/favorites.json'",
+      "problemMatcher": []
+    },
+    {
       "label": "Install rgbmatrix (bindings)",
       "type": "shell",
       "command": "bash -lc 'bash scripts/install_rgbmatrix.sh'",
