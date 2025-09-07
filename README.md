@@ -74,14 +74,26 @@ Render Layouts
 - Stacked (default): two rows with mini logos (≈10px), abbr, right‑aligned scores; clock bottom center.
 - Big‑logos: 20×20 logos (home left, away right); center column shows period, two text rows (abbr+score), and clock.
   - Use with `.env`: `LIVE_LAYOUT=big-logos` (uses banner logo variant, scaled to fit 20×20).
-Agent & Cloud Admin (Preview)
+ Agent & Cloud Admin (Preview)
 - Device Agent (skeleton) subscribes to a Supabase Realtime channel and applies config/commands.
 - Install extra dependency for Realtime: `pip install websocket-client` (already in requirements).
 - Env vars (or `/etc/wnba-led-agent.env`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DEVICE_ID`, `DEVICE_TOKEN?`, `CONFIG_PATH`, `SCOREBOARD_SERVICE`.
 - Systemd unit template: `scripts/systemd/wnba-led-agent.service` and env example `scripts/systemd/wnba-led-agent.env.example`.
-- Start locally:
-  - `python -m src.agent.agent` (skeleton loop)
-  - Apply a config file: `python -m src.agent.agent apply config/favorites.json --pid <scoreboard-pid>`
+ - Start locally:
+   - `python -m src.agent.agent` (skeleton loop)
+   - Apply a config file: `python -m src.agent.agent apply config/favorites.json --pid <scoreboard-pid>`
+
+ Example Env File for the Agent
+ - A ready-to-copy template is included at `etc/wnba-led-agent.env.example`.
+ - Copy to the system location and edit values:
+   - `sudo cp etc/wnba-led-agent.env.example /etc/wnba-led-agent.env`
+   - `sudo nano /etc/wnba-led-agent.env` (set SUPABASE_URL, SUPABASE_ANON_KEY, and DEVICE_ID)
+ - How to find DEVICE_ID:
+   - Supabase Dashboard → Database → Table Editor → `public.devices`
+   - Insert a device (name + your user’s owner_user_id), then copy the `id` from that row
+   - Paste this UUID into `DEVICE_ID=` in `/etc/wnba-led-agent.env`
+ - Restart the agent:
+   - `sudo systemctl daemon-reload && sudo systemctl restart wnba-led-agent.service`
 
  Supabase Realtime (Test End-to-End)
  - Agent expects a Phoenix channel `device:<DEVICE_ID>` on your Supabase Realtime endpoint.
