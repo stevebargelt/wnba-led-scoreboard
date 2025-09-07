@@ -74,7 +74,7 @@ Render Layouts
 - Stacked (default): two rows with mini logos (≈10px), abbr, right‑aligned scores; clock bottom center.
 - Big‑logos: 20×20 logos (home left, away right); center column shows period, two text rows (abbr+score), and clock.
   - Use with `.env`: `LIVE_LAYOUT=big-logos` (uses banner logo variant, scaled to fit 20×20).
- Agent & Cloud Admin (Preview)
+Agent & Cloud Admin (Preview)
 - Device Agent (skeleton) subscribes to a Supabase Realtime channel and applies config/commands.
 - Install extra dependency for Realtime: `pip install websocket-client` (already in requirements).
 - Env vars (or `/etc/wnba-led-agent.env`): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `DEVICE_ID`, `DEVICE_TOKEN?`, `CONFIG_PATH`, `SCOREBOARD_SERVICE`.
@@ -165,3 +165,10 @@ Render Layouts
     - From your dev machine, publish a command:
       - `python scripts/publish_command.py --device-id <UUID> --type PING --realtime-url wss://<project-ref>.supabase.co/realtime/v1/websocket --apikey <ANON_KEY>`
     - Check the agent logs for “PING received”
+ Getting a DEVICE_TOKEN
+ - Deploy the mint function (see `supabase/README.md` → Mint device tokens) and ensure you’re signed in as the device owner.
+ - Request a token:
+   - `curl -sS -X POST https://<project-ref>.functions.supabase.co/mint-device-token \
+      -H 'Content-Type: application/json' -H 'apikey: <ANON_KEY>' -H 'Authorization: Bearer <USER_JWT>' \
+      -d '{"device_id":"<DEVICE_ID>","ttl_days":30}'`
+ - Put the `token` into `/etc/wnba-led-agent.env` as `DEVICE_TOKEN` and restart the agent.

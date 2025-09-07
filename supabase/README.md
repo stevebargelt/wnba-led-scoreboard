@@ -31,8 +31,8 @@ Deploy Edge Functions
   - Set function env variables in the Supabase Dashboard → Edge Functions → on-action → Settings:
     - `SUPABASE_REALTIME_URL` = `wss://<project-ref>.supabase.co/realtime/v1/websocket`
     - `SUPABASE_ANON_KEY` = your anon public key
- - Deploy the config writer function:
-   - `supabase functions deploy on-config-write`
+- Deploy the config writer function:
+  - `supabase functions deploy on-config-write`
    - Set env variables in on-config-write Settings:
      - `SUPABASE_URL` = `https://<project-ref>.supabase.co`
      - `SUPABASE_SERVICE_ROLE_KEY` = your service role key (keep secret)
@@ -62,3 +62,15 @@ Invoke on-action via cURL
     -H 'apikey: <ANON_KEY>' \
     -H 'Authorization: Bearer <ANON_KEY>' \
     -d @<(echo '{"device_id":"<DEVICE_ID>","content":'; cat config/favorites.json; echo '}')`
+- Mint device tokens
+- Deploy the mint function:
+  - `supabase functions deploy mint-device-token`
+  - Env: set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_JWT_SECRET` in the function settings
+- Invoke to get a token (caller must be signed in and own the device):
+  - `curl -sS -X POST \
+    https://<project-ref>.functions.supabase.co/mint-device-token \
+    -H 'Content-Type: application/json' \
+    -H 'apikey: <ANON_KEY>' \
+    -H 'Authorization: Bearer <USER_JWT>' \
+    -d '{"device_id":"<DEVICE_ID>","ttl_days":30}'`
+  - Copy the returned `token` into `/etc/wnba-led-agent.env` as `DEVICE_TOKEN` and restart the agent.
