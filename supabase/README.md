@@ -31,3 +31,20 @@ Deploy Edge Functions
   - Set function env variables in the Supabase Dashboard → Edge Functions → on-action → Settings:
     - `SUPABASE_REALTIME_URL` = `wss://<project-ref>.supabase.co/realtime/v1/websocket`
     - `SUPABASE_ANON_KEY` = your anon public key
+
+Invoke on-action via cURL
+- Replace `<project-ref>` and keys/placeholders accordingly.
+- RESTART example:
+  - `curl -sS -X POST \
+    https://<project-ref>.functions.supabase.co/on-action \
+    -H 'Content-Type: application/json' \
+    -H 'apikey: <ANON_KEY>' \
+    -H 'Authorization: Bearer <ANON_KEY>' \
+    -d '{"device_id":"<DEVICE_ID>","type":"RESTART","payload":{"service":"wnba-led.service"}}'`
+- APPLY_CONFIG example (send an entire favorites/config JSON):
+  - `curl -sS -X POST \
+    https://<project-ref>.functions.supabase.co/on-action \
+    -H 'Content-Type: application/json' \
+    -H 'apikey: <ANON_KEY>' \
+    -H 'Authorization: Bearer <ANON_KEY>' \
+    -d @<(echo '{"device_id":"<DEVICE_ID>","type":"APPLY_CONFIG","payload":'; cat config/favorites.json; echo '}')`
