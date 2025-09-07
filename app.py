@@ -35,6 +35,7 @@ def parse_args():
 
 
 def main():
+    global RELOAD_REQUESTED
     load_dotenv()  # .env overrides
     args = parse_args()
 
