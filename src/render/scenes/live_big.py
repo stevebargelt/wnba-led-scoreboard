@@ -21,63 +21,75 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
                   font_small: ImageFont.ImageFont, font_large: ImageFont.ImageFont, logo_variant: str = "banner"):
     w, h = img.size
 
-    # Logo placements (target 20x20), centered vertically
-    top_y = max(0, (h - 20) // 2)
+    # Place logos near top, then abbreviations below logos to avoid overlap with scores
+    top_y = 1
     left_x = 1
-    right_x = w - 1 - 20
 
     alogo = get_logo(snap.away.id, snap.away.abbr, variant=logo_variant or "banner")
     hlogo = get_logo(snap.home.id, snap.home.abbr, variant=logo_variant or "banner")
 
+    # Home logo on left
+    home_x = left_x
     if hlogo:
         hlogo = _fit_logo(hlogo, 20, 20)
-        img.paste(hlogo, (left_x, top_y), hlogo)
+        img.paste(hlogo, (home_x, top_y), hlogo)
+        home_w, home_h = hlogo.size
     else:
-        draw.rectangle((left_x, top_y, left_x + 20, top_y + 20), outline=(100, 100, 100))
+        home_w, home_h = 20, 20
+        draw.rectangle((home_x, top_y, home_x + home_w, top_y + home_h), outline=(100, 100, 100))
 
+    # Away logo on right
     if alogo:
         alogo = _fit_logo(alogo, 20, 20)
-        # place flush right
-        ax = w - 1 - alogo.size[0]
-        img.paste(alogo, (ax, top_y), alogo)
+        away_w, away_h = alogo.size
+        away_x = w - 1 - away_w
+        img.paste(alogo, (away_x, top_y), alogo)
     else:
-        draw.rectangle((right_x, top_y, right_x + 20, top_y + 20), outline=(100, 100, 100))
+        away_w, away_h = 20, 20
+        away_x = w - 1 - away_w
+        draw.rectangle((away_x, top_y, away_x + away_w, top_y + away_h), outline=(100, 100, 100))
 
-    # Center text column boundaries
-    col_l = left_x + 20 + 2  # 23
-    col_r = w - 1 - 20 - 2   # 41 (for 64-wide)
+    # Abbreviations under logos, centered under the image width
+    habbr = snap.home.abbr[:4]
+    htw, hth = draw.textbbox((0, 0), habbr, font=font_small)[2:]
+    hx = home_x + max(0, (home_w - htw) // 2)
+    hy = min(h - hth - 1, top_y + home_h + 1)
+    draw.text((hx, hy), habbr, fill=(220, 220, 220), font=font_small)
 
-    # Period at top of column
+    aabbr = snap.away.abbr[:4]
+    atw, ath = draw.textbbox((0, 0), aabbr, font=font_small)[2:]
+    ax = away_x + max(0, (away_w - atw) // 2)
+    ay = min(h - ath - 1, top_y + away_h + 1)
+    draw.text((ax, ay), aabbr, fill=(220, 220, 220), font=font_small)
+
+    # Center column between logos for period, scores, and clock
+    col_l = home_x + home_w + 3
+    col_r = away_x - 3
+    if col_r <= col_l:
+        col_l, col_r = 22, w - 22  # fallback safe column
+
+    # Period top center of column
     per_text = f"Q{snap.period}" if snap.period >= 1 else "PRE"
     ptw, pth = draw.textbbox((0, 0), per_text, font=font_small)[2:]
-    draw.text(((col_l + col_r - ptw) // 2, max(0, top_y - pth)), per_text, fill=(200, 200, 200), font=font_small)
+    py = max(0, top_y - 1)
+    draw.text(((col_l + col_r - ptw) // 2, py), per_text, fill=(200, 200, 200), font=font_small)
 
-    # Two stacked rows for abbr + scores
-    row1_y = top_y + 2
-    row2_y = top_y + 12
-
-    # Away row (right side logo)
-    aabbr = snap.away.abbr[:4]
+    # Scores only (no abbr) stacked in column to prevent overlap
     ascore = str(snap.away.score)
-    # choose font size for score depending on length
     a_font = font_large if len(ascore) <= 2 else font_small
-    stw, _ = draw.textbbox((0, 0), ascore, font=a_font)[2:]
-    # left-align abbr, right-align score
-    draw.text((col_l, row1_y), aabbr, fill=(220, 220, 220), font=font_small)
-    draw.text((col_r - stw, row1_y - 2), ascore, fill=(255, 255, 255), font=a_font)
+    astw, asth = draw.textbbox((0, 0), ascore, font=a_font)[2:]
+    row1_y = top_y + 5
+    draw.text(((col_l + col_r - astw) // 2, row1_y), ascore, fill=(255, 255, 255), font=a_font)
 
-    # Home row (left side logo)
-    habbr = snap.home.abbr[:4]
     hscore = str(snap.home.score)
     h_font = font_large if len(hscore) <= 2 else font_small
-    htw, _ = draw.textbbox((0, 0), hscore, font=h_font)[2:]
-    draw.text((col_l, row2_y), habbr, fill=(220, 220, 220), font=font_small)
-    draw.text((col_r - htw, row2_y - 2), hscore, fill=(255, 255, 255), font=h_font)
+    hstw, hsth = draw.textbbox((0, 0), hscore, font=h_font)[2:]
+    row2_y = row1_y + max(asth, 10) + 2
+    draw.text(((col_l + col_r - hstw) // 2, row2_y), hscore, fill=(255, 255, 255), font=h_font)
 
-    # Clock bottom center of column
+    # Clock bottom center within the column
     clock = (snap.display_clock or "").strip()
     if clock:
         ctw, cth = draw.textbbox((0, 0), clock, font=font_small)[2:]
-        cy = min(h - cth - 1, top_y + 20)
+        cy = min(h - cth - 1, max(habbr and hy or 0, aabbr and ay or 0) + 3)
         draw.text(((col_l + col_r - ctw) // 2, cy), clock, fill=(0, 255, 0), font=font_small)
-
