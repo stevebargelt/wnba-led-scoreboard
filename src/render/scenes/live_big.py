@@ -46,7 +46,9 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
     abbr_h = max(hth, ath)
 
     y_logo_top = 1 + sth
-    y_abbr = h - abbr_h - 1
+    # Move abbreviations up from the bottom by a small margin to avoid clipping
+    bottom_margin = 2
+    y_abbr = max(y_logo_top + 1, h - abbr_h - bottom_margin)
     max_logo_h = max(10, y_abbr - y_logo_top - 1)
     logo_h = min(desired_logo_h, max_logo_h)
 
