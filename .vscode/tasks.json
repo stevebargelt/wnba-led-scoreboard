@@ -8,6 +8,18 @@
       "problemMatcher": []
     },
     {
+      "label": "Supabase: Deploy on-action",
+      "type": "shell",
+      "command": "bash -lc 'supabase functions deploy on-action'",
+      "problemMatcher": []
+    },
+    {
+      "label": "Supabase: Deploy on-config-write",
+      "type": "shell",
+      "command": "bash -lc 'supabase functions deploy on-config-write'",
+      "problemMatcher": []
+    },
+    {
       "label": "Install requirements",
       "type": "shell",
       "command": "bash -lc 'source .venv/bin/activate && pip install -r requirements.txt'",
