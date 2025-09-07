@@ -21,8 +21,16 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
                   font_small: ImageFont.ImageFont, font_large: ImageFont.ImageFont, logo_variant: str = "banner"):
     w, h = img.size
 
-    # Place logos near top, then abbreviations below logos to avoid overlap with scores
-    top_y = 1
+    # Status line at very top: period + clock (avoids bottom overlap)
+    period_label = "PRE" if snap.period <= 0 else ("OT" if snap.period > 4 else f"Q{snap.period}")
+    clock = (snap.display_clock or "").strip()
+    status = f"{period_label} {clock}".strip()
+    if status:
+        stw, sth = draw.textbbox((0, 0), status, font=font_small)[2:]
+        draw.text(((w - stw) // 2, 0), status, fill=(200, 200, 200), font=font_small)
+
+    # Place logos below the status line, then abbreviations under logos
+    top_y = 1 + (sth if status else 0)
     left_x = 1
 
     alogo = get_logo(snap.away.id, snap.away.abbr, variant=logo_variant or "banner")
@@ -68,12 +76,6 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
     if col_r <= col_l:
         col_l, col_r = 22, w - 22  # fallback safe column
 
-    # Period top center of column
-    per_text = f"Q{snap.period}" if snap.period >= 1 else "PRE"
-    ptw, pth = draw.textbbox((0, 0), per_text, font=font_small)[2:]
-    py = max(0, top_y - 1)
-    draw.text(((col_l + col_r - ptw) // 2, py), per_text, fill=(200, 200, 200), font=font_small)
-
     # Scores only (no abbr) stacked in column to prevent overlap
     ascore = str(snap.away.score)
     a_font = font_large if len(ascore) <= 2 else font_small
@@ -84,12 +86,10 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
     hscore = str(snap.home.score)
     h_font = font_large if len(hscore) <= 2 else font_small
     hstw, hsth = draw.textbbox((0, 0), hscore, font=h_font)[2:]
+    # Ensure second score sits well above the abbreviations under logos
     row2_y = row1_y + max(asth, 10) + 2
+    max_abbr_y = max(hy + hth, ay + ath)
+    # Clamp row2 to be at least 2px above abbr lines if possible
+    if row2_y + hsth > max_abbr_y - 2:
+        row2_y = max(top_y + 2, max_abbr_y - 2 - hsth)
     draw.text(((col_l + col_r - hstw) // 2, row2_y), hscore, fill=(255, 255, 255), font=h_font)
-
-    # Clock bottom center within the column
-    clock = (snap.display_clock or "").strip()
-    if clock:
-        ctw, cth = draw.textbbox((0, 0), clock, font=font_small)[2:]
-        cy = min(h - cth - 1, max(habbr and hy or 0, aabbr and ay or 0) + 3)
-        draw.text(((col_l + col_r - ctw) // 2, cy), clock, fill=(0, 255, 0), font=font_small)
