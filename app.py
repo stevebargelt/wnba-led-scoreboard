@@ -12,6 +12,7 @@ from src.model.game import GameSnapshot, GameState
 from typing import Optional
 from src.select.choose import choose_featured_game
 from src.render.renderer import Renderer
+from src.demo.simulator import DemoSimulator
 
 
 def parse_args():
@@ -19,6 +20,7 @@ def parse_args():
     parser.add_argument("--config", default="config/favorites.json", help="Path to favorites/config JSON")
     parser.add_argument("--sim", action="store_true", help="Force simulate display (no matrix)")
     parser.add_argument("--once", action="store_true", help="Run one update cycle and exit")
+    parser.add_argument("--demo", action="store_true", help="Run in demo mode with a simulated game")
     return parser.parse_args()
 
 
@@ -30,16 +32,23 @@ def main():
 
     renderer = Renderer(cfg, force_sim=args.sim)
 
+    demo_env = os.getenv("DEMO_MODE", "false").lower() == "true"
+    use_demo = args.demo or demo_env
+    demo = DemoSimulator(cfg) if use_demo else None
+
     try:
         while True:
             now_local = datetime.now(cfg.tz)
-            try:
-                scoreboard = fetch_scoreboard(now_local.date())
-            except Exception as e:
-                print(f"[warn] fetch_scoreboard failed: {e}")
-                scoreboard = []
+            if demo is not None:
+                snapshot: Optional[GameSnapshot] = demo.get_snapshot(now_local)
+            else:
+                try:
+                    scoreboard = fetch_scoreboard(now_local.date())
+                except Exception as e:
+                    print(f"[warn] fetch_scoreboard failed: {e}")
+                    scoreboard = []
 
-            snapshot: Optional[GameSnapshot] = choose_featured_game(cfg, scoreboard, now_local)
+                snapshot = choose_featured_game(cfg, scoreboard, now_local)
 
             if snapshot is None:
                 renderer.render_idle(now_local)

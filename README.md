@@ -13,6 +13,9 @@ Quick Start
   - `python app.py --sim --once`
 - Run on Pi with matrix:
   - `python app.py`
+ - Demo mode (simulated game, changes occasionally):
+   - `python app.py --sim --demo` (local/offscreen)
+   - `sudo -E $(pwd)/.venv/bin/python app.py --demo` (on Pi)
 
 Hardware & Bindings
 - Install rgbmatrix (Python bindings) on the Pi:
@@ -43,4 +46,4 @@ VS Code Tasks
   - "Create venv" → "Install requirements"
   - "Install rgbmatrix (bindings)"
   - "Hardware Self-Test (demo.py)"
-  - "Run (sim once)" or "Run (matrix loop)"
+  - "Run (sim once)", "Run (demo sim)", or "Run (matrix loop)"

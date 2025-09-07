@@ -39,6 +39,13 @@
       "command": "bash -lc 'source .venv/bin/activate && python app.py'",
       "dependsOn": ["Install requirements"],
       "problemMatcher": []
+    },
+    {
+      "label": "Run (demo sim)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && python app.py --sim --demo'",
+      "dependsOn": ["Install requirements"],
+      "problemMatcher": []
     }
   ]
 }
