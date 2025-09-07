@@ -31,10 +31,18 @@ class TeamRegistry:
         if self._loaded:
             return
         self._loaded = True
-        if not TEAMS_JSON.exists():
+        try:
+            if not TEAMS_JSON.exists():
+                return
+        except PermissionError as e:
+            print(f"[warn] cannot stat teams.json: {TEAMS_JSON}: {e}")
             return
-        with open(TEAMS_JSON, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        try:
+            with open(TEAMS_JSON, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except PermissionError as e:
+            print(f"[warn] cannot read teams.json: {TEAMS_JSON}: {e}")
+            return
         for t in data.get("teams", []):
             meta = TeamMeta(
                 id=str(t.get("id")),

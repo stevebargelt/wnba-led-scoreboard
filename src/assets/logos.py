@@ -14,7 +14,17 @@ ASSETS_DIR = BASE_DIR / "assets"
 LOGOS_DIR = ASSETS_DIR / "logos"
 VARIANTS_DIR = LOGOS_DIR / "variants"
 
-VARIANTS_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    VARIANTS_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
+
+
+def _exists_safe(path: Path) -> bool:
+    try:
+        return path.exists()
+    except PermissionError:
+        return False
 
 
 def _safe_open(path: Path) -> Optional[Image.Image]:
@@ -65,7 +75,7 @@ def get_logo(team_id: Optional[str], abbr: Optional[str], variant: str = "mini")
 
     # Try variant cache
     vpath = _variant_path(key_id, variant)
-    if vpath.exists():
+    if _exists_safe(vpath):
         return _safe_open(vpath)
 
     # Load original: try by id, then abbr
@@ -80,7 +90,7 @@ def get_logo(team_id: Optional[str], abbr: Optional[str], variant: str = "mini")
 
     img = None
     for p in orig_paths:
-        if p.exists():
+        if _exists_safe(p):
             img = _safe_open(p)
             if img:
                 break
