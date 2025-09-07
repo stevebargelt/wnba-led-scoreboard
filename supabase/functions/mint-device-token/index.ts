@@ -17,9 +17,10 @@ serve(async (req: Request) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const anon = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const jwtSecret = Deno.env.get('SUPABASE_JWT_SECRET');
+    // Supabase forbids secrets that start with SUPABASE_; use JWT_SECRET (fallback to SUPABASE_JWT_SECRET if present)
+    const jwtSecret = Deno.env.get('JWT_SECRET') ?? Deno.env.get('SUPABASE_JWT_SECRET');
     if (!supabaseUrl || !anon || !jwtSecret) {
-      return new Response(JSON.stringify({ error: 'Missing env (SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_JWT_SECRET)' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Missing env (SUPABASE_URL, SUPABASE_ANON_KEY, JWT_SECRET)' }), { status: 500 });
     }
 
     // Authenticate caller (user) by forwarding Authorization header to Supabase
@@ -43,7 +44,8 @@ serve(async (req: Request) => {
     }
 
     const exp = getNumericDate((ttl_days ? Number(ttl_days) : 30) * 24 * 60 * 60); // default 30 days
-    const payload = { device_id, role: 'device', exp } as Record<string, unknown>;
+    // Use role 'authenticated' to align with Supabase's DB roles
+    const payload = { device_id, role: 'authenticated', exp, iss: 'supabase' } as Record<string, unknown>;
     const header: Record<string, string> = { alg: 'HS256', typ: 'JWT' };
     const key = await crypto.subtle.importKey('raw', encoder.encode(jwtSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const token = await create(header, payload, key);
@@ -53,4 +55,3 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
   }
 });
-

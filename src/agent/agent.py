@@ -165,9 +165,10 @@ class DeviceAgent:
         url = f"{base}/rest/v1/devices?id=eq.{self.cfg.device_id}"
         now_iso = datetime.now(timezone.utc).isoformat()
         r = requests.patch(url, headers={**headers, "Content-Type": "application/json", "Prefer": "return=minimal"}, json={"last_seen_ts": now_iso}, timeout=5)
-        if r.status_code >= 300:
-            # If unauthorized and no device token, log once
-            print(f"[agent] heartbeat update failed: {r.status_code} {r.text[:120]}")
+        if 200 <= r.status_code < 300:
+            print("[agent] heartbeat OK")
+        else:
+            print(f"[agent] heartbeat update failed: {r.status_code} {r.text[:200]}")
 
         # Optional: insert STATUS event if token provided
         if self.cfg.device_token:
