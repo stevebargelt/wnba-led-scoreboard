@@ -23,7 +23,7 @@ class DemoSimulator:
     def __init__(self, cfg: AppConfig):
         self.cfg = cfg
         now = datetime.now(cfg.tz)
-        self.start_time = now + timedelta(seconds=45)
+        self.start_time = now + timedelta(seconds=10)
         self.random = random.Random()
         self.random.seed(int(now.timestamp()))
 
@@ -59,7 +59,7 @@ class DemoSimulator:
             display_clock="",
             home=TeamSide(id=home_id, name=home_name, abbr=home_abbr, score=0),
             away=TeamSide(id=away_id, name=away_name, abbr=away_abbr, score=0),
-            seconds_to_start=45,
+            seconds_to_start=10,
             status_detail="Demo",
         )
 
@@ -113,4 +113,3 @@ class DemoSimulator:
                 seconds_to_start=-1,
                 status_detail="Final",
             )
-
