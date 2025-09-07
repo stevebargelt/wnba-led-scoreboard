@@ -82,3 +82,14 @@ Agent & Cloud Admin (Preview)
 - Start locally:
   - `python -m src.agent.agent` (skeleton loop)
   - Apply a config file: `python -m src.agent.agent apply config/favorites.json --pid <scoreboard-pid>`
+
+ Supabase Realtime (Test End-to-End)
+ - Agent expects a Phoenix channel `device:<DEVICE_ID>` on your Supabase Realtime endpoint.
+ - Option A (CLI publisher for quick tests):
+   - `python scripts/publish_command.py --device-id <id> --type APPLY_CONFIG --file config/favorites.json \
+      --realtime-url wss://<project>.supabase.co/realtime/v1/websocket --apikey <ANON_KEY>`
+   - For a restart: `--type RESTART --payload '{"service":"wnba-led.service"}'`
+ - Option B (Edge Function):
+   - Deploy `supabase/functions/publish-command/index.ts` via Supabase CLI.
+   - Set function env: `SUPABASE_REALTIME_URL`, `SUPABASE_ANON_KEY`.
+   - Invoke with JSON body `{ "device_id": "<uuid>", "type": "APPLY_CONFIG", "payload": { ... } }`.

@@ -15,7 +15,7 @@ except Exception:  # pragma: no cover - optional dependency
 
 @dataclass
 class RealtimeConfig:
-    url: str  # e.g., wss://<project>.supabase.co/realtime/v1/websocket
+    url: str  # e.g., wss://<project>.supabase.co/realtime/v1/websocket?apikey=...&vsn=1.0.0
     apikey: str
     access_token: Optional[str] = None  # JWT with RLS claims; optional in dev
     topic: str = "device:unknown"
@@ -62,15 +62,25 @@ class RealtimeClient:
     def _run(self):
         # Compose headers
         headers = [
-            f"apikey: {self.cfg.apikey}",
             "sec-websocket-protocol: phoenix",
         ]
         if self.cfg.access_token:
             headers.append(f"Authorization: Bearer {self.cfg.access_token}")
+        # Ensure apikey present in URL query params for Supabase Realtime
+        url = self.cfg.url
+        if ("apikey=" not in url) and self.cfg.apikey:
+            sep = '&' if ('?' in url) else '?'
+            url = f"{url}{sep}apikey={self.cfg.apikey}"
+        if "vsn=" not in url:
+            sep = '&' if ('?' in url) else '?'
+            url = f"{url}{sep}vsn=1.0.0"
+        if self.cfg.access_token and ("token=" not in url):
+            sep = '&' if ('?' in url) else '?'
+            url = f"{url}{sep}token={self.cfg.access_token}"
 
         # Connect
         try:
-            self.ws = websocket.create_connection(self.cfg.url, header=headers, timeout=10)
+            self.ws = websocket.create_connection(url, header=headers, timeout=10)
             print("[agent] realtime connected")
         except Exception as e:
             print(f"[agent] realtime connect failed: {e}")
@@ -116,4 +126,3 @@ class RealtimeClient:
                         pass
                     last_ping = time.monotonic()
                 continue
-
