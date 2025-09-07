@@ -8,6 +8,9 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+import threading
+from datetime import datetime, timezone
+import requests
 
 from .realtime import RealtimeClient, RealtimeConfig
 
@@ -33,6 +36,7 @@ class DeviceAgent:
         self.cfg = cfg
         self._stop = False
         self._rt: Optional[RealtimeClient] = None
+        self._hb_thread: Optional[threading.Thread] = None
 
     def stop(self):
         self._stop = True
@@ -50,6 +54,10 @@ class DeviceAgent:
                 on_message=self._handle_message,
             )
             self._rt.start()
+
+        # Start heartbeat thread (best-effort)
+        if self.cfg.supabase_url and self.cfg.device_id and self.cfg.supabase_anon_key:
+            self._start_heartbeat()
 
         # Placeholder loop
         while not self._stop:
@@ -124,9 +132,58 @@ class DeviceAgent:
         except Exception as e:
             print(f"[agent] self-test failed: {e}")
 
+    # Heartbeat: update devices.last_seen_ts (requires device token for RLS) and optionally insert STATUS event
+    def _start_heartbeat(self):
+        if self._hb_thread and self._hb_thread.is_alive():
+            return
+
+        def loop():
+            while not self._stop:
+                try:
+                    self._send_heartbeat()
+                except Exception as e:
+                    print(f"[agent] heartbeat error: {e}")
+                for _ in range(30):
+                    if self._stop:
+                        return
+                    time.sleep(1)
+
+        self._hb_thread = threading.Thread(target=loop, daemon=True)
+        self._hb_thread.start()
+
+    def _send_heartbeat(self):
+        if not (self.cfg.supabase_url and self.cfg.device_id and self.cfg.supabase_anon_key):
+            return
+        headers = {
+            "apikey": self.cfg.supabase_anon_key,
+        }
+        if self.cfg.device_token:
+            headers["Authorization"] = f"Bearer {self.cfg.device_token}"
+
+        base = self.cfg.supabase_url.rstrip("/")
+        # Update devices.last_seen_ts
+        url = f"{base}/rest/v1/devices?id=eq.{self.cfg.device_id}"
+        now_iso = datetime.now(timezone.utc).isoformat()
+        r = requests.patch(url, headers={**headers, "Content-Type": "application/json", "Prefer": "return=minimal"}, json={"last_seen_ts": now_iso}, timeout=5)
+        if r.status_code >= 300:
+            # If unauthorized and no device token, log once
+            print(f"[agent] heartbeat update failed: {r.status_code} {r.text[:120]}")
+
+        # Optional: insert STATUS event if token provided
+        if self.cfg.device_token:
+            ev_url = f"{base}/rest/v1/events"
+            payload = {
+                "device_id": self.cfg.device_id,
+                "type": "STATUS",
+                "payload": {"ts": now_iso},
+            }
+            re = requests.post(ev_url, headers={**headers, "Content-Type": "application/json"}, json=payload, timeout=5)
+            if re.status_code >= 300:
+                print(f"[agent] status event failed: {re.status_code} {re.text[:120]}")
+
 
 def main(argv: list[str]) -> int:
-    # Simple CLI for local testing: python -m src.agent.agent apply <json-file> [--pid PID]
+    # CLI: default runs the agent loop; 'apply' subcommand applies a config file once.
     if len(argv) >= 2 and argv[1] == "apply":
         json_path = Path(argv[2]) if len(argv) >= 3 else None
         pid = None
@@ -149,8 +206,21 @@ def main(argv: list[str]) -> int:
         agent.apply_config(content, scoreboard_pid=pid)
         return 0
 
-    print("usage: python -m src.agent.agent apply <json-file> [--pid PID]")
-    return 2
+    # Default: run the agent loop using environment configuration
+    cfg = AgentConfig(
+        supabase_url=os.getenv("SUPABASE_URL"),
+        supabase_anon_key=os.getenv("SUPABASE_ANON_KEY"),
+        device_id=os.getenv("DEVICE_ID"),
+        device_token=os.getenv("DEVICE_TOKEN"),
+        config_path=Path(os.getenv("CONFIG_PATH", "config/favorites.json")),
+    )
+    agent = DeviceAgent(cfg)
+    try:
+        agent.run()
+        return 0
+    except KeyboardInterrupt:
+        agent.stop()
+        return 0
 
 
 if __name__ == "__main__":
