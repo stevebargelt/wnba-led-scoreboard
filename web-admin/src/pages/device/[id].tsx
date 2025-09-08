@@ -87,12 +87,20 @@ export default function DevicePage() {
       }
       setSchemaError('')
       setLoading(true)
+      // Use the signed-in user's access token to authorize on-config-write (ownership enforced server-side)
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setMessage('Not signed in')
+        setLoading(false)
+        return
+      }
       const resp = await fetch(FN_CONFIG, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+          Authorization: `Bearer ${jwt}`,
         },
         body: JSON.stringify({ device_id: id, content }),
       })
@@ -219,14 +227,18 @@ export default function DevicePage() {
     setFavorites(next)
   }
   const syncToJson = () => {
+    let base: any = {}
     try {
-      const base = JSON.parse(configText)
-      const merged = { ...base, favorites }
-      setConfigText(JSON.stringify(merged, null, 2))
-      setMessage('Favorites synced into JSON')
+      if (configText && configText.trim().length > 0) {
+        base = JSON.parse(configText)
+      }
     } catch (e: any) {
-      setMessage('Cannot parse JSON to sync: ' + e.message)
+      // Proceed with empty base but inform user
+      setMessage('Parsed with defaults (existing JSON was invalid).')
     }
+    const merged = { ...base, favorites }
+    setConfigText(JSON.stringify(merged, null, 2))
+    if (!schemaError) setMessage(`Favorites synced into JSON (${favorites.length})`)
   }
 
   return (
