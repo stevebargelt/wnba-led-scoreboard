@@ -51,7 +51,24 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Missing env: SUPABASE_URL, SERVICE_ROLE_KEY, ANON_KEY' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Store config row
+    // Validate caller ownership using anon client with Authorization header
+    const authHeader = req.headers.get('Authorization') ?? '';
+    const authClient = createClient(supabaseUrl, anon, { global: { headers: { Authorization: authHeader } } });
+    const { data: userData, error: userErr } = await authClient.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    const { data: owned, error: ownErr } = await authClient
+      .from('devices')
+      .select('id')
+      .eq('id', device_id)
+      .limit(1)
+      .maybeSingle();
+    if (ownErr || !owned) {
+      return new Response(JSON.stringify({ error: 'Device not found or not owned by user' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Store config row with service role
     const supabase = createClient(supabaseUrl, serviceKey);
     const { error } = await supabase.from('configs').insert({ device_id, content, source: 'cloud', author_user_id }).select().single();
     if (error) {
@@ -70,7 +87,7 @@ serve(async (req: Request) => {
     const send = (msg: unknown) => ws.send(JSON.stringify(msg));
     let ref = 1;
     send({ topic, event: 'phx_join', payload: {}, ref: String(ref++) });
-    send({ topic, event: 'broadcast', payload: { type: 'APPLY_CONFIG', payload: content }, ref: String(ref++) });
+    send({ topic, event: 'broadcast', payload: { event: 'APPLY_CONFIG', payload: content }, ref: String(ref++) });
     ws.close();
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {

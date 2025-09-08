@@ -22,6 +22,7 @@ export default function Home() {
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [newDeviceName, setNewDeviceName] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -41,6 +42,30 @@ export default function Home() {
       setLoading(false)
     })()
   }, [session])
+
+  const createDevice = async () => {
+    setMessage('')
+    if (!newDeviceName.trim()) {
+      setMessage('Enter a device name')
+      return
+    }
+    const { data: userData } = await supabase.auth.getUser()
+    if (!userData.user) {
+      setMessage('Sign in first')
+      return
+    }
+    const { data, error } = await supabase
+      .from('devices')
+      .insert({ name: newDeviceName, owner_user_id: userData.user.id })
+      .select('id,name')
+      .single()
+    if (error) setMessage(error.message)
+    else {
+      setDevices((prev) => [...prev, { id: data!.id, name: data!.name, last_seen_ts: null }])
+      setNewDeviceName('')
+      setMessage('Device created. Open it and mint a token from its page.')
+    }
+  }
 
   const signIn = async () => {
     setMessage('')
@@ -85,6 +110,10 @@ export default function Home() {
           <button onClick={() => supabase.auth.signOut()}>Sign out</button>
           <h3>Your devices</h3>
           {loading && <p>Loading…</p>}
+          <div style={{ marginBottom: 12 }}>
+            <input placeholder="New device name" value={newDeviceName} onChange={(e) => setNewDeviceName(e.target.value)} />{' '}
+            <button onClick={createDevice}>Create Device</button>
+          </div>
           <ul>
             {devices.map((d) => (
               <li key={d.id}>
@@ -93,6 +122,7 @@ export default function Home() {
               </li>
             ))}
           </ul>
+          {message && <p>{message}</p>}
         </section>
       )}
     </main>
