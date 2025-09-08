@@ -10,6 +10,15 @@ import { create, getNumericDate } from "https://deno.land/x/djwt@v2.8/mod.ts";
 const encoder = new TextEncoder();
 
 serve(async (req: Request) => {
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  } as const;
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
   try {
     if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
     const { device_id, ttl_days } = await req.json();
@@ -20,7 +29,7 @@ serve(async (req: Request) => {
     // Supabase forbids secrets that start with SUPABASE_; use JWT_SECRET (fallback to SUPABASE_JWT_SECRET if present)
     const jwtSecret = Deno.env.get('JWT_SECRET') ?? Deno.env.get('SUPABASE_JWT_SECRET');
     if (!supabaseUrl || !anon || !jwtSecret) {
-      return new Response(JSON.stringify({ error: 'Missing env (SUPABASE_URL, SUPABASE_ANON_KEY, JWT_SECRET)' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Missing env (SUPABASE_URL, SUPABASE_ANON_KEY, JWT_SECRET)' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Authenticate caller (user) by forwarding Authorization header to Supabase
@@ -28,7 +37,7 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, anon, { global: { headers: { Authorization: authHeader } } });
     const { data: userData, error: userErr } = await supabase.auth.getUser();
     if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     const userId = userData.user.id;
 
@@ -40,7 +49,7 @@ serve(async (req: Request) => {
       .eq('owner_user_id', userId)
       .maybeSingle();
     if (devErr || !dev) {
-      return new Response(JSON.stringify({ error: 'Device not found or not owned by user' }), { status: 403 });
+      return new Response(JSON.stringify({ error: 'Device not found or not owned by user' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const exp = getNumericDate((ttl_days ? Number(ttl_days) : 30) * 24 * 60 * 60); // default 30 days
@@ -50,8 +59,8 @@ serve(async (req: Request) => {
     const key = await crypto.subtle.importKey('raw', encoder.encode(jwtSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
     const token = await create(header, payload, key);
 
-    return new Response(JSON.stringify({ token, exp }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ token, exp }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { "Access-Control-Allow-Origin": "*", 'Content-Type': 'application/json' } });
   }
 });

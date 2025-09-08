@@ -3,6 +3,18 @@ import { supabase } from '../lib/supabaseClient'
 
 type Device = { id: string; name: string; last_seen_ts: string | null }
 
+function onlineBadge(last_seen_ts: string | null): JSX.Element {
+  if (!last_seen_ts) return <span style={{ marginLeft: 8, color: '#888' }}>offline</span>
+  const last = new Date(last_seen_ts).getTime()
+  const now = Date.now()
+  const fresh = now - last < 90_000 // 90s freshness window
+  return (
+    <span style={{ marginLeft: 8, color: fresh ? '#0c0' : '#888' }}>
+      {fresh ? 'online' : 'offline'}
+    </span>
+  )
+}
+
 export default function Home() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -76,7 +88,8 @@ export default function Home() {
           <ul>
             {devices.map((d) => (
               <li key={d.id}>
-                <a href={`/device/${d.id}`}>{d.name}</a> — last seen: {d.last_seen_ts ?? '—'}
+                <a href={`/device/${d.id}`}>{d.name}</a>
+                {onlineBadge(d.last_seen_ts)} — last seen: {d.last_seen_ts ?? '—'}
               </li>
             ))}
           </ul>
