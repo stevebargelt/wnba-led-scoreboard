@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
+import { WNBATEAMS } from '@/lib/wnbaTeams'
+import { makeValidator } from '@/lib/schema'
 
 const FN_CONFIG = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE!
 const FN_ACTION = process.env.NEXT_PUBLIC_FUNCTION_ON_ACTION!
@@ -15,6 +17,8 @@ export default function DevicePage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [mintedToken, setMintedToken] = useState('')
+  const [favorites, setFavorites] = useState<{ name: string; id?: string | null; abbr?: string | null }[]>([])
+  const [newFav, setNewFav] = useState<{ name: string; abbr?: string }>({ name: '', abbr: '' })
 
   useEffect(() => {
     if (!id) return
@@ -28,6 +32,7 @@ export default function DevicePage() {
         .limit(1)
         .maybeSingle()
       if (data?.content) setConfigText(JSON.stringify(data.content, null, 2))
+      if (data?.content?.favorites) setFavorites(data.content.favorites as any)
       const { data: dev } = await supabase.from('devices').select('id,name,last_seen_ts').eq('id', id).maybeSingle()
       if (dev) setDevice(dev)
       const { data: ev } = await supabase
@@ -60,7 +65,14 @@ export default function DevicePage() {
   const applyConfig = async () => {
     if (!id) return
     try {
-      const content = JSON.parse(configText)
+      const base = JSON.parse(configText)
+      const content = { ...base, favorites }
+      const validate = makeValidator()
+      const ok = validate(content)
+      if (!ok) {
+        setMessage('Validation failed: ' + JSON.stringify(validate.errors?.[0]))
+        return
+      }
       setLoading(true)
       const resp = await fetch(FN_CONFIG, {
         method: 'POST',
@@ -136,6 +148,37 @@ export default function DevicePage() {
     return <span style={{ marginLeft: 8, color: fresh ? '#0c0' : '#888' }}>{fresh ? 'online' : 'offline'}</span>
   }, [device?.last_seen_ts])
 
+  // Drag and drop handlers for favorites
+  const onDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
+    e.dataTransfer.setData('text/plain', String(index))
+  }
+  const onDrop = (e: React.DragEvent<HTMLUListElement>, index: number) => {
+    const from = Number(e.dataTransfer.getData('text/plain'))
+    if (Number.isNaN(from)) return
+    e.preventDefault()
+    const next = favorites.slice()
+    const [moved] = next.splice(from, 1)
+    next.splice(index, 0, moved)
+    setFavorites(next)
+  }
+  const onDragOver = (e: React.DragEvent<HTMLUListElement>) => e.preventDefault()
+  const removeFav = (i: number) => setFavorites(favorites.filter((_, idx) => idx !== i))
+  const addFav = () => {
+    if (!newFav.name.trim()) return
+    setFavorites([...favorites, { name: newFav.name.trim(), abbr: newFav.abbr?.trim() || undefined }])
+    setNewFav({ name: '', abbr: '' })
+  }
+  const syncToJson = () => {
+    try {
+      const base = JSON.parse(configText)
+      const merged = { ...base, favorites }
+      setConfigText(JSON.stringify(merged, null, 2))
+      setMessage('Favorites synced into JSON')
+    } catch (e: any) {
+      setMessage('Cannot parse JSON to sync: ' + e.message)
+    }
+  }
+
   return (
     <main style={{ maxWidth: 720, margin: '2rem auto', fontFamily: 'sans-serif' }}>
       <h2>Device {id}</h2>
@@ -157,6 +200,36 @@ export default function DevicePage() {
       {device && (
         <p><strong>Status:</strong> {onlineBadge} — last seen: {device.last_seen_ts ?? '—'}</p>
       )}
+      <h3>Favorites Editor</h3>
+      <div>
+        <ul onDragOver={onDragOver} style={{ listStyle: 'none', paddingLeft: 0 }}>
+          {favorites.map((f, i) => (
+            <li key={i} draggable onDragStart={(e) => onDragStart(e, i)} onDrop={(e) => onDrop(e, i)} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 4, borderBottom: '1px solid #eee' }}>
+              <span style={{ cursor: 'grab' }}>⋮⋮</span>
+              <input value={f.name} onChange={(e) => {
+                const next = favorites.slice(); next[i] = { ...next[i], name: e.target.value }; setFavorites(next)
+              }} />
+              <input placeholder="abbr" value={f.abbr || ''} onChange={(e) => {
+                const next = favorites.slice(); next[i] = { ...next[i], abbr: e.target.value }; setFavorites(next)
+              }} style={{ width: 64 }} />
+              <button onClick={() => removeFav(i)}>Remove</button>
+            </li>
+          ))}
+        </ul>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
+          <input list="teams" placeholder="Team name" value={newFav.name} onChange={(e) => setNewFav({ ...newFav, name: e.target.value })} />
+          <datalist id="teams">
+            {WNBATEAMS.map((t) => (
+              <option key={t.abbr} value={t.name}>{t.abbr}</option>
+            ))}
+          </datalist>
+          <input placeholder="abbr" value={newFav.abbr || ''} onChange={(e) => setNewFav({ ...newFav, abbr: e.target.value })} style={{ width: 64 }} />
+          <button onClick={addFav}>Add</button>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <button onClick={syncToJson}>Sync Favorites into JSON</button>
+        </div>
+      </div>
       <h3>Config JSON</h3>
       <textarea value={configText} onChange={(e) => setConfigText(e.target.value)} rows={18} style={{ width: '100%' }} />
       <div>
