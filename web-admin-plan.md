@@ -66,6 +66,8 @@ Phased TODOs (Cloud‑First)
    - [x] Edge Functions: onAction (publish commands). (`supabase/functions/on-action`)
    - [x] Minimal publisher for testing. (CLI `scripts/publish_command.py` + Edge Function `publish-command` scaffold)
    - [x] Seed initial device (manual insert) for first bootstrap. (Follow README step‑by‑step)
+   - [ ] Security: Require caller ownership in onAction (verify user owns device before broadcast)
+   - [ ] CORS: Lock Edge Functions to ALLOWED_ORIGINS whitelist (local + prod domains)
 
 3) Device Agent (Python)
    - [x] Subscribe to `device:<DEVICE_ID>`; receive commands. (Realtime scaffold + handlers)
@@ -74,10 +76,10 @@ Phased TODOs (Cloud‑First)
    - [x] Systemd unit: wnba-led-agent.service (After=network-online.target; Restart=always). (Templates added)
 
 4) Frontend (Next.js/SvelteKit)
-   - [ ] Auth scaffold; devices list and detail.
-   - [ ] Device registration flow (create id + token; show env snippet).
+   - [x] Auth scaffold; devices list and detail.
+   - [x] Device registration flow (create id + token; show env snippet). (Page `/register`)
    - [ ] Config editor (favorites drag‑drop, layout, refresh, brightness, TZ).
-   - [ ] Apply/Actions buttons; realtime status stream.
+   - [x] Apply/Actions buttons; realtime status stream. (Actions + Recent Events + online badge)
 
 5) Nice‑to‑haves
    - [ ] Preview renders (server‑side render PNG using PIL for given config).
@@ -92,6 +94,7 @@ Notes
 - Since internet is required for game data, a cloud admin is consistent with the dependency. The device keeps the last good config to render even if commands can’t reach it for a short time.
 
 Next Up (concrete actions)
-- Add Edge Function: onConfigWrite (validate, insert to `configs`, publish APPLY_CONFIG)
-- Define a JSON schema for `configs.content` (mirror of `config/favorites.json`) and validate on backend.
-- Scaffold a minimal Next.js admin with Supabase Auth, devices list, and device detail page that calls the functions above.
+- Security: Require caller ownership in onAction; add ALLOWED_ORIGINS whitelist CORS to all Edge Functions.
+- Config editor: favorites drag‑and‑drop, add/remove with team lookup; client‑side validate against schema before apply.
+- Events UI: show last action payload/details; copy-to-clipboard on device page (done for token/env; add for DEVICE_ID too).
+- Production: add scoreboard unit doc (HUP reload), restrict CORS to admin domain, prepare PR to merge feat/web-admin-cloud → main.
