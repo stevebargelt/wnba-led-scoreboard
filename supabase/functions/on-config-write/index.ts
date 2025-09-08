@@ -6,7 +6,7 @@
 //  - SUPABASE_REALTIME_URL, SUPABASE_ANON_KEY (for Realtime broadcast)
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import Ajv from "https://esm.sh/ajv@8.12.0";
+import Ajv2020 from "https://esm.sh/ajv@8.12.0/dist/2020";
 
 type ConfigContent = Record<string, unknown>;
 
@@ -68,7 +68,7 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   additionalProperties: true
 };
 
-const ajv = new Ajv({ allErrors: true });
+const ajv = new Ajv2020({ allErrors: true });
 const validateConfig = ajv.compile(CONFIG_SCHEMA);
 
 const corsHeaders = {

@@ -1,4 +1,4 @@
-import Ajv from 'ajv'
+import Ajv2020 from 'ajv/dist/2020'
 
 export const CONFIG_SCHEMA = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -58,7 +58,6 @@ export const CONFIG_SCHEMA = {
 } as const
 
 export function makeValidator() {
-  const ajv = new Ajv({ allErrors: true })
+  const ajv = new Ajv2020({ allErrors: true })
   return ajv.compile(CONFIG_SCHEMA as any)
 }
-
