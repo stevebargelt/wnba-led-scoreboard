@@ -241,6 +241,32 @@ export default function DevicePage() {
     if (!schemaError) setMessage(`Favorites synced into JSON (${favorites.length})`)
   }
 
+  const loadLatestConfig = async () => {
+    if (!id) return
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data } = await supabase
+        .from('configs')
+        .select('content')
+        .eq('device_id', id)
+        .order('version_ts', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (data?.content) {
+        setConfigText(JSON.stringify(data.content, null, 2))
+        if (Array.isArray((data.content as any).favorites)) setFavorites((data.content as any).favorites)
+        setMessage('Loaded latest saved config')
+      } else {
+        setMessage('No prior config found; using editor values')
+      }
+    } catch (e: any) {
+      setMessage('Failed to load latest config: ' + e.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <main style={{ maxWidth: 720, margin: '2rem auto', fontFamily: 'sans-serif' }}>
       <h2>Device {id}</h2>
@@ -299,6 +325,9 @@ export default function DevicePage() {
         </div>
       </div>
       <h3>Config JSON</h3>
+      <div style={{ marginBottom: 8 }}>
+        <button onClick={loadLatestConfig} disabled={loading}>Load Latest Config</button>
+      </div>
       {schemaError && <p style={{ color: 'red' }}>Schema error: {schemaError}</p>}
       <textarea value={configText} onChange={(e) => setConfigText(e.target.value)} rows={18} style={{ width: '100%' }} />
       <div>

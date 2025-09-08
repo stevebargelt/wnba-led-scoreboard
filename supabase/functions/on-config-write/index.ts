@@ -91,9 +91,15 @@ serve(async (req: Request) => {
     if (!device_id || !content) {
       return new Response(JSON.stringify({ error: 'device_id and content required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    const valid = validateConfig(content);
-    if (!valid) {
-      return new Response(JSON.stringify({ error: 'invalid content', details: validateConfig.errors }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Deep merge helper: replace arrays (favorites), merge objects, preserve base when patch missing
+    const deepMerge = (base: any, patch: any) => {
+      if (Array.isArray(base) && Array.isArray(patch)) return patch;
+      if (base && typeof base === 'object' && patch && typeof patch === 'object') {
+        const out: any = { ...base };
+        for (const k of Object.keys(patch)) out[k] = deepMerge(base[k], patch[k]);
+        return out;
+      }
+      return patch !== undefined ? patch : base;
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
@@ -120,9 +126,30 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ error: 'Device not found or not owned by user' }), { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Store config row with service role
+    // Merge with last known config to preserve unspecified keys
+    const reader = createClient(supabaseUrl, anon);
+    const { data: lastCfg } = await reader
+      .from('configs')
+      .select('content, version_ts')
+      .eq('device_id', device_id)
+      .order('version_ts', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const DEFAULTS = {
+      timezone: 'America/Los_Angeles',
+      matrix: { width: 64, height: 32, chain_length: 1, parallel: 1, gpio_slowdown: 2, hardware_mapping: 'adafruit-hat', brightness: 80, pwm_bits: 11 },
+      refresh: { pregame_sec: 30, ingame_sec: 5, final_sec: 60 },
+      render: { live_layout: 'stacked', logo_variant: 'mini' }
+    } as Record<string, unknown>;
+    const baseContent = (lastCfg?.content as any) || DEFAULTS;
+    const merged = deepMerge(baseContent, content);
+    const valid = validateConfig(merged);
+    if (!valid) {
+      return new Response(JSON.stringify({ error: 'invalid content', details: validateConfig.errors }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    // Store merged config row with service role
     const supabase = createClient(supabaseUrl, serviceKey);
-    const { error } = await supabase.from('configs').insert({ device_id, content, source: 'cloud', author_user_id }).select().single();
+    const { error } = await supabase.from('configs').insert({ device_id, content: merged, source: 'cloud', author_user_id }).select().single();
     if (error) {
       return new Response(JSON.stringify({ error: String(error.message) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -139,7 +166,7 @@ serve(async (req: Request) => {
     const send = (msg: unknown) => ws.send(JSON.stringify(msg));
     let ref = 1;
     send({ topic, event: 'phx_join', payload: {}, ref: String(ref++) });
-    send({ topic, event: 'broadcast', payload: { event: 'APPLY_CONFIG', payload: content }, ref: String(ref++) });
+    send({ topic, event: 'broadcast', payload: { event: 'APPLY_CONFIG', payload: merged }, ref: String(ref++) });
     ws.close();
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
