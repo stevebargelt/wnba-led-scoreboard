@@ -91,6 +91,7 @@ export default function Home() {
   return (
     <main style={{ maxWidth: 720, margin: '2rem auto', fontFamily: 'sans-serif' }}>
       <h1>WNBA LED Web Admin</h1>
+      <p><a href="/register">Register a new device</a></p>
       {!session ? (
         <section>
           <h3>Sign in (email + password)</h3>

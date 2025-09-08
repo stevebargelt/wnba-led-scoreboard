@@ -8,6 +8,7 @@ export default function RegisterDevice() {
   const [message, setMessage] = useState('')
   const [deviceId, setDeviceId] = useState('')
   const [token, setToken] = useState('')
+  const [copied, setCopied] = useState('')
 
   const submit = async () => {
     setMessage('')
@@ -34,6 +35,25 @@ export default function RegisterDevice() {
     }
   }
 
+  const envSnippet = deviceId && token ? `# /etc/wnba-led-agent.env
+SUPABASE_URL=${process.env.NEXT_PUBLIC_SUPABASE_URL}
+SUPABASE_ANON_KEY=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}
+DEVICE_ID=${deviceId}
+DEVICE_TOKEN=${token}
+CONFIG_PATH=/home/pi/wnba-led-scoreboard/config/favorites.json
+SCOREBOARD_SERVICE=wnba-led.service` : ''
+
+  const copyText = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(`${label} copied`) 
+      setTimeout(() => setCopied(''), 2000)
+    } catch (e) {
+      setCopied(`Failed to copy ${label}`)
+      setTimeout(() => setCopied(''), 2000)
+    }
+  }
+
   return (
     <main style={{ maxWidth: 720, margin: '2rem auto', fontFamily: 'sans-serif' }}>
       <h1>Register New Device</h1>
@@ -50,17 +70,12 @@ export default function RegisterDevice() {
             <>
               <p><strong>DEVICE_TOKEN:</strong></p>
               <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: '#f6f6f6', padding: 8 }}>{token}</pre>
+              <button onClick={() => copyText(token, 'Token')}>Copy Token</button>
               <h4>Pi Env Snippet</h4>
-              <pre style={{ background: '#f6f6f6', padding: 8 }}>
-{`# /etc/wnba-led-agent.env
-SUPABASE_URL=${process.env.NEXT_PUBLIC_SUPABASE_URL}
-SUPABASE_ANON_KEY=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}
-DEVICE_ID=${deviceId}
-DEVICE_TOKEN=${token}
-CONFIG_PATH=/home/pi/wnba-led-scoreboard/config/favorites.json
-SCOREBOARD_SERVICE=wnba-led.service`}
-              </pre>
+              <pre style={{ background: '#f6f6f6', padding: 8 }}>{envSnippet}</pre>
+              <button onClick={() => copyText(envSnippet, 'Env snippet')}>Copy Env Snippet</button>
               <p>Then restart agent: <code>sudo systemctl restart wnba-led-agent.service</code></p>
+              {copied && <small>{copied}</small>}
             </>
           )}
         </section>
@@ -69,4 +84,3 @@ SCOREBOARD_SERVICE=wnba-led.service`}
     </main>
   )
 }
-
