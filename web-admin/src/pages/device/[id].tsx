@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
-import { supabase } from '@/lib/supabaseClient'
+import { supabase } from '../../lib/supabaseClient'
 
 const FN_CONFIG = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE!
 const FN_ACTION = process.env.NEXT_PUBLIC_FUNCTION_ON_ACTION!
@@ -84,4 +84,3 @@ export default function DevicePage() {
     </main>
   )
 }
-

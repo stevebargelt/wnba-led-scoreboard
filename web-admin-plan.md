@@ -56,19 +56,22 @@ Security
 
 Phased TODOs (Cloud‑First)
 1) Scoreboard readiness
-   - [ ] Add config reload on mtime/SIGHUP.
-   - [ ] Normalize config schema so it maps 1:1 to cloud `configs.content`.
+   - [x] Add config reload on mtime/SIGHUP. (Implemented: file watcher + SIGHUP/USR1 in `app.py`)
+   - [ ] Normalize config schema so it maps 1:1 to cloud `configs.content`. (Doc JSON schema + validation)
 
 2) Supabase setup
-   - [ ] Create project; tables (devices, configs, events); RLS policies.
-   - [ ] Edge Functions: onConfigWrite, onAction.
-   - [ ] Seed initial device (manual insert) for first bootstrap.
+   - [x] Prepare migrations in repo for tables (devices, configs, events) + RLS. (Added `supabase/migrations/20250907000000_cloud_admin.sql`)
+   - [x] Apply migrations to your Supabase project. (Run `supabase db push`)
+   - [x] Edge Functions: onConfigWrite (validate, insert, publish APPLY_CONFIG) (Added `supabase/functions/on-config-write`)
+   - [x] Edge Functions: onAction (publish commands). (`supabase/functions/on-action`)
+   - [x] Minimal publisher for testing. (CLI `scripts/publish_command.py` + Edge Function `publish-command` scaffold)
+   - [x] Seed initial device (manual insert) for first bootstrap. (Follow README step‑by‑step)
 
 3) Device Agent (Python)
-   - [ ] Subscribe to `device:<DEVICE_ID>`; receive commands.
-   - [ ] Implement APPLY_CONFIG (write files + reload), RESTART (systemd), FETCH_ASSETS, SELF_TEST, PING.
-   - [ ] Heartbeat to devices.last_seen_ts; minimal status event.
-   - [ ] Systemd unit: wnba-led-agent.service (After=network-online.target; Restart=always).
+   - [x] Subscribe to `device:<DEVICE_ID>`; receive commands. (Realtime scaffold + handlers)
+   - [x] Implement APPLY_CONFIG, RESTART, FETCH_ASSETS, SELF_TEST, PING. (`src/agent/agent.py`)
+   - [x] Heartbeat to devices.last_seen_ts; minimal status event. (Added periodic REST update + STATUS event when token present)
+   - [x] Systemd unit: wnba-led-agent.service (After=network-online.target; Restart=always). (Templates added)
 
 4) Frontend (Next.js/SvelteKit)
    - [ ] Auth scaffold; devices list and detail.
@@ -87,3 +90,8 @@ Hosting
 
 Notes
 - Since internet is required for game data, a cloud admin is consistent with the dependency. The device keeps the last good config to render even if commands can’t reach it for a short time.
+
+Next Up (concrete actions)
+- Add Edge Function: onConfigWrite (validate, insert to `configs`, publish APPLY_CONFIG)
+- Define a JSON schema for `configs.content` (mirror of `config/favorites.json`) and validate on backend.
+- Scaffold a minimal Next.js admin with Supabase Auth, devices list, and device detail page that calls the functions above.

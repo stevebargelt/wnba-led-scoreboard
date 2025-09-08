@@ -5,3 +5,9 @@ out/
 *.pyc
 *.pyo
 .DS_Store
+web-admin/node_modules/
+web-admin/.next/
+web-admin/.env.local
+web-admin/.vercel
+
+node_modules/

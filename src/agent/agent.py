@@ -48,7 +48,8 @@ class DeviceAgent:
         if self.cfg.supabase_url and self.cfg.device_id and self.cfg.supabase_anon_key:
             # Compose realtime URL; callers should pass full wss URL via SUPABASE_REALTIME_URL to override
             rt_url = os.getenv("SUPABASE_REALTIME_URL") or self.cfg.supabase_url.rstrip("/") + "/realtime/v1/websocket?vsn=1.0.0"
-            topic = f"device:{self.cfg.device_id}"
+            # Supabase Realtime channels use the 'realtime:' prefix for custom broadcast channels
+            topic = f"realtime:device:{self.cfg.device_id}"
             self._rt = RealtimeClient(
                 RealtimeConfig(url=rt_url, apikey=self.cfg.supabase_anon_key, access_token=self.cfg.device_token, topic=topic),
                 on_message=self._handle_message,

@@ -20,38 +20,49 @@ function isValidConfig(content: ConfigContent): boolean {
   return true;
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 serve(async (req: Request) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
   try {
-    if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405 });
+    if (req.method !== 'POST') return new Response('Method Not Allowed', { status: 405, headers: corsHeaders });
     const body = await req.json();
     const device_id: string = body?.device_id;
     const content: ConfigContent = body?.content;
     const author_user_id: string | undefined = body?.author_user_id;
     if (!device_id || !content) {
-      return new Response(JSON.stringify({ error: 'device_id and content required' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'device_id and content required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     if (!isValidConfig(content)) {
-      return new Response(JSON.stringify({ error: 'invalid content shape' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'invalid content shape' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const rtUrl = Deno.env.get('SUPABASE_REALTIME_URL');
-    const anon = Deno.env.get('SUPABASE_ANON_KEY');
-    if (!supabaseUrl || !serviceKey || !rtUrl || !anon) {
-      return new Response(JSON.stringify({ error: 'Missing env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_REALTIME_URL, SUPABASE_ANON_KEY' }), { status: 500 });
+    const serviceKey = Deno.env.get('SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const anon = Deno.env.get('ANON_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY');
+    if (!supabaseUrl || !serviceKey || !anon) {
+      return new Response(JSON.stringify({ error: 'Missing env: SUPABASE_URL, SERVICE_ROLE_KEY, ANON_KEY' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Store config row
     const supabase = createClient(supabaseUrl, serviceKey);
     const { error } = await supabase.from('configs').insert({ device_id, content, source: 'cloud', author_user_id }).select().single();
     if (error) {
-      return new Response(JSON.stringify({ error: String(error.message) }), { status: 500 });
+      return new Response(JSON.stringify({ error: String(error.message) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Publish APPLY_CONFIG to device:<id>
-    const topic = `device:${device_id}`;
-    const wsUrl = new URL(rtUrl);
+    const topic = `realtime:device:${device_id}`;
+    // Build Realtime websocket URL from SUPABASE_URL
+    const rtBase = supabaseUrl.replace('https://', 'wss://').replace(/\/$/, '') + '/realtime/v1/websocket';
+    const wsUrl = new URL(rtBase);
     wsUrl.searchParams.set('apikey', anon);
     wsUrl.searchParams.set('vsn', '1.0.0');
     const ws = new WebSocket(wsUrl.toString(), ['phoenix']);
@@ -61,9 +72,8 @@ serve(async (req: Request) => {
     send({ topic, event: 'phx_join', payload: {}, ref: String(ref++) });
     send({ topic, event: 'broadcast', payload: { type: 'APPLY_CONFIG', payload: content }, ref: String(ref++) });
     ws.close();
-    return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
+    return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
-

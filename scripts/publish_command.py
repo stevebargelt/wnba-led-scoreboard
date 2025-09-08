@@ -51,7 +51,7 @@ def main(argv: list[str]) -> int:
     elif args.payload:
         payload = json.loads(args.payload)
 
-    topic = f"device:{args.device_id}"
+    topic = f"realtime:device:{args.device_id}"
     url = build_url(args.realtime_url, args.apikey, args.token)
 
     headers = [
@@ -80,4 +80,3 @@ def main(argv: list[str]) -> int:
 
 if __name__ == '__main__':
     raise SystemExit(main(sys.argv))
-

@@ -26,18 +26,14 @@ Notes
 - The migration also adds `public.events` to the `supabase_realtime` publication so you can stream DB events if desired.
 
 Deploy Edge Functions
-- Ensure your project is linked (see Prereqs), then deploy the action publisher function:
+- Ensure your project is linked (see Prereqs), then deploy:
   - `supabase functions deploy on-action`
-  - Set function env variables in the Supabase Dashboard → Edge Functions → on-action → Settings:
-    - `SUPABASE_REALTIME_URL` = `wss://<project-ref>.supabase.co/realtime/v1/websocket`
-    - `SUPABASE_ANON_KEY` = your anon public key
-- Deploy the config writer function:
+    - Uses built-in envs `SUPABASE_URL` and `SUPABASE_ANON_KEY`; derives Realtime URL automatically.
   - `supabase functions deploy on-config-write`
-   - Set env variables in on-config-write Settings:
-     - `SUPABASE_URL` = `https://<project-ref>.supabase.co`
-     - `SUPABASE_SERVICE_ROLE_KEY` = your service role key (keep secret)
-     - `SUPABASE_REALTIME_URL` = `wss://<project-ref>.supabase.co/realtime/v1/websocket`
-     - `SUPABASE_ANON_KEY` = your anon public key
+    - Set env variables in on-config-write Settings:
+      - `SERVICE_ROLE_KEY` = your service role key (keep secret)
+      - (Optional) `ANON_KEY` = your anon public key; falls back to built-in `SUPABASE_ANON_KEY`
+    - No need to set a Realtime URL; it is derived from `SUPABASE_URL`.
 
 Invoke on-action via cURL
 - Replace `<project-ref>` and keys/placeholders accordingly.
@@ -65,7 +61,8 @@ Invoke on-action via cURL
 - Mint device tokens
 - Deploy the mint function:
   - `supabase functions deploy mint-device-token`
-  - Env: set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_JWT_SECRET` in the function settings
+  - Env: set `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `JWT_SECRET` (your project JWT secret) in the function settings
+    - Note: Supabase forbids secrets starting with `SUPABASE_`, so use `JWT_SECRET`.
 - Invoke to get a token (caller must be signed in and own the device):
   - `curl -sS -X POST \
     https://<project-ref>.functions.supabase.co/mint-device-token \

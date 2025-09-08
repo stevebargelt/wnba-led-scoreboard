@@ -108,9 +108,14 @@ class RealtimeClient:
                 if not raw:
                     continue
                 msg = json.loads(raw)
-                # Expect payloads with {"type": ..., "payload": ...}
+                # Handle Supabase Realtime broadcast envelope
+                # Server message shape: { topic, event: 'broadcast', payload: { event?: string, type?: string, payload?: any } }
                 payload = msg.get("payload") or {}
-                if isinstance(payload, dict) and payload.get("type"):
+                if msg.get("event") == "broadcast" and isinstance(payload, dict):
+                    mtype = (payload.get("type") or payload.get("event") or "").upper()
+                    self.on_message({"type": mtype, "payload": payload.get("payload")})
+                elif isinstance(payload, dict) and payload.get("type"):
+                    # Direct type payload
                     self.on_message(payload)
             except Exception:
                 # Periodic ping to keep socket alive
