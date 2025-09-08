@@ -21,6 +21,18 @@ export default function DevicePage() {
   const [newFav, setNewFav] = useState<{ name: string; abbr?: string }>({ name: '', abbr: '' })
   const [teamList, setTeamList] = useState<{ name: string; abbr?: string; id?: string }[]>(WNBATEAMS)
   const [schemaError, setSchemaError] = useState<string>('')
+  const [schemaErrors, setSchemaErrors] = useState<any[]>([])
+  // Inline editable settings (with reasonable defaults)
+  const DEFAULTS = {
+    timezone: 'America/Los_Angeles',
+    matrix: { width: 64, height: 32, chain_length: 1, parallel: 1, gpio_slowdown: 2, hardware_mapping: 'adafruit-hat', brightness: 80, pwm_bits: 11 },
+    refresh: { pregame_sec: 30, ingame_sec: 5, final_sec: 60 },
+    render: { live_layout: 'stacked', logo_variant: 'mini' }
+  }
+  const [timezone, setTimezone] = useState<string>(DEFAULTS.timezone)
+  const [matrix, setMatrix] = useState(DEFAULTS.matrix)
+  const [refreshCfg, setRefreshCfg] = useState(DEFAULTS.refresh)
+  const [renderCfg, setRenderCfg] = useState(DEFAULTS.render)
 
   useEffect(() => {
     if (!id) return
@@ -41,6 +53,10 @@ export default function DevicePage() {
         .maybeSingle()
       if (data?.content) setConfigText(JSON.stringify(data.content, null, 2))
       if (data?.content?.favorites) setFavorites(data.content.favorites as any)
+      if ((data?.content as any)?.timezone) setTimezone((data!.content as any).timezone)
+      if ((data?.content as any)?.matrix) setMatrix((data!.content as any).matrix)
+      if ((data?.content as any)?.refresh) setRefreshCfg((data!.content as any).refresh)
+      if ((data?.content as any)?.render) setRenderCfg((data!.content as any).render)
       const { data: dev } = await supabase.from('devices').select('id,name,last_seen_ts').eq('id', id).maybeSingle()
       if (dev) setDevice(dev)
       const { data: ev } = await supabase
@@ -73,8 +89,8 @@ export default function DevicePage() {
   const applyConfig = async () => {
     if (!id) return
     try {
-      const base = JSON.parse(configText)
-      const content = { ...base, favorites }
+      const base = configText?.trim() ? JSON.parse(configText) : {}
+      const content = { ...base, favorites, timezone, matrix, refresh: refreshCfg, render: renderCfg }
       const validate = makeValidator()
       const ok = validate(content)
       if (!ok) {
@@ -82,10 +98,12 @@ export default function DevicePage() {
         const path = err?.instancePath || err?.schemaPath || ''
         const msg = err?.message || 'invalid config'
         setSchemaError(`${path} ${msg}`)
+        setSchemaErrors(validate.errors || [])
         setMessage('Validation failed')
         return
       }
       setSchemaError('')
+      setSchemaErrors([])
       setLoading(true)
       // Use the signed-in user's access token to authorize on-config-write (ownership enforced server-side)
       const { data: sess } = await supabase.auth.getSession()
@@ -236,7 +254,7 @@ export default function DevicePage() {
       // Proceed with empty base but inform user
       setMessage('Parsed with defaults (existing JSON was invalid).')
     }
-    const merged = { ...base, favorites }
+    const merged = { ...DEFAULTS, ...base, favorites, timezone, matrix, refresh: refreshCfg, render: renderCfg }
     setConfigText(JSON.stringify(merged, null, 2))
     if (!schemaError) setMessage(`Favorites synced into JSON (${favorites.length})`)
   }
@@ -276,6 +294,42 @@ export default function DevicePage() {
         <button onClick={() => sendAction('FETCH_ASSETS')} disabled={loading}>Fetch Assets</button>{' '}
         <button onClick={() => sendAction('SELF_TEST')} disabled={loading}>Self Test</button>
       </div>
+      <h3>Inline Settings</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
+        <label>Timezone<br/>
+          <input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+        </label>
+        <label>Brightness<br/>
+          <input type="number" min={1} max={100} value={matrix.brightness} onChange={(e) => setMatrix({ ...matrix, brightness: Number(e.target.value) })} />
+        </label>
+        <label>Matrix Width<br/>
+          <input type="number" value={matrix.width} onChange={(e) => setMatrix({ ...matrix, width: Number(e.target.value) })} />
+        </label>
+        <label>Matrix Height<br/>
+          <input type="number" value={matrix.height} onChange={(e) => setMatrix({ ...matrix, height: Number(e.target.value) })} />
+        </label>
+        <label>Pregame (sec)<br/>
+          <input type="number" value={refreshCfg.pregame_sec} onChange={(e) => setRefreshCfg({ ...refreshCfg, pregame_sec: Number(e.target.value) })} />
+        </label>
+        <label>Ingame (sec)<br/>
+          <input type="number" value={refreshCfg.ingame_sec} onChange={(e) => setRefreshCfg({ ...refreshCfg, ingame_sec: Number(e.target.value) })} />
+        </label>
+        <label>Final (sec)<br/>
+          <input type="number" value={refreshCfg.final_sec} onChange={(e) => setRefreshCfg({ ...refreshCfg, final_sec: Number(e.target.value) })} />
+        </label>
+        <label>Live Layout<br/>
+          <select value={renderCfg.live_layout} onChange={(e) => setRenderCfg({ ...renderCfg, live_layout: e.target.value as any })}>
+            <option value="stacked">stacked</option>
+            <option value="big-logos">big-logos</option>
+          </select>
+        </label>
+        <label>Logo Variant<br/>
+          <select value={renderCfg.logo_variant} onChange={(e) => setRenderCfg({ ...renderCfg, logo_variant: e.target.value as any })}>
+            <option value="mini">mini</option>
+            <option value="banner">banner</option>
+          </select>
+        </label>
+      </div>
       <div style={{ marginTop: 8 }}>
         <button onClick={mintDeviceToken} disabled={loading}>Mint Device Token</button>
         {mintedToken && (
@@ -294,9 +348,18 @@ export default function DevicePage() {
           {favorites.map((f, i) => (
             <li key={i} draggable onDragStart={(e) => onDragStart(e, i)} onDrop={(e) => onDrop(e, i)} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 4, borderBottom: '1px solid #eee' }}>
               <span style={{ cursor: 'grab' }}>⋮⋮</span>
-              <input value={f.name} onChange={(e) => {
-                const next = favorites.slice(); next[i] = { ...next[i], name: e.target.value }; setFavorites(next)
-              }} />
+              <select value={f.name} onChange={(e) => {
+                const name = e.target.value
+                const found = teamList.find(t => t.name === name)
+                const next = favorites.slice();
+                next[i] = { name, abbr: (next[i].abbr || found?.abbr || '').toUpperCase() || undefined, id: found?.id || next[i].id }
+                setFavorites(next)
+              }}>
+                <option value="">Select team…</option>
+                {teamList.map((t) => (
+                  <option key={`${t.name}-${t.abbr}`} value={t.name}>{t.name}</option>
+                ))}
+              </select>
               <input placeholder="abbr" value={f.abbr || ''} onChange={(e) => {
                 const next = favorites.slice(); next[i] = { ...next[i], abbr: e.target.value }; setFavorites(next)
               }} style={{ width: 64 }} />
@@ -328,7 +391,16 @@ export default function DevicePage() {
       <div style={{ marginBottom: 8 }}>
         <button onClick={loadLatestConfig} disabled={loading}>Load Latest Config</button>
       </div>
-      {schemaError && <p style={{ color: 'red' }}>Schema error: {schemaError}</p>}
+      {schemaErrors.length > 0 && (
+        <div style={{ color: 'red' }}>
+          <p>Schema errors:</p>
+          <ul>
+            {schemaErrors.map((e, idx) => (
+              <li key={idx}><code>{e.instancePath || e.schemaPath}</code> — {e.message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <textarea value={configText} onChange={(e) => setConfigText(e.target.value)} rows={18} style={{ width: '100%' }} />
       <div>
         <button onClick={applyConfig} disabled={loading}>Apply Config</button>
