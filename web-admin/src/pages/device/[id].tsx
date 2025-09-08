@@ -19,10 +19,18 @@ export default function DevicePage() {
   const [mintedToken, setMintedToken] = useState('')
   const [favorites, setFavorites] = useState<{ name: string; id?: string | null; abbr?: string | null }[]>([])
   const [newFav, setNewFav] = useState<{ name: string; abbr?: string }>({ name: '', abbr: '' })
+  const [teamList, setTeamList] = useState<{ name: string; abbr?: string; id?: string }[]>(WNBATEAMS)
+  const [schemaError, setSchemaError] = useState<string>('')
 
   useEffect(() => {
     if (!id) return
     ;(async () => {
+      // Load teams from server (assets/teams.json) if available
+      try {
+        const r = await fetch('/api/teams')
+        const j = await r.json()
+        if (Array.isArray(j.teams) && j.teams.length) setTeamList(j.teams)
+      } catch {}
       // load latest config for convenience
       const { data } = await supabase
         .from('configs')
@@ -70,9 +78,14 @@ export default function DevicePage() {
       const validate = makeValidator()
       const ok = validate(content)
       if (!ok) {
-        setMessage('Validation failed: ' + JSON.stringify(validate.errors?.[0]))
+        const err = validate.errors?.[0]
+        const path = err?.instancePath || err?.schemaPath || ''
+        const msg = err?.message || 'invalid config'
+        setSchemaError(`${path} ${msg}`)
+        setMessage('Validation failed')
         return
       }
+      setSchemaError('')
       setLoading(true)
       const resp = await fetch(FN_CONFIG, {
         method: 'POST',
@@ -165,8 +178,26 @@ export default function DevicePage() {
   const removeFav = (i: number) => setFavorites(favorites.filter((_, idx) => idx !== i))
   const addFav = () => {
     if (!newFav.name.trim()) return
-    setFavorites([...favorites, { name: newFav.name.trim(), abbr: newFav.abbr?.trim() || undefined }])
+    const found = teamList.find(t => t.name.toLowerCase() === newFav.name.trim().toLowerCase())
+    setFavorites([
+      ...favorites,
+      { name: newFav.name.trim(), abbr: (newFav.abbr || found?.abbr || '').toUpperCase() || undefined, id: found?.id }
+    ])
     setNewFav({ name: '', abbr: '' })
+  }
+  const moveUp = (i: number) => {
+    if (i <= 0) return
+    const next = favorites.slice()
+    const [m] = next.splice(i, 1)
+    next.splice(i - 1, 0, m)
+    setFavorites(next)
+  }
+  const moveDown = (i: number) => {
+    if (i >= favorites.length - 1) return
+    const next = favorites.slice()
+    const [m] = next.splice(i, 1)
+    next.splice(i + 1, 0, m)
+    setFavorites(next)
   }
   const syncToJson = () => {
     try {
@@ -212,6 +243,11 @@ export default function DevicePage() {
               <input placeholder="abbr" value={f.abbr || ''} onChange={(e) => {
                 const next = favorites.slice(); next[i] = { ...next[i], abbr: e.target.value }; setFavorites(next)
               }} style={{ width: 64 }} />
+              <input placeholder="id" value={f.id || ''} onChange={(e) => {
+                const next = favorites.slice(); next[i] = { ...next[i], id: e.target.value || undefined }; setFavorites(next)
+              }} style={{ width: 160 }} />
+              <button onClick={() => moveUp(i)} aria-label="move up">↑</button>
+              <button onClick={() => moveDown(i)} aria-label="move down">↓</button>
               <button onClick={() => removeFav(i)}>Remove</button>
             </li>
           ))}
@@ -231,6 +267,7 @@ export default function DevicePage() {
         </div>
       </div>
       <h3>Config JSON</h3>
+      {schemaError && <p style={{ color: 'red' }}>Schema error: {schemaError}</p>}
       <textarea value={configText} onChange={(e) => setConfigText(e.target.value)} rows={18} style={{ width: '100%' }} />
       <div>
         <button onClick={applyConfig} disabled={loading}>Apply Config</button>
