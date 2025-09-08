@@ -186,12 +186,14 @@ export default function DevicePage() {
     setNewFav({ name: '', abbr: '' })
   }
   const enrichFavorites = () => {
+    let updates = 0
     const next = favorites.map((f) => {
       if (f.id && f.abbr) return f
       const byName = teamList.find(t => t.name?.toLowerCase() === (f.name || '').toLowerCase())
       const byAbbr = f.abbr ? teamList.find(t => (t.abbr || '').toUpperCase() === (f.abbr || '').toUpperCase()) : undefined
       const match = byName || byAbbr
       if (!match) return f
+      updates += 1
       return {
         ...f,
         id: match.id || f.id,
@@ -200,7 +202,7 @@ export default function DevicePage() {
       }
     })
     setFavorites(next)
-    setMessage('Auto-filled team IDs where possible')
+    setMessage(updates ? `Auto-filled ${updates} favorite(s)` : 'No matches found to auto-fill')
   }
   const moveUp = (i: number) => {
     if (i <= 0) return
@@ -281,7 +283,7 @@ export default function DevicePage() {
         </div>
         <div style={{ marginTop: 8 }}>
           <button onClick={syncToJson}>Sync Favorites into JSON</button>
-          <button style={{ marginLeft: 8 }} onClick={enrichFavorites}>Auto-fill Team IDs</button>
+          <button style={{ marginLeft: 8 }} onClick={enrichFavorites}>Auto-fill Team IDs (from assets)</button>
         </div>
       </div>
       <h3>Config JSON</h3>
