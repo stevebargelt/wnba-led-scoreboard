@@ -6,19 +6,70 @@
 //  - SUPABASE_REALTIME_URL, SUPABASE_ANON_KEY (for Realtime broadcast)
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import Ajv from "https://esm.sh/ajv@8.12.0";
 
 type ConfigContent = Record<string, unknown>;
 
-function isValidConfig(content: ConfigContent): boolean {
-  // Minimal validation: favorites array and nested objects exist
-  if (!content || typeof content !== 'object') return false;
-  const favs = (content as any).favorites;
-  if (!Array.isArray(favs)) return false;
-  // Optional: ensure width/height if matrix present
-  const matrix = (content as any).matrix;
-  if (matrix && (typeof matrix.width !== 'number' || typeof matrix.height !== 'number')) return false;
-  return true;
-}
+// JSON Schema mirroring schemas/config.schema.json in this repo
+const CONFIG_SCHEMA: Record<string, unknown> = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "https://example.com/wnba-led-scoreboard/config.schema.json",
+  title: "WNBA LED Scoreboard Config",
+  type: "object",
+  properties: {
+    favorites: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          id: { type: ["string", "null"] },
+          abbr: { type: ["string", "null"] }
+        },
+        required: ["name"],
+        additionalProperties: false
+      }
+    },
+    timezone: { type: "string" },
+    matrix: {
+      type: "object",
+      properties: {
+        width: { type: "integer", minimum: 1 },
+        height: { type: "integer", minimum: 1 },
+        chain_length: { type: "integer", minimum: 1 },
+        parallel: { type: "integer", minimum: 1 },
+        gpio_slowdown: { type: "integer", minimum: 0 },
+        hardware_mapping: { type: "string" },
+        brightness: { type: "integer", minimum: 1, maximum: 100 },
+        pwm_bits: { type: "integer", minimum: 1, maximum: 16 }
+      },
+      required: ["width", "height"],
+      additionalProperties: true
+    },
+    refresh: {
+      type: "object",
+      properties: {
+        pregame_sec: { type: "integer", minimum: 1 },
+        ingame_sec: { type: "integer", minimum: 1 },
+        final_sec: { type: "integer", minimum: 1 }
+      },
+      additionalProperties: true
+    },
+    render: {
+      type: "object",
+      properties: {
+        live_layout: { type: "string", enum: ["stacked", "big-logos"] },
+        logo_variant: { type: "string", enum: ["mini", "banner"] }
+      },
+      additionalProperties: true
+    }
+  },
+  required: ["favorites"],
+  additionalProperties: true
+};
+
+const ajv = new Ajv({ allErrors: true });
+const validateConfig = ajv.compile(CONFIG_SCHEMA);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -40,8 +91,9 @@ serve(async (req: Request) => {
     if (!device_id || !content) {
       return new Response(JSON.stringify({ error: 'device_id and content required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    if (!isValidConfig(content)) {
-      return new Response(JSON.stringify({ error: 'invalid content shape' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const valid = validateConfig(content);
+    if (!valid) {
+      return new Response(JSON.stringify({ error: 'invalid content', details: validateConfig.errors }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
