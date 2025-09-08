@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 import time
+import signal
 from datetime import datetime, timezone
 
 from dotenv import load_dotenv
@@ -13,6 +14,15 @@ from typing import Optional
 from src.select.choose import choose_featured_game
 from src.render.renderer import Renderer
 from src.demo.simulator import DemoSimulator
+from src.runtime.reload import ConfigWatcher
+
+
+RELOAD_REQUESTED = False
+
+
+def _signal_reload(signum, frame):
+    global RELOAD_REQUESTED
+    RELOAD_REQUESTED = True
 
 
 def parse_args():
@@ -25,12 +35,22 @@ def parse_args():
 
 
 def main():
+    global RELOAD_REQUESTED
     load_dotenv()  # .env overrides
     args = parse_args()
 
     cfg = load_config(args.config)
 
     renderer = Renderer(cfg, force_sim=args.sim)
+
+    # Setup config watcher and signal handler
+    watcher = ConfigWatcher([args.config, ".env"])  # .env optional
+    signal.signal(signal.SIGHUP, _signal_reload)
+    # Allow SIGUSR1 as alternative on some systems
+    try:
+        signal.signal(signal.SIGUSR1, _signal_reload)
+    except Exception:
+        pass
 
     demo_env = os.getenv("DEMO_MODE", "false").lower() == "true"
     use_demo = args.demo or demo_env
@@ -68,6 +88,33 @@ def main():
                     sleep_s = cfg.refresh.final_sec
 
             renderer.flush()
+
+            # Check for reload request or config file change
+            do_reload = False
+            if RELOAD_REQUESTED:
+                do_reload = True
+            elif watcher.changed():
+                do_reload = True
+
+            if do_reload:
+                RELOAD_REQUESTED = False
+                try:
+                    new_cfg = load_config(args.config)
+                    # If matrix size changed, recreate renderer
+                    resized = (new_cfg.matrix.width != cfg.matrix.width) or (new_cfg.matrix.height != cfg.matrix.height)
+                    cfg = new_cfg
+                    if resized:
+                        try:
+                            renderer.close()
+                        except Exception:
+                            pass
+                        renderer = Renderer(cfg, force_sim=args.sim)
+                    else:
+                        # For same size, update renderer config reference
+                        renderer.cfg = cfg
+                    print("[info] Configuration reloaded")
+                except Exception as e:
+                    print(f"[warn] reload failed: {e}")
 
             if args.once:
                 break

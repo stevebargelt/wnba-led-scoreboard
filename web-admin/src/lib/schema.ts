@@ -1,0 +1,63 @@
+import Ajv2020 from 'ajv/dist/2020'
+
+export const CONFIG_SCHEMA = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  $id: 'https://example.com/wnba-led-scoreboard/config.schema.json',
+  title: 'WNBA LED Scoreboard Config',
+  type: 'object',
+  properties: {
+    favorites: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          id: { type: ['string', 'null'] },
+          abbr: { type: ['string', 'null'] }
+        },
+        required: ['name'],
+        additionalProperties: false
+      }
+    },
+    timezone: { type: 'string' },
+    matrix: {
+      type: 'object',
+      properties: {
+        width: { type: 'integer', minimum: 1 },
+        height: { type: 'integer', minimum: 1 },
+        chain_length: { type: 'integer', minimum: 1 },
+        parallel: { type: 'integer', minimum: 1 },
+        gpio_slowdown: { type: 'integer', minimum: 0 },
+        hardware_mapping: { type: 'string' },
+        brightness: { type: 'integer', minimum: 1, maximum: 100 },
+        pwm_bits: { type: 'integer', minimum: 1, maximum: 16 }
+      },
+      required: ['width', 'height'],
+      additionalProperties: true
+    },
+    refresh: {
+      type: 'object',
+      properties: {
+        pregame_sec: { type: 'integer', minimum: 1 },
+        ingame_sec: { type: 'integer', minimum: 1 },
+        final_sec: { type: 'integer', minimum: 1 }
+      },
+      additionalProperties: true
+    },
+    render: {
+      type: 'object',
+      properties: {
+        live_layout: { type: 'string', enum: ['stacked', 'big-logos'] },
+        logo_variant: { type: 'string', enum: ['mini', 'banner'] }
+      },
+      additionalProperties: true
+    }
+  },
+  required: ['favorites'],
+  additionalProperties: true
+} as const
+
+export function makeValidator() {
+  const ajv = new Ajv2020({ allErrors: true })
+  return ajv.compile(CONFIG_SCHEMA as any)
+}

@@ -8,11 +8,35 @@
       "problemMatcher": []
     },
     {
+      "label": "Supabase: Deploy on-action",
+      "type": "shell",
+      "command": "bash -lc 'supabase functions deploy on-action'",
+      "problemMatcher": []
+    },
+    {
+      "label": "Supabase: Deploy on-config-write",
+      "type": "shell",
+      "command": "bash -lc 'supabase functions deploy on-config-write'",
+      "problemMatcher": []
+    },
+    {
       "label": "Install requirements",
       "type": "shell",
       "command": "bash -lc 'source .venv/bin/activate && pip install -r requirements.txt'",
       "problemMatcher": [],
       "dependsOn": ["Create venv"]
+    },
+    {
+      "label": "Run Agent (skeleton)",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && python -m src.agent.agent'",
+      "problemMatcher": []
+    },
+    {
+      "label": "Agent: Apply sample config",
+      "type": "shell",
+      "command": "bash -lc 'source .venv/bin/activate && python -m src.agent.agent apply config/favorites.json'",
+      "problemMatcher": []
     },
     {
       "label": "Install rgbmatrix (bindings)",
