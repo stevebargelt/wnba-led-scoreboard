@@ -22,6 +22,20 @@
     @apply absolute -top-10 left-6 z-50 bg-primary-600 text-white px-4 py-2 rounded-md;
     @apply focus:top-6 transition-all duration-300;
   }
+  
+  /* Fix dark mode contrast for all input, select, textarea elements */
+  input, select, textarea {
+    @apply dark:bg-gray-800 dark:text-white dark:border-gray-600;
+  }
+  
+  input::placeholder, textarea::placeholder {
+    @apply dark:text-gray-400;
+  }
+  
+  /* Fix button contrast in dark mode */
+  button {
+    @apply dark:text-white;
+  }
 }
 
 @layer components {

@@ -42,9 +42,11 @@ export function Input({
           id={inputId}
           className={clsx(
             'block w-full rounded-md border shadow-sm transition-colors duration-200',
+            'bg-white text-gray-900 placeholder:text-gray-500',
+            'dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400',
             'focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
             'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
-            'dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:disabled:bg-gray-700',
+            'dark:disabled:bg-gray-700 dark:disabled:text-gray-400',
             leftIcon ? 'pl-10' : 'pl-3',
             rightIcon ? 'pr-10' : 'pr-3',
             'py-2',
