@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabaseClient'
 import { WNBATEAMS } from '@/lib/wnbaTeams'
 import { makeValidator } from '@/lib/schema'
 import { Layout } from '../../components/layout'
-import { Card, CardHeader, CardTitle, Button, Input } from '../../components/ui'
+import { Card, CardHeader, CardTitle, Button, Input, StatusBadge, Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui'
 
 const FN_CONFIG = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE!
 const FN_ACTION = process.env.NEXT_PUBLIC_FUNCTION_ON_ACTION!
@@ -183,10 +183,10 @@ export default function DevicePage() {
     }
   }
 
-  const onlineBadge = useMemo(() => {
-    const last = device?.last_seen_ts ? new Date(device.last_seen_ts).getTime() : 0
-    const fresh = last && Date.now() - last < 90_000
-    return <span style={{ marginLeft: 8, color: fresh ? '#0c0' : '#888' }}>{fresh ? 'online' : 'offline'}</span>
+  const isDeviceOnline = useMemo(() => {
+    if (!device?.last_seen_ts) return false
+    const last = new Date(device.last_seen_ts).getTime()
+    return Date.now() - last < 90_000
   }, [device?.last_seen_ts])
 
   // Drag and drop handlers for favorites
@@ -308,251 +308,325 @@ export default function DevicePage() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Device Configuration
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Device ID: {id}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Device Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Device Actions</CardTitle>
-          </CardHeader>
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => sendAction('PING')} disabled={loading} variant="secondary" size="sm">
-              PING
-            </Button>
-            <Button onClick={() => sendAction('RESTART', { service: 'wnba-led.service' })} disabled={loading} variant="warning" size="sm">
-              Restart App
-            </Button>
-            <Button onClick={() => sendAction('FETCH_ASSETS')} disabled={loading} variant="secondary" size="sm">
-              Fetch Assets
-            </Button>
-            <Button onClick={() => sendAction('SELF_TEST')} disabled={loading} variant="secondary" size="sm">
-              Self Test
-            </Button>
-          </div>
-        </Card>
-
-        {/* Inline Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Device Settings</CardTitle>
-          </CardHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              label="Timezone"
-              value={timezone}
-              onChange={(e) => setTimezone(e.target.value)}
-              placeholder="America/Los_Angeles"
-            />
-            <Input
-              label="Brightness"
-              type="number"
-              min={1}
-              max={100}
-              value={matrix.brightness.toString()}
-              onChange={(e) => setMatrix({ ...matrix, brightness: Number(e.target.value) })}
-            />
-            <Input
-              label="Matrix Width"
-              type="number"
-              value={matrix.width.toString()}
-              onChange={(e) => setMatrix({ ...matrix, width: Number(e.target.value) })}
-            />
-            <Input
-              label="Matrix Height"
-              type="number"
-              value={matrix.height.toString()}
-              onChange={(e) => setMatrix({ ...matrix, height: Number(e.target.value) })}
-            />
-            <Input
-              label="Pregame Refresh (sec)"
-              type="number"
-              value={refreshCfg.pregame_sec.toString()}
-              onChange={(e) => setRefreshCfg({ ...refreshCfg, pregame_sec: Number(e.target.value) })}
-            />
-            <Input
-              label="Ingame Refresh (sec)"
-              type="number"
-              value={refreshCfg.ingame_sec.toString()}
-              onChange={(e) => setRefreshCfg({ ...refreshCfg, ingame_sec: Number(e.target.value) })}
-            />
-            <Input
-              label="Final Refresh (sec)"
-              type="number"
-              value={refreshCfg.final_sec.toString()}
-              onChange={(e) => setRefreshCfg({ ...refreshCfg, final_sec: Number(e.target.value) })}
-            />
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Live Layout
-              </label>
-              <select 
-                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                value={renderCfg.live_layout} 
-                onChange={(e) => setRenderCfg({ ...renderCfg, live_layout: e.target.value as any })}
-              >
-                <option value="stacked">Stacked</option>
-                <option value="big-logos">Big Logos</option>
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                Logo Variant
-              </label>
-              <select 
-                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                value={renderCfg.logo_variant} 
-                onChange={(e) => setRenderCfg({ ...renderCfg, logo_variant: e.target.value as any })}
-              >
-                <option value="mini">Mini</option>
-                <option value="banner">Banner</option>
-              </select>
-            </div>
-          </div>
-        </Card>
-
-        {/* Device Token Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Device Token</CardTitle>
-          </CardHeader>
-          <div className="space-y-4">
-            <Button onClick={mintDeviceToken} disabled={loading} loading={loading}>
-              Mint Device Token
-            </Button>
-            {mintedToken && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  DEVICE_TOKEN:
-                </label>
-                <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm break-all whitespace-pre-wrap border border-gray-300 dark:border-gray-600">
-                  {mintedToken}
-                </pre>
+              <div className="flex items-center space-x-4">
+                <p className="text-gray-600 dark:text-gray-400">
+                  Device ID: {id}
+                </p>
+                {device && (
+                  <div className="flex items-center space-x-2">
+                    <StatusBadge 
+                      online={isDeviceOnline}
+                      size="sm"
+                    />
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Last seen: {device.last_seen_ts ? new Date(device.last_seen_ts).toLocaleString() : '—'}
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </Card>
-      {device && (
-        <p><strong>Status:</strong> {onlineBadge} — last seen: {device.last_seen_ts ?? '—'}</p>
-      )}
-      <h3>Favorites Editor</h3>
-      <div>
-        <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
-          {favorites.map((f, i) => (
-            <li key={i} draggable onDragStart={(e) => onDragStart(e, i)} onDrop={(e) => onDrop(e, i)} onDragOver={onDragOver} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 4, borderBottom: '1px solid #eee' }}>
-              <span style={{ cursor: 'grab' }}>⋮⋮</span>
-              <select value={f.name} onChange={(e) => {
-                const name = e.target.value
-                const found = teamList.find(t => t.name === name)
-                const next = favorites.slice();
-                next[i] = { name, abbr: (next[i].abbr || found?.abbr || '').toUpperCase() || undefined, id: found?.id || next[i].id }
-                setFavorites(next)
-              }}>
-                <option value="">Select team…</option>
-                {teamList.map((t) => (
-                  <option key={`${t.name}-${t.abbr}`} value={t.name}>{t.name}</option>
-                ))}
-              </select>
-              <input placeholder="abbr" value={f.abbr || ''} onChange={(e) => {
-                const next = favorites.slice(); next[i] = { ...next[i], abbr: e.target.value }; setFavorites(next)
-              }} style={{ width: 64 }} />
-              <input placeholder="id" value={f.id || ''} onChange={(e) => {
-                const next = favorites.slice(); next[i] = { ...next[i], id: e.target.value || undefined }; setFavorites(next)
-              }} style={{ width: 160 }} />
-              <button onClick={() => moveUp(i)} aria-label="move up">↑</button>
-              <button onClick={() => moveDown(i)} aria-label="move down">↓</button>
-              <button onClick={() => removeFav(i)}>Remove</button>
-            </li>
-          ))}
-        </ul>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-          <input list="teams" placeholder="Team name" value={newFav.name} onChange={(e) => setNewFav({ ...newFav, name: e.target.value })} />
-          <datalist id="teams">
-            {WNBATEAMS.map((t) => (
-              <option key={t.abbr} value={t.name}>{t.abbr}</option>
-            ))}
-          </datalist>
-          <input placeholder="abbr" value={newFav.abbr || ''} onChange={(e) => setNewFav({ ...newFav, abbr: e.target.value })} style={{ width: 64 }} />
-          <Button onClick={addFav} size="sm">Add</Button>
-        </div>
-        <div className="flex gap-3 mt-4">
-          <Button onClick={syncToJson} variant="secondary" size="sm">
-            Sync Favorites into JSON
-          </Button>
-          <Button onClick={enrichFavorites} variant="secondary" size="sm">
-            Auto-fill Team IDs (from assets)
-          </Button>
-        </div>
-      </div>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Configuration JSON</CardTitle>
-            <Button onClick={loadLatestConfig} disabled={loading} variant="secondary" size="sm">
-              Load Latest Config
-            </Button>
-          </div>
-        </CardHeader>
-        <div className="space-y-4">
-          {schemaErrors.length > 0 && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
-              <p className="text-red-800 dark:text-red-200 font-medium mb-2">Schema errors:</p>
-              <ul className="text-red-700 dark:text-red-300 text-sm space-y-1">
-                {schemaErrors.map((e, idx) => (
-                  <li key={idx}>
-                    <code className="bg-red-100 dark:bg-red-800 px-1 rounded text-xs">
-                      {e.instancePath || e.schemaPath}
-                    </code> — {e.message}
-                  </li>
-                ))}
-              </ul>
             </div>
-          )}
-          <textarea 
-            className="w-full h-96 p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"
-            value={configText} 
-            onChange={(e) => setConfigText(e.target.value)} 
-            placeholder="Configuration JSON..."
-          />
-          <div className="flex justify-between items-center">
-            <Button onClick={applyConfig} disabled={loading} loading={loading}>
-              Apply Config
-            </Button>
-            {message && (
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {message}
-              </p>
-            )}
           </div>
         </div>
-      </Card>
 
-      {/* Recent Events */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Events</CardTitle>
-        </CardHeader>
-        <div className="space-y-2">
-          {events.length > 0 ? (
-            events.map((ev) => (
-              <div key={ev.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
-                <code className="text-sm bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
-                  {ev.type}
-                </code>
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {new Date(ev.created_at).toLocaleString()}
-                </span>
+        {/* Tabbed Interface */}
+        <Tabs defaultValue="actions" className="w-full">
+          <TabsList className="grid grid-cols-4 w-full">
+            <TabsTrigger value="actions">Device Actions</TabsTrigger>
+            <TabsTrigger value="token">Device Token</TabsTrigger>
+            <TabsTrigger value="config">Config/Favorites Editor</TabsTrigger>
+            <TabsTrigger value="events">Recent Events</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="actions">
+            <Card>
+              <CardHeader>
+                <CardTitle>Device Actions</CardTitle>
+              </CardHeader>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => sendAction('PING')} disabled={loading} variant="secondary" size="sm">
+                  PING
+                </Button>
+                <Button onClick={() => sendAction('RESTART', { service: 'wnba-led.service' })} disabled={loading} variant="warning" size="sm">
+                  Restart App
+                </Button>
+                <Button onClick={() => sendAction('FETCH_ASSETS')} disabled={loading} variant="secondary" size="sm">
+                  Fetch Assets
+                </Button>
+                <Button onClick={() => sendAction('SELF_TEST')} disabled={loading} variant="secondary" size="sm">
+                  Self Test
+                </Button>
               </div>
-            ))
-          ) : (
-            <p className="text-gray-500 dark:text-gray-400 text-sm">No recent events</p>
-          )}
-        </div>
-      </Card>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="token">
+            <Card>
+              <CardHeader>
+                <CardTitle>Device Token Management</CardTitle>
+              </CardHeader>
+              <div className="space-y-4">
+                <Button onClick={mintDeviceToken} disabled={loading} loading={loading}>
+                  Mint Device Token
+                </Button>
+                {mintedToken && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                      DEVICE_TOKEN:
+                    </label>
+                    <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm break-all whitespace-pre-wrap border border-gray-300 dark:border-gray-600">
+                      {mintedToken}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="config">
+            <div className="space-y-6">
+              {/* Device Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Device Settings</CardTitle>
+                </CardHeader>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    label="Timezone"
+                    value={timezone}
+                    onChange={(e) => setTimezone(e.target.value)}
+                    placeholder="America/Los_Angeles"
+                  />
+                  <Input
+                    label="Brightness"
+                    type="number"
+                    min={1}
+                    max={100}
+                    value={matrix.brightness.toString()}
+                    onChange={(e) => setMatrix({ ...matrix, brightness: Number(e.target.value) })}
+                  />
+                  <Input
+                    label="Matrix Width"
+                    type="number"
+                    value={matrix.width.toString()}
+                    onChange={(e) => setMatrix({ ...matrix, width: Number(e.target.value) })}
+                  />
+                  <Input
+                    label="Matrix Height"
+                    type="number"
+                    value={matrix.height.toString()}
+                    onChange={(e) => setMatrix({ ...matrix, height: Number(e.target.value) })}
+                  />
+                  <Input
+                    label="Pregame Refresh (sec)"
+                    type="number"
+                    value={refreshCfg.pregame_sec.toString()}
+                    onChange={(e) => setRefreshCfg({ ...refreshCfg, pregame_sec: Number(e.target.value) })}
+                  />
+                  <Input
+                    label="Ingame Refresh (sec)"
+                    type="number"
+                    value={refreshCfg.ingame_sec.toString()}
+                    onChange={(e) => setRefreshCfg({ ...refreshCfg, ingame_sec: Number(e.target.value) })}
+                  />
+                  <Input
+                    label="Final Refresh (sec)"
+                    type="number"
+                    value={refreshCfg.final_sec.toString()}
+                    onChange={(e) => setRefreshCfg({ ...refreshCfg, final_sec: Number(e.target.value) })}
+                  />
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                      Live Layout
+                    </label>
+                    <select 
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      value={renderCfg.live_layout} 
+                      onChange={(e) => setRenderCfg({ ...renderCfg, live_layout: e.target.value as any })}
+                    >
+                      <option value="stacked">Stacked</option>
+                      <option value="big-logos">Big Logos</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                      Logo Variant
+                    </label>
+                    <select 
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      value={renderCfg.logo_variant} 
+                      onChange={(e) => setRenderCfg({ ...renderCfg, logo_variant: e.target.value as any })}
+                    >
+                      <option value="mini">Mini</option>
+                      <option value="banner">Banner</option>
+                    </select>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Favorites Editor */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Favorites Editor</CardTitle>
+                </CardHeader>
+                <div className="space-y-4">
+                  <ul className="space-y-2">
+                    {favorites.map((f, i) => (
+                      <li key={i} 
+                          draggable 
+                          onDragStart={(e) => onDragStart(e, i)} 
+                          onDrop={(e) => onDrop(e, i)} 
+                          onDragOver={onDragOver} 
+                          className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+                        <span className="cursor-grab text-gray-400">⋮⋮</span>
+                        <select 
+                          className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                          value={f.name} 
+                          onChange={(e) => {
+                            const name = e.target.value
+                            const found = teamList.find(t => t.name === name)
+                            const next = favorites.slice();
+                            next[i] = { name, abbr: (next[i].abbr || found?.abbr || '').toUpperCase() || undefined, id: found?.id || next[i].id }
+                            setFavorites(next)
+                          }}>
+                          <option value="">Select team…</option>
+                          {teamList.map((t) => (
+                            <option key={`${t.name}-${t.abbr}`} value={t.name}>{t.name}</option>
+                          ))}
+                        </select>
+                        <Input 
+                          placeholder="abbr" 
+                          value={f.abbr || ''} 
+                          onChange={(e) => {
+                            const next = favorites.slice(); 
+                            next[i] = { ...next[i], abbr: e.target.value }; 
+                            setFavorites(next)
+                          }} 
+                          className="w-20" 
+                        />
+                        <Input 
+                          placeholder="id" 
+                          value={f.id || ''} 
+                          onChange={(e) => {
+                            const next = favorites.slice(); 
+                            next[i] = { ...next[i], id: e.target.value || undefined }; 
+                            setFavorites(next)
+                          }} 
+                          className="w-40" 
+                        />
+                        <Button onClick={() => moveUp(i)} variant="ghost" size="sm" aria-label="move up">
+                          ↑
+                        </Button>
+                        <Button onClick={() => moveDown(i)} variant="ghost" size="sm" aria-label="move down">
+                          ↓
+                        </Button>
+                        <Button onClick={() => removeFav(i)} variant="ghost" size="sm">
+                          Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                      list="teams" 
+                      placeholder="Team name" 
+                      value={newFav.name} 
+                      onChange={(e) => setNewFav({ ...newFav, name: e.target.value })} 
+                    />
+                    <datalist id="teams">
+                      {WNBATEAMS.map((t) => (
+                        <option key={t.abbr} value={t.name}>{t.abbr}</option>
+                      ))}
+                    </datalist>
+                    <Input 
+                      placeholder="abbr" 
+                      value={newFav.abbr || ''} 
+                      onChange={(e) => setNewFav({ ...newFav, abbr: e.target.value })} 
+                      className="w-20" 
+                    />
+                    <Button onClick={addFav} size="sm">Add</Button>
+                  </div>
+                  <div className="flex gap-3">
+                    <Button onClick={syncToJson} variant="secondary" size="sm">
+                      Sync Favorites into JSON
+                    </Button>
+                    <Button onClick={enrichFavorites} variant="secondary" size="sm">
+                      Auto-fill Team IDs (from assets)
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              {/* Configuration JSON */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Configuration JSON</CardTitle>
+                    <Button onClick={loadLatestConfig} disabled={loading} variant="secondary" size="sm">
+                      Load Latest Config
+                    </Button>
+                  </div>
+                </CardHeader>
+                <div className="space-y-4">
+                  {schemaErrors.length > 0 && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+                      <p className="text-red-800 dark:text-red-200 font-medium mb-2">Schema errors:</p>
+                      <ul className="text-red-700 dark:text-red-300 text-sm space-y-1">
+                        {schemaErrors.map((e, idx) => (
+                          <li key={idx}>
+                            <code className="bg-red-100 dark:bg-red-800 px-1 rounded text-xs">
+                              {e.instancePath || e.schemaPath}
+                            </code> — {e.message}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <textarea 
+                    className="w-full h-96 p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"
+                    value={configText} 
+                    onChange={(e) => setConfigText(e.target.value)} 
+                    placeholder="Configuration JSON..."
+                  />
+                  <div className="flex justify-between items-center">
+                    <Button onClick={applyConfig} disabled={loading} loading={loading}>
+                      Apply Config
+                    </Button>
+                    {message && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="events">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Events</CardTitle>
+              </CardHeader>
+              <div className="space-y-2">
+                {events.length > 0 ? (
+                  events.map((ev) => (
+                    <div key={ev.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                      <code className="text-sm bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                        {ev.type}
+                      </code>
+                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                        {new Date(ev.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 dark:text-gray-400 text-sm">No recent events</p>
+                )}
+              </div>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   )

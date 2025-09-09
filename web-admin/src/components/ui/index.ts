@@ -4,6 +4,7 @@ export { Input } from './Input'
 export { Badge, StatusBadge } from './Badge'
 export { Card, CardHeader, CardTitle } from './Card'
 export { ThemeToggle, ThemeToggleButton } from './ThemeToggle'
+export { Tabs, TabsList, TabsTrigger, TabsContent } from './Tabs'
 
 // Re-export types
 export type { ButtonProps, ButtonVariant, ButtonSize } from './Button'
