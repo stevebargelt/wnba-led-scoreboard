@@ -288,59 +288,154 @@ export default function DevicePage() {
   }
 
   return (
-    <main style={{ maxWidth: 720, margin: '2rem auto', fontFamily: 'sans-serif' }}>
-      <h2>Device {id}</h2>
-      <div>
-        <button onClick={() => sendAction('PING')} disabled={loading}>PING</button>{' '}
-        <button onClick={() => sendAction('RESTART', { service: 'wnba-led.service' })} disabled={loading}>Restart App</button>{' '}
-        <button onClick={() => sendAction('FETCH_ASSETS')} disabled={loading}>Fetch Assets</button>{' '}
-        <button onClick={() => sendAction('SELF_TEST')} disabled={loading}>Self Test</button>
-      </div>
-      <h3>Inline Settings</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-        <label>Timezone<br/>
-          <input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
-        </label>
-        <label>Brightness<br/>
-          <input type="number" min={1} max={100} value={matrix.brightness} onChange={(e) => setMatrix({ ...matrix, brightness: Number(e.target.value) })} />
-        </label>
-        <label>Matrix Width<br/>
-          <input type="number" value={matrix.width} onChange={(e) => setMatrix({ ...matrix, width: Number(e.target.value) })} />
-        </label>
-        <label>Matrix Height<br/>
-          <input type="number" value={matrix.height} onChange={(e) => setMatrix({ ...matrix, height: Number(e.target.value) })} />
-        </label>
-        <label>Pregame (sec)<br/>
-          <input type="number" value={refreshCfg.pregame_sec} onChange={(e) => setRefreshCfg({ ...refreshCfg, pregame_sec: Number(e.target.value) })} />
-        </label>
-        <label>Ingame (sec)<br/>
-          <input type="number" value={refreshCfg.ingame_sec} onChange={(e) => setRefreshCfg({ ...refreshCfg, ingame_sec: Number(e.target.value) })} />
-        </label>
-        <label>Final (sec)<br/>
-          <input type="number" value={refreshCfg.final_sec} onChange={(e) => setRefreshCfg({ ...refreshCfg, final_sec: Number(e.target.value) })} />
-        </label>
-        <label>Live Layout<br/>
-          <select value={renderCfg.live_layout} onChange={(e) => setRenderCfg({ ...renderCfg, live_layout: e.target.value as any })}>
-            <option value="stacked">stacked</option>
-            <option value="big-logos">big-logos</option>
-          </select>
-        </label>
-        <label>Logo Variant<br/>
-          <select value={renderCfg.logo_variant} onChange={(e) => setRenderCfg({ ...renderCfg, logo_variant: e.target.value as any })}>
-            <option value="mini">mini</option>
-            <option value="banner">banner</option>
-          </select>
-        </label>
-      </div>
-      <div style={{ marginTop: 8 }}>
-        <button onClick={mintDeviceToken} disabled={loading}>Mint Device Token</button>
-        {mintedToken && (
-          <div style={{ marginTop: 6 }}>
-            <small>DEVICE_TOKEN:</small>
-            <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: '#f6f6f6', padding: 8 }}>{mintedToken}</pre>
+    <Layout>
+      <div className="space-y-6">
+        {/* Header with back button */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button 
+              variant="ghost" 
+              onClick={() => router.push('/')}
+              leftIcon={
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              }
+            >
+              Back
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Device Configuration
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Device ID: {id}
+              </p>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+
+        {/* Device Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Device Actions</CardTitle>
+          </CardHeader>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => sendAction('PING')} disabled={loading} variant="secondary" size="sm">
+              PING
+            </Button>
+            <Button onClick={() => sendAction('RESTART', { service: 'wnba-led.service' })} disabled={loading} variant="warning" size="sm">
+              Restart App
+            </Button>
+            <Button onClick={() => sendAction('FETCH_ASSETS')} disabled={loading} variant="secondary" size="sm">
+              Fetch Assets
+            </Button>
+            <Button onClick={() => sendAction('SELF_TEST')} disabled={loading} variant="secondary" size="sm">
+              Self Test
+            </Button>
+          </div>
+        </Card>
+
+        {/* Inline Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Device Settings</CardTitle>
+          </CardHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Timezone"
+              value={timezone}
+              onChange={(e) => setTimezone(e.target.value)}
+              placeholder="America/Los_Angeles"
+            />
+            <Input
+              label="Brightness"
+              type="number"
+              min={1}
+              max={100}
+              value={matrix.brightness.toString()}
+              onChange={(e) => setMatrix({ ...matrix, brightness: Number(e.target.value) })}
+            />
+            <Input
+              label="Matrix Width"
+              type="number"
+              value={matrix.width.toString()}
+              onChange={(e) => setMatrix({ ...matrix, width: Number(e.target.value) })}
+            />
+            <Input
+              label="Matrix Height"
+              type="number"
+              value={matrix.height.toString()}
+              onChange={(e) => setMatrix({ ...matrix, height: Number(e.target.value) })}
+            />
+            <Input
+              label="Pregame Refresh (sec)"
+              type="number"
+              value={refreshCfg.pregame_sec.toString()}
+              onChange={(e) => setRefreshCfg({ ...refreshCfg, pregame_sec: Number(e.target.value) })}
+            />
+            <Input
+              label="Ingame Refresh (sec)"
+              type="number"
+              value={refreshCfg.ingame_sec.toString()}
+              onChange={(e) => setRefreshCfg({ ...refreshCfg, ingame_sec: Number(e.target.value) })}
+            />
+            <Input
+              label="Final Refresh (sec)"
+              type="number"
+              value={refreshCfg.final_sec.toString()}
+              onChange={(e) => setRefreshCfg({ ...refreshCfg, final_sec: Number(e.target.value) })}
+            />
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Live Layout
+              </label>
+              <select 
+                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                value={renderCfg.live_layout} 
+                onChange={(e) => setRenderCfg({ ...renderCfg, live_layout: e.target.value as any })}
+              >
+                <option value="stacked">Stacked</option>
+                <option value="big-logos">Big Logos</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+                Logo Variant
+              </label>
+              <select 
+                className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                value={renderCfg.logo_variant} 
+                onChange={(e) => setRenderCfg({ ...renderCfg, logo_variant: e.target.value as any })}
+              >
+                <option value="mini">Mini</option>
+                <option value="banner">Banner</option>
+              </select>
+            </div>
+          </div>
+        </Card>
+
+        {/* Device Token Management */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Device Token</CardTitle>
+          </CardHeader>
+          <div className="space-y-4">
+            <Button onClick={mintDeviceToken} disabled={loading} loading={loading}>
+              Mint Device Token
+            </Button>
+            {mintedToken && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+                  DEVICE_TOKEN:
+                </label>
+                <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm break-all whitespace-pre-wrap border border-gray-300 dark:border-gray-600">
+                  {mintedToken}
+                </pre>
+              </div>
+            )}
+          </div>
+        </Card>
       {device && (
         <p><strong>Status:</strong> {onlineBadge} — last seen: {device.last_seen_ts ?? '—'}</p>
       )}
@@ -382,39 +477,83 @@ export default function DevicePage() {
             ))}
           </datalist>
           <input placeholder="abbr" value={newFav.abbr || ''} onChange={(e) => setNewFav({ ...newFav, abbr: e.target.value })} style={{ width: 64 }} />
-          <button onClick={addFav}>Add</button>
+          <Button onClick={addFav} size="sm">Add</Button>
         </div>
-        <div style={{ marginTop: 8 }}>
-          <button onClick={syncToJson}>Sync Favorites into JSON</button>
-          <button style={{ marginLeft: 8 }} onClick={enrichFavorites}>Auto-fill Team IDs (from assets)</button>
+        <div className="flex gap-3 mt-4">
+          <Button onClick={syncToJson} variant="secondary" size="sm">
+            Sync Favorites into JSON
+          </Button>
+          <Button onClick={enrichFavorites} variant="secondary" size="sm">
+            Auto-fill Team IDs (from assets)
+          </Button>
         </div>
       </div>
-      <h3>Config JSON</h3>
-      <div style={{ marginBottom: 8 }}>
-        <button onClick={loadLatestConfig} disabled={loading}>Load Latest Config</button>
-      </div>
-      {schemaErrors.length > 0 && (
-        <div style={{ color: 'red' }}>
-          <p>Schema errors:</p>
-          <ul>
-            {schemaErrors.map((e, idx) => (
-              <li key={idx}><code>{e.instancePath || e.schemaPath}</code> — {e.message}</li>
-            ))}
-          </ul>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Configuration JSON</CardTitle>
+            <Button onClick={loadLatestConfig} disabled={loading} variant="secondary" size="sm">
+              Load Latest Config
+            </Button>
+          </div>
+        </CardHeader>
+        <div className="space-y-4">
+          {schemaErrors.length > 0 && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
+              <p className="text-red-800 dark:text-red-200 font-medium mb-2">Schema errors:</p>
+              <ul className="text-red-700 dark:text-red-300 text-sm space-y-1">
+                {schemaErrors.map((e, idx) => (
+                  <li key={idx}>
+                    <code className="bg-red-100 dark:bg-red-800 px-1 rounded text-xs">
+                      {e.instancePath || e.schemaPath}
+                    </code> — {e.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <textarea 
+            className="w-full h-96 p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"
+            value={configText} 
+            onChange={(e) => setConfigText(e.target.value)} 
+            placeholder="Configuration JSON..."
+          />
+          <div className="flex justify-between items-center">
+            <Button onClick={applyConfig} disabled={loading} loading={loading}>
+              Apply Config
+            </Button>
+            {message && (
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {message}
+              </p>
+            )}
+          </div>
         </div>
-      )}
-      <textarea value={configText} onChange={(e) => setConfigText(e.target.value)} rows={18} style={{ width: '100%' }} />
-      <div>
-        <button onClick={applyConfig} disabled={loading}>Apply Config</button>
+      </Card>
+
+      {/* Recent Events */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Events</CardTitle>
+        </CardHeader>
+        <div className="space-y-2">
+          {events.length > 0 ? (
+            events.map((ev) => (
+              <div key={ev.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                <code className="text-sm bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
+                  {ev.type}
+                </code>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {new Date(ev.created_at).toLocaleString()}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">No recent events</p>
+          )}
+        </div>
+      </Card>
       </div>
-      {message && <p>{message}</p>}
-      <h3>Recent Events</h3>
-      <ul>
-        {events.map((ev) => (
-          <li key={ev.id}><code>{ev.type}</code> — {new Date(ev.created_at).toLocaleString()}</li>
-        ))}
-      </ul>
-      <p><a href="/">Back</a></p>
-    </main>
+    </Layout>
   )
 }
