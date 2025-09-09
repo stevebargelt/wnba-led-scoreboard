@@ -11,3 +11,4 @@ web-admin/.env.local
 web-admin/.vercel
 
 node_modules/
+CLAUDE.local.md

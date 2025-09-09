@@ -191,7 +191,7 @@ export default function DevicePage() {
   const onDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
     e.dataTransfer.setData('text/plain', String(index))
   }
-  const onDrop = (e: React.DragEvent<HTMLUListElement>, index: number) => {
+  const onDrop = (e: React.DragEvent<HTMLLIElement>, index: number) => {
     const from = Number(e.dataTransfer.getData('text/plain'))
     if (Number.isNaN(from)) return
     e.preventDefault()
@@ -200,7 +200,7 @@ export default function DevicePage() {
     next.splice(index, 0, moved)
     setFavorites(next)
   }
-  const onDragOver = (e: React.DragEvent<HTMLUListElement>) => e.preventDefault()
+  const onDragOver = (e: React.DragEvent<HTMLLIElement>) => e.preventDefault()
   const removeFav = (i: number) => setFavorites(favorites.filter((_, idx) => idx !== i))
   const addFav = () => {
     if (!newFav.name.trim()) return
@@ -344,9 +344,9 @@ export default function DevicePage() {
       )}
       <h3>Favorites Editor</h3>
       <div>
-        <ul onDragOver={onDragOver} style={{ listStyle: 'none', paddingLeft: 0 }}>
+        <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
           {favorites.map((f, i) => (
-            <li key={i} draggable onDragStart={(e) => onDragStart(e, i)} onDrop={(e) => onDrop(e, i)} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 4, borderBottom: '1px solid #eee' }}>
+            <li key={i} draggable onDragStart={(e) => onDragStart(e, i)} onDrop={(e) => onDrop(e, i)} onDragOver={onDragOver} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: 4, borderBottom: '1px solid #eee' }}>
               <span style={{ cursor: 'grab' }}>⋮⋮</span>
               <select value={f.name} onChange={(e) => {
                 const name = e.target.value
