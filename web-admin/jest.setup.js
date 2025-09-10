@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom'
+import React from 'react'
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -36,6 +37,30 @@ jest.mock('next/router', () => ({
       },
       isFallback: false,
     }
+  },
+}))
+
+// Mock Next.js Image component
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: (props) => {
+    return React.createElement('img', props)
+  },
+}))
+
+// Mock Next.js Link component
+jest.mock('next/link', () => ({
+  __esModule: true,
+  default: ({ children, ...props }) => {
+    return React.createElement('a', props, children)
+  },
+}))
+
+// Mock Next.js Head component
+jest.mock('next/head', () => ({
+  __esModule: true,
+  default: ({ children }) => {
+    return React.createElement(React.Fragment, {}, children)
   },
 }))
 
