@@ -17,24 +17,24 @@ module.exports = {
   },
   testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
   transform: {
-    '^.+\\.(js|jsx|ts|tsx)$': ['@swc/jest', {
-      jsc: {
-        parser: {
-          syntax: 'typescript',
-          tsx: true,
-        },
-        transform: {
-          react: {
-            runtime: 'automatic',
+    '^.+\\.(js|jsx|ts|tsx)$': [
+      '@swc/jest',
+      {
+        jsc: {
+          parser: {
+            syntax: 'typescript',
+            tsx: true,
+          },
+          transform: {
+            react: {
+              runtime: 'automatic',
+            },
           },
         },
       },
-    }],
+    ],
   },
-  transformIgnorePatterns: [
-    '/node_modules/(?!(.*\\.mjs$))',
-    '^.+\\.module\\.(css|sass|scss)$',
-  ],
+  transformIgnorePatterns: ['/node_modules/(?!(.*\\.mjs$))', '^.+\\.module\\.(css|sass|scss)$'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
