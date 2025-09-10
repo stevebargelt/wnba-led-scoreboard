@@ -9,7 +9,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:ci": "jest --coverage --watchAll=false",
+    "test:ci": "npm run pretest:ci && jest --coverage --watchAll=false",
+    "pretest:ci": "npm install --no-save @next/swc-linux-x64-gnu @next/swc-linux-x64-musl || true",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
@@ -52,9 +53,5 @@
     "lint-staged": "^16.1.6",
     "prettier": "^3.6.2",
     "typescript": "5.9.2"
-  },
-  "optionalDependencies": {
-    "@next/swc-linux-x64-gnu": "^14.2.32",
-    "@next/swc-linux-x64-musl": "^14.2.32"
   }
 }
