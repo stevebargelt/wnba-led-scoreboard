@@ -22,9 +22,15 @@ jobs:
         cache: 'npm'
         cache-dependency-path: web-admin/package-lock.json
 
+    - name: Temporarily disable workspace for dependency installation
+      run: mv package.json package.json.backup
+      
     - name: Install dependencies
       working-directory: ./web-admin
       run: npm ci
+      
+    - name: Restore workspace configuration
+      run: mv package.json.backup package.json
 
     - name: Run ESLint
       working-directory: ./web-admin
