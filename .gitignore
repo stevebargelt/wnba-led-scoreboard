@@ -9,6 +9,7 @@ web-admin/node_modules/
 web-admin/.next/
 web-admin/.env.local
 web-admin/.vercel
+web-admin/tsconfig.tsbuildinfo
 
 node_modules/
 CLAUDE.local.md
