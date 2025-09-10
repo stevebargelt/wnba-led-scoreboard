@@ -53,8 +53,39 @@ Structure
 - `src/render/*` renderer and scenes (pregame/live/final)
 - `assets/*` logos and fonts
 
+Reliability & Performance Features
+The system includes comprehensive reliability improvements to ensure consistent operation even when network conditions are poor:
+
+Network Resilience
+- **Circuit Breaker**: Automatically stops hitting failing ESPN API endpoints and recovers gracefully
+- **Exponential Backoff**: Smart retry strategy that backs off when services are struggling
+- **Cached Fallbacks**: Uses recently cached game data when fresh API calls fail
+- **Stale Cache Recovery**: Falls back to expired cache data during extended outages (up to 1 hour old)
+- **Emergency Fallback**: Maintains last successful game data for up to 30 minutes when all else fails
+
+Adaptive Performance
+- **Smart Refresh Rates**: Automatically adjusts polling frequency based on:
+  - Game state (faster near tip-off, slower during breaks and completed games)
+  - Network conditions (slower refresh during network issues)
+  - Game activity (faster when scores are changing)
+- **Break Detection**: Recognizes timeouts, halftime, and other game breaks to reduce unnecessary polling
+- **Intelligent Caching**: Caches completed games longer, live games shorter, with automatic cleanup
+
+Configuration
+All reliability features can be tuned via environment variables:
+```
+# Network resilience settings
+ESPN_CACHE_TTL=300                    # Cache duration in seconds (default: 5 minutes)
+ESPN_STALE_CACHE_MAX_AGE=3600        # Max age for stale cache fallback (default: 1 hour)  
+ESPN_CIRCUIT_FAILURE_THRESHOLD=3     # Failures before circuit opens (default: 3)
+ESPN_MAX_FALLBACK_AGE_MINUTES=30     # Max age for emergency fallback (default: 30 min)
+HTTP_TIMEOUT=10                      # HTTP request timeout (default: 10 seconds)
+```
+
+The system gracefully degrades during network issues, ensuring your scoreboard keeps running with the most recent data available.
+
 Notes
-- ESPN endpoints used are unofficial and may change. Poll cadences are conservative and configurable.
+- ESPN endpoints used are unofficial and may change. The enhanced client handles failures gracefully.
 - Renderer falls back to simulation automatically if `rgbmatrix` is missing.
 
 VS Code Tasks
