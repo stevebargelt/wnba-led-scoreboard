@@ -1,0 +1,25 @@
+{
+  "name": "wnba-led-scoreboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WNBA LED Scoreboard System",
+  "scripts": {
+    "prepare": "husky install"
+  },
+  "workspaces": [
+    "web-admin"
+  ],
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6"
+  },
+  "lint-staged": {
+    "web-admin/src/**/*.{ts,tsx,js,jsx}": [
+      "cd web-admin && npm run lint:fix",
+      "cd web-admin && npm run format"
+    ],
+    "web-admin/src/**/*.{ts,tsx,js,jsx,json,css,md}": [
+      "cd web-admin && npm run format"
+    ]
+  }
+}

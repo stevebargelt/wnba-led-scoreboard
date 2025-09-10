@@ -39,15 +39,15 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
   useEffect(() => {
     const updateResolvedTheme = () => {
       let resolved: ResolvedTheme
-      
+
       if (theme === 'system') {
         resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
       } else {
         resolved = theme as ResolvedTheme
       }
-      
+
       setResolvedTheme(resolved)
-      
+
       // Update DOM
       const root = document.documentElement
       if (resolved === 'dark') {
@@ -62,7 +62,7 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     mediaQuery.addEventListener('change', updateResolvedTheme)
-    
+
     return () => mediaQuery.removeEventListener('change', updateResolvedTheme)
   }, [theme])
 

@@ -15,11 +15,13 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const buttonVariants = {
   primary: 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500 text-white shadow-sm',
-  secondary: 'bg-white hover:bg-gray-50 focus:ring-primary-500 text-gray-700 border border-gray-300 shadow-sm dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700',
+  secondary:
+    'bg-white hover:bg-gray-50 focus:ring-primary-500 text-gray-700 border border-gray-300 shadow-sm dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700',
   success: 'bg-success-600 hover:bg-success-700 focus:ring-success-500 text-white shadow-sm',
   warning: 'bg-warning-600 hover:bg-warning-700 focus:ring-warning-500 text-white shadow-sm',
   error: 'bg-error-600 hover:bg-error-700 focus:ring-error-500 text-white shadow-sm',
-  ghost: 'bg-transparent hover:bg-gray-100 focus:ring-primary-500 text-gray-700 dark:hover:bg-gray-800 dark:text-gray-200',
+  ghost:
+    'bg-transparent hover:bg-gray-100 focus:ring-primary-500 text-gray-700 dark:hover:bg-gray-800 dark:text-gray-200',
 }
 
 const buttonSizes = {

@@ -4,7 +4,18 @@ import { supabase } from '../../lib/supabaseClient'
 import { WNBATEAMS } from '@/lib/wnbaTeams'
 import { makeValidator } from '@/lib/schema'
 import { Layout } from '../../components/layout'
-import { Card, CardHeader, CardTitle, Button, Input, StatusBadge, Tabs, TabsList, TabsTrigger, TabsContent } from '../../components/ui'
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  Button,
+  Input,
+  StatusBadge,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '../../components/ui'
 
 const FN_CONFIG = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE!
 const FN_ACTION = process.env.NEXT_PUBLIC_FUNCTION_ON_ACTION!
@@ -14,22 +25,38 @@ export default function DevicePage() {
   const router = useRouter()
   const { id } = router.query
   const [configText, setConfigText] = useState('')
-  const [device, setDevice] = useState<{ id: string; name?: string; last_seen_ts?: string | null } | null>(null)
+  const [device, setDevice] = useState<{
+    id: string
+    name?: string
+    last_seen_ts?: string | null
+  } | null>(null)
   const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [mintedToken, setMintedToken] = useState('')
-  const [favorites, setFavorites] = useState<{ name: string; id?: string | null; abbr?: string | null }[]>([])
+  const [favorites, setFavorites] = useState<
+    { name: string; id?: string | null; abbr?: string | null }[]
+  >([])
   const [newFav, setNewFav] = useState<{ name: string; abbr?: string }>({ name: '', abbr: '' })
-  const [teamList, setTeamList] = useState<{ name: string; abbr?: string; id?: string }[]>(WNBATEAMS)
+  const [teamList, setTeamList] =
+    useState<{ name: string; abbr?: string; id?: string }[]>(WNBATEAMS)
   const [schemaError, setSchemaError] = useState<string>('')
   const [schemaErrors, setSchemaErrors] = useState<any[]>([])
   // Inline editable settings (with reasonable defaults)
   const DEFAULTS = {
     timezone: 'America/Los_Angeles',
-    matrix: { width: 64, height: 32, chain_length: 1, parallel: 1, gpio_slowdown: 2, hardware_mapping: 'adafruit-hat', brightness: 80, pwm_bits: 11 },
+    matrix: {
+      width: 64,
+      height: 32,
+      chain_length: 1,
+      parallel: 1,
+      gpio_slowdown: 2,
+      hardware_mapping: 'adafruit-hat',
+      brightness: 80,
+      pwm_bits: 11,
+    },
     refresh: { pregame_sec: 30, ingame_sec: 5, final_sec: 60 },
-    render: { live_layout: 'stacked', logo_variant: 'mini' }
+    render: { live_layout: 'stacked', logo_variant: 'mini' },
   }
   const [timezone, setTimezone] = useState<string>(DEFAULTS.timezone)
   const [matrix, setMatrix] = useState(DEFAULTS.matrix)
@@ -59,7 +86,11 @@ export default function DevicePage() {
       if ((data?.content as any)?.matrix) setMatrix((data!.content as any).matrix)
       if ((data?.content as any)?.refresh) setRefreshCfg((data!.content as any).refresh)
       if ((data?.content as any)?.render) setRenderCfg((data!.content as any).render)
-      const { data: dev } = await supabase.from('devices').select('id,name,last_seen_ts').eq('id', id).maybeSingle()
+      const { data: dev } = await supabase
+        .from('devices')
+        .select('id,name,last_seen_ts')
+        .eq('id', id)
+        .maybeSingle()
       if (dev) setDevice(dev)
       const { data: ev } = await supabase
         .from('events')
@@ -76,12 +107,30 @@ export default function DevicePage() {
     if (!id) return
     const channel = supabase
       .channel(`device-${id}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'devices', filter: `id=eq.${id}` }, (payload) => {
-        setDevice(payload.new as any)
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events', filter: `device_id=eq.${id}` }, (payload) => {
-        setEvents((prev) => [{ id: (payload.new as any).id, type: (payload.new as any).type, created_at: (payload.new as any).created_at, payload: (payload.new as any).payload }, ...prev].slice(0, 50))
-      })
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'devices', filter: `id=eq.${id}` },
+        payload => {
+          setDevice(payload.new as any)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'events', filter: `device_id=eq.${id}` },
+        payload => {
+          setEvents(prev =>
+            [
+              {
+                id: (payload.new as any).id,
+                type: (payload.new as any).type,
+                created_at: (payload.new as any).created_at,
+                payload: (payload.new as any).payload,
+              },
+              ...prev,
+            ].slice(0, 50)
+          )
+        }
+      )
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
@@ -92,7 +141,14 @@ export default function DevicePage() {
     if (!id) return
     try {
       const base = configText?.trim() ? JSON.parse(configText) : {}
-      const content = { ...base, favorites, timezone, matrix, refresh: refreshCfg, render: renderCfg }
+      const content = {
+        ...base,
+        favorites,
+        timezone,
+        matrix,
+        refresh: refreshCfg,
+        render: renderCfg,
+      }
       const validate = makeValidator()
       const ok = validate(content)
       if (!ok) {
@@ -209,16 +265,22 @@ export default function DevicePage() {
     const found = teamList.find(t => t.name.toLowerCase() === newFav.name.trim().toLowerCase())
     setFavorites([
       ...favorites,
-      { name: newFav.name.trim(), abbr: (newFav.abbr || found?.abbr || '').toUpperCase() || undefined, id: found?.id }
+      {
+        name: newFav.name.trim(),
+        abbr: (newFav.abbr || found?.abbr || '').toUpperCase() || undefined,
+        id: found?.id,
+      },
     ])
     setNewFav({ name: '', abbr: '' })
   }
   const enrichFavorites = () => {
     let updates = 0
-    const next = favorites.map((f) => {
+    const next = favorites.map(f => {
       if (f.id && f.abbr) return f
       const byName = teamList.find(t => t.name?.toLowerCase() === (f.name || '').toLowerCase())
-      const byAbbr = f.abbr ? teamList.find(t => (t.abbr || '').toUpperCase() === (f.abbr || '').toUpperCase()) : undefined
+      const byAbbr = f.abbr
+        ? teamList.find(t => (t.abbr || '').toUpperCase() === (f.abbr || '').toUpperCase())
+        : undefined
       const match = byName || byAbbr
       if (!match) return f
       updates += 1
@@ -256,7 +318,15 @@ export default function DevicePage() {
       // Proceed with empty base but inform user
       setMessage('Parsed with defaults (existing JSON was invalid).')
     }
-    const merged = { ...DEFAULTS, ...base, favorites, timezone, matrix, refresh: refreshCfg, render: renderCfg }
+    const merged = {
+      ...DEFAULTS,
+      ...base,
+      favorites,
+      timezone,
+      matrix,
+      refresh: refreshCfg,
+      render: renderCfg,
+    }
     setConfigText(JSON.stringify(merged, null, 2))
     if (!schemaError) setMessage(`Favorites synced into JSON (${favorites.length})`)
   }
@@ -275,7 +345,8 @@ export default function DevicePage() {
         .maybeSingle()
       if (data?.content) {
         setConfigText(JSON.stringify(data.content, null, 2))
-        if (Array.isArray((data.content as any).favorites)) setFavorites((data.content as any).favorites)
+        if (Array.isArray((data.content as any).favorites))
+          setFavorites((data.content as any).favorites)
         setMessage('Loaded latest saved config')
       } else {
         setMessage('No prior config found; using editor values')
@@ -293,12 +364,17 @@ export default function DevicePage() {
         {/* Header with back button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => router.push('/')}
               leftIcon={
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                  />
                 </svg>
               }
             >
@@ -309,17 +385,13 @@ export default function DevicePage() {
                 Device Configuration
               </h1>
               <div className="flex items-center space-x-4">
-                <p className="text-gray-600 dark:text-gray-400">
-                  Device ID: {id}
-                </p>
+                <p className="text-gray-600 dark:text-gray-400">Device ID: {id}</p>
                 {device && (
                   <div className="flex items-center space-x-2">
-                    <StatusBadge 
-                      online={isDeviceOnline}
-                      size="sm"
-                    />
+                    <StatusBadge online={isDeviceOnline} size="sm" />
                     <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Last seen: {device.last_seen_ts ? new Date(device.last_seen_ts).toLocaleString() : '—'}
+                      Last seen:{' '}
+                      {device.last_seen_ts ? new Date(device.last_seen_ts).toLocaleString() : '—'}
                     </span>
                   </div>
                 )}
@@ -343,16 +415,36 @@ export default function DevicePage() {
                 <CardTitle>Device Actions</CardTitle>
               </CardHeader>
               <div className="flex flex-wrap gap-3">
-                <Button onClick={() => sendAction('PING')} disabled={loading} variant="secondary" size="sm">
+                <Button
+                  onClick={() => sendAction('PING')}
+                  disabled={loading}
+                  variant="secondary"
+                  size="sm"
+                >
                   PING
                 </Button>
-                <Button onClick={() => sendAction('RESTART', { service: 'wnba-led.service' })} disabled={loading} variant="warning" size="sm">
+                <Button
+                  onClick={() => sendAction('RESTART', { service: 'wnba-led.service' })}
+                  disabled={loading}
+                  variant="warning"
+                  size="sm"
+                >
                   Restart App
                 </Button>
-                <Button onClick={() => sendAction('FETCH_ASSETS')} disabled={loading} variant="secondary" size="sm">
+                <Button
+                  onClick={() => sendAction('FETCH_ASSETS')}
+                  disabled={loading}
+                  variant="secondary"
+                  size="sm"
+                >
                   Fetch Assets
                 </Button>
-                <Button onClick={() => sendAction('SELF_TEST')} disabled={loading} variant="secondary" size="sm">
+                <Button
+                  onClick={() => sendAction('SELF_TEST')}
+                  disabled={loading}
+                  variant="secondary"
+                  size="sm"
+                >
                   Self Test
                 </Button>
               </div>
@@ -393,7 +485,7 @@ export default function DevicePage() {
                   <Input
                     label="Timezone"
                     value={timezone}
-                    onChange={(e) => setTimezone(e.target.value)}
+                    onChange={e => setTimezone(e.target.value)}
                     placeholder="America/Los_Angeles"
                   />
                   <Input
@@ -402,46 +494,54 @@ export default function DevicePage() {
                     min={1}
                     max={100}
                     value={matrix.brightness.toString()}
-                    onChange={(e) => setMatrix({ ...matrix, brightness: Number(e.target.value) })}
+                    onChange={e => setMatrix({ ...matrix, brightness: Number(e.target.value) })}
                   />
                   <Input
                     label="Matrix Width"
                     type="number"
                     value={matrix.width.toString()}
-                    onChange={(e) => setMatrix({ ...matrix, width: Number(e.target.value) })}
+                    onChange={e => setMatrix({ ...matrix, width: Number(e.target.value) })}
                   />
                   <Input
                     label="Matrix Height"
                     type="number"
                     value={matrix.height.toString()}
-                    onChange={(e) => setMatrix({ ...matrix, height: Number(e.target.value) })}
+                    onChange={e => setMatrix({ ...matrix, height: Number(e.target.value) })}
                   />
                   <Input
                     label="Pregame Refresh (sec)"
                     type="number"
                     value={refreshCfg.pregame_sec.toString()}
-                    onChange={(e) => setRefreshCfg({ ...refreshCfg, pregame_sec: Number(e.target.value) })}
+                    onChange={e =>
+                      setRefreshCfg({ ...refreshCfg, pregame_sec: Number(e.target.value) })
+                    }
                   />
                   <Input
                     label="Ingame Refresh (sec)"
                     type="number"
                     value={refreshCfg.ingame_sec.toString()}
-                    onChange={(e) => setRefreshCfg({ ...refreshCfg, ingame_sec: Number(e.target.value) })}
+                    onChange={e =>
+                      setRefreshCfg({ ...refreshCfg, ingame_sec: Number(e.target.value) })
+                    }
                   />
                   <Input
                     label="Final Refresh (sec)"
                     type="number"
                     value={refreshCfg.final_sec.toString()}
-                    onChange={(e) => setRefreshCfg({ ...refreshCfg, final_sec: Number(e.target.value) })}
+                    onChange={e =>
+                      setRefreshCfg({ ...refreshCfg, final_sec: Number(e.target.value) })
+                    }
                   />
                   <div className="space-y-1">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                       Live Layout
                     </label>
-                    <select 
+                    <select
                       className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      value={renderCfg.live_layout} 
-                      onChange={(e) => setRenderCfg({ ...renderCfg, live_layout: e.target.value as any })}
+                      value={renderCfg.live_layout}
+                      onChange={e =>
+                        setRenderCfg({ ...renderCfg, live_layout: e.target.value as any })
+                      }
                     >
                       <option value="stacked">Stacked</option>
                       <option value="big-logos">Big Logos</option>
@@ -451,10 +551,12 @@ export default function DevicePage() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
                       Logo Variant
                     </label>
-                    <select 
+                    <select
                       className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      value={renderCfg.logo_variant} 
-                      onChange={(e) => setRenderCfg({ ...renderCfg, logo_variant: e.target.value as any })}
+                      value={renderCfg.logo_variant}
+                      onChange={e =>
+                        setRenderCfg({ ...renderCfg, logo_variant: e.target.value as any })
+                      }
                     >
                       <option value="mini">Mini</option>
                       <option value="banner">Banner</option>
@@ -471,52 +573,71 @@ export default function DevicePage() {
                 <div className="space-y-4">
                   <ul className="space-y-2">
                     {favorites.map((f, i) => (
-                      <li key={i} 
-                          draggable 
-                          onDragStart={(e) => onDragStart(e, i)} 
-                          onDrop={(e) => onDrop(e, i)} 
-                          onDragOver={onDragOver} 
-                          className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+                      <li
+                        key={i}
+                        draggable
+                        onDragStart={e => onDragStart(e, i)}
+                        onDrop={e => onDrop(e, i)}
+                        onDragOver={onDragOver}
+                        className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
+                      >
                         <span className="cursor-grab text-gray-400">⋮⋮</span>
-                        <select 
+                        <select
                           className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
-                          value={f.name} 
-                          onChange={(e) => {
+                          value={f.name}
+                          onChange={e => {
                             const name = e.target.value
                             const found = teamList.find(t => t.name === name)
-                            const next = favorites.slice();
-                            next[i] = { name, abbr: (next[i].abbr || found?.abbr || '').toUpperCase() || undefined, id: found?.id || next[i].id }
+                            const next = favorites.slice()
+                            next[i] = {
+                              name,
+                              abbr: (next[i].abbr || found?.abbr || '').toUpperCase() || undefined,
+                              id: found?.id || next[i].id,
+                            }
                             setFavorites(next)
-                          }}>
+                          }}
+                        >
                           <option value="">Select team…</option>
-                          {teamList.map((t) => (
-                            <option key={`${t.name}-${t.abbr}`} value={t.name}>{t.name}</option>
+                          {teamList.map(t => (
+                            <option key={`${t.name}-${t.abbr}`} value={t.name}>
+                              {t.name}
+                            </option>
                           ))}
                         </select>
-                        <Input 
-                          placeholder="abbr" 
-                          value={f.abbr || ''} 
-                          onChange={(e) => {
-                            const next = favorites.slice(); 
-                            next[i] = { ...next[i], abbr: e.target.value }; 
+                        <Input
+                          placeholder="abbr"
+                          value={f.abbr || ''}
+                          onChange={e => {
+                            const next = favorites.slice()
+                            next[i] = { ...next[i], abbr: e.target.value }
                             setFavorites(next)
-                          }} 
-                          className="w-20" 
+                          }}
+                          className="w-20"
                         />
-                        <Input 
-                          placeholder="id" 
-                          value={f.id || ''} 
-                          onChange={(e) => {
-                            const next = favorites.slice(); 
-                            next[i] = { ...next[i], id: e.target.value || undefined }; 
+                        <Input
+                          placeholder="id"
+                          value={f.id || ''}
+                          onChange={e => {
+                            const next = favorites.slice()
+                            next[i] = { ...next[i], id: e.target.value || undefined }
                             setFavorites(next)
-                          }} 
-                          className="w-40" 
+                          }}
+                          className="w-40"
                         />
-                        <Button onClick={() => moveUp(i)} variant="ghost" size="sm" aria-label="move up">
+                        <Button
+                          onClick={() => moveUp(i)}
+                          variant="ghost"
+                          size="sm"
+                          aria-label="move up"
+                        >
                           ↑
                         </Button>
-                        <Button onClick={() => moveDown(i)} variant="ghost" size="sm" aria-label="move down">
+                        <Button
+                          onClick={() => moveDown(i)}
+                          variant="ghost"
+                          size="sm"
+                          aria-label="move down"
+                        >
                           ↓
                         </Button>
                         <Button onClick={() => removeFav(i)} variant="ghost" size="sm">
@@ -526,25 +647,29 @@ export default function DevicePage() {
                     ))}
                   </ul>
                   <div className="flex items-center gap-2">
-                    <input 
+                    <input
                       className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
-                      list="teams" 
-                      placeholder="Team name" 
-                      value={newFav.name} 
-                      onChange={(e) => setNewFav({ ...newFav, name: e.target.value })} 
+                      list="teams"
+                      placeholder="Team name"
+                      value={newFav.name}
+                      onChange={e => setNewFav({ ...newFav, name: e.target.value })}
                     />
                     <datalist id="teams">
-                      {WNBATEAMS.map((t) => (
-                        <option key={t.abbr} value={t.name}>{t.abbr}</option>
+                      {WNBATEAMS.map(t => (
+                        <option key={t.abbr} value={t.name}>
+                          {t.abbr}
+                        </option>
                       ))}
                     </datalist>
-                    <Input 
-                      placeholder="abbr" 
-                      value={newFav.abbr || ''} 
-                      onChange={(e) => setNewFav({ ...newFav, abbr: e.target.value })} 
-                      className="w-20" 
+                    <Input
+                      placeholder="abbr"
+                      value={newFav.abbr || ''}
+                      onChange={e => setNewFav({ ...newFav, abbr: e.target.value })}
+                      className="w-20"
                     />
-                    <Button onClick={addFav} size="sm">Add</Button>
+                    <Button onClick={addFav} size="sm">
+                      Add
+                    </Button>
                   </div>
                   <div className="flex gap-3">
                     <Button onClick={syncToJson} variant="secondary" size="sm">
@@ -562,7 +687,12 @@ export default function DevicePage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Configuration JSON</CardTitle>
-                    <Button onClick={loadLatestConfig} disabled={loading} variant="secondary" size="sm">
+                    <Button
+                      onClick={loadLatestConfig}
+                      disabled={loading}
+                      variant="secondary"
+                      size="sm"
+                    >
                       Load Latest Config
                     </Button>
                   </div>
@@ -570,22 +700,25 @@ export default function DevicePage() {
                 <div className="space-y-4">
                   {schemaErrors.length > 0 && (
                     <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
-                      <p className="text-red-800 dark:text-red-200 font-medium mb-2">Schema errors:</p>
+                      <p className="text-red-800 dark:text-red-200 font-medium mb-2">
+                        Schema errors:
+                      </p>
                       <ul className="text-red-700 dark:text-red-300 text-sm space-y-1">
                         {schemaErrors.map((e, idx) => (
                           <li key={idx}>
                             <code className="bg-red-100 dark:bg-red-800 px-1 rounded text-xs">
                               {e.instancePath || e.schemaPath}
-                            </code> — {e.message}
+                            </code>{' '}
+                            — {e.message}
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
-                  <textarea 
+                  <textarea
                     className="w-full h-96 p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"
-                    value={configText} 
-                    onChange={(e) => setConfigText(e.target.value)} 
+                    value={configText}
+                    onChange={e => setConfigText(e.target.value)}
                     placeholder="Configuration JSON..."
                   />
                   <div className="flex justify-between items-center">
@@ -593,9 +726,7 @@ export default function DevicePage() {
                       Apply Config
                     </Button>
                     {message && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {message}
-                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
                     )}
                   </div>
                 </div>
@@ -610,8 +741,11 @@ export default function DevicePage() {
               </CardHeader>
               <div className="space-y-2">
                 {events.length > 0 ? (
-                  events.map((ev) => (
-                    <div key={ev.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded">
+                  events.map(ev => (
+                    <div
+                      key={ev.id}
+                      className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
+                    >
                       <code className="text-sm bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
                         {ev.type}
                       </code>

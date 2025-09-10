@@ -13,11 +13,11 @@ export const CONFIG_SCHEMA = {
         properties: {
           name: { type: 'string' },
           id: { type: ['string', 'null'] },
-          abbr: { type: ['string', 'null'] }
+          abbr: { type: ['string', 'null'] },
         },
         required: ['name'],
-        additionalProperties: false
-      }
+        additionalProperties: false,
+      },
     },
     timezone: { type: 'string' },
     matrix: {
@@ -30,31 +30,31 @@ export const CONFIG_SCHEMA = {
         gpio_slowdown: { type: 'integer', minimum: 0 },
         hardware_mapping: { type: 'string' },
         brightness: { type: 'integer', minimum: 1, maximum: 100 },
-        pwm_bits: { type: 'integer', minimum: 1, maximum: 16 }
+        pwm_bits: { type: 'integer', minimum: 1, maximum: 16 },
       },
       required: ['width', 'height'],
-      additionalProperties: true
+      additionalProperties: true,
     },
     refresh: {
       type: 'object',
       properties: {
         pregame_sec: { type: 'integer', minimum: 1 },
         ingame_sec: { type: 'integer', minimum: 1 },
-        final_sec: { type: 'integer', minimum: 1 }
+        final_sec: { type: 'integer', minimum: 1 },
       },
-      additionalProperties: true
+      additionalProperties: true,
     },
     render: {
       type: 'object',
       properties: {
         live_layout: { type: 'string', enum: ['stacked', 'big-logos'] },
-        logo_variant: { type: 'string', enum: ['mini', 'banner'] }
+        logo_variant: { type: 'string', enum: ['mini', 'banner'] },
       },
-      additionalProperties: true
-    }
+      additionalProperties: true,
+    },
   },
   required: ['favorites'],
-  additionalProperties: true
+  additionalProperties: true,
 } as const
 
 export function makeValidator() {

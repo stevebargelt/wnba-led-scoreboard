@@ -1,13 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { 
-  HomeIcon, 
-  CpuChipIcon, 
-  CogIcon, 
-  PlusIcon,
-  ChartBarIcon 
-} from '@heroicons/react/24/outline'
+import { HomeIcon, CpuChipIcon, CogIcon, PlusIcon, ChartBarIcon } from '@heroicons/react/24/outline'
 import { clsx } from 'clsx'
 
 const navigation = [
@@ -45,7 +39,7 @@ export function Navigation() {
           {/* Navigation */}
           <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
             <nav className="flex-1 px-2 space-y-1">
-              {navigation.map((item) => {
+              {navigation.map(item => {
                 const isActive = router.pathname === item.href
                 return (
                   <Link
@@ -77,9 +71,7 @@ export function Navigation() {
 
           {/* Bottom section */}
           <div className="flex flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              Version 1.0.0
-            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">Version 1.0.0</div>
           </div>
         </div>
       </nav>
