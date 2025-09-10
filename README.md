@@ -1,59 +1,477 @@
-WNBA LED Scoreboard (64x32 default)
+# 🏀🏒 Multi-Sport LED Scoreboard
 
-Overview
-This project displays a WNBA scoreboard on an RGB LED matrix (defaults to 64x32). It discovers today's favorite-team games, shows a countdown before tip, and renders live scores with clock/period.
+<div align="center">
 
-Quick Start
-- Copy `config/favorites.json` and edit favorites in priority order.
-- Optionally copy `.env.example` to `.env` to override matrix size and settings.
-- Create venv and install deps:
-  - `python3 -m venv .venv && source .venv/bin/activate`
-  - `pip install -r requirements.txt`
-- Run in sim mode (renders to `out/frame.png`):
-  - `python app.py --sim --once`
-- Run on Pi with matrix:
-  - `python app.py`
- - Demo mode (simulated game, changes occasionally):
-   - `python app.py --sim --demo` (local/offscreen)
-   - `sudo -E $(pwd)/.venv/bin/python app.py --demo` (on Pi)
+![Multi-Sport LED Scoreboard](https://img.shields.io/badge/Multi--Sport-LED%20Scoreboard-orange?style=for-the-badge)
+![WNBA](https://img.shields.io/badge/WNBA-Supported-orange?style=for-the-badge&logo=basketball)
+![NHL](https://img.shields.io/badge/NHL-Supported-blue?style=for-the-badge&logo=hockey-puck)
+![Python](https://img.shields.io/badge/Python-3.8+-blue?style=for-the-badge&logo=python)
+![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
+![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-Compatible-red?style=for-the-badge&logo=raspberry-pi)
 
-Hardware & Bindings
-- Install rgbmatrix (Python bindings) on the Pi:
-  - `bash scripts/install_rgbmatrix.sh`
-- Self-test your panel/HAT with upstream demo:
-  - `bash scripts/hardware_self_test.sh`
-  - Defaults read from `.env` (64x32, adafruit-hat, brightness 80). Override with flags like `--rows 32 --cols 64`.
-  - The demo runs with `sudo -E` (required for GPIO access).
+*Real-time WNBA & NHL scores with intelligent multi-sport priority system*
 
-Logos & Team Colors
-- Auto-fetch WNBA teams, logos, and colors from ESPN, and generate pre-sized variants:
-  - `source .venv/bin/activate && python scripts/fetch_wnba_assets.py`
-  - Outputs:
-    - `assets/teams.json` (id, abbr, name, primary/secondary colors, logo path)
-    - `assets/logos/{id}.png` original logos
-    - `assets/logos/variants/{id}_mini.png` (~10px tall), `{id}_banner.png` (~20px tall)
-- Rendering uses mini logos in live/final and mini logos in pregame flanking “VS”. Missing logos fall back to outlined boxes.
+[Quick Start](#-quick-start) • [Multi-Sport](#-multi-sport-features) • [Hardware](#%EF%B8%8F-hardware-setup) • [Web Admin](#-web-admin-interface) • [Deployment](#-deployment-guide) • [Troubleshooting](#-troubleshooting-guide)
 
-Troubleshooting logos
-- Ensure assets ended up in the project’s `assets/` folder (the fetcher now writes relative to the repo).
-- Run the check task:
-  - `source .venv/bin/activate && python scripts/check_assets.py`
-  - Confirms `assets/teams.json` presence and per-favorite logo/variant files.
-- If you previously ran the fetcher from a different directory, re-run it from the repo or with the updated script so files land under this project.
+</div>
 
-Config
-- JSON: `config/favorites.json` controls favorites, timezone, matrix, refresh.
-- .env overrides: MATRIX_WIDTH, MATRIX_HEIGHT, TIMEZONE, REFRESH_* and more (see `.env.example`).
+---
 
-Structure
-- `app.py` entrypoint and loop
-- `src/config/*` load config and env overrides
-- `src/data/espn.py` ESPN WNBA scoreboard client
-- `src/select/choose.py` favorite-based game selection
-- `src/render/*` renderer and scenes (pregame/live/final)
-- `assets/*` logos and fonts
+## 📋 Overview
 
-Reliability & Performance Features
+This project displays **live sports scoreboards** on RGB LED matrices with support for **WNBA and NHL games**. The system automatically discovers your favorite teams' games across multiple sports, intelligently resolves conflicts when games overlap, and provides a comprehensive web admin interface for remote management.
+
+### 🎯 **Core Features**
+- 🏀 **WNBA Support** - Live scores, schedules, team logos and colors from ESPN
+- 🏒 **NHL Support** - Live scores, periods, overtime/shootouts from NHL API  
+- 🧠 **Smart Game Selection** - Intelligent priority resolution across sports
+- 🛡️ **Network Resilience** - Multi-layer fallback system with caching and circuit breakers
+- 🎛️ **Web Admin Interface** - Remote device management with multi-sport configuration
+- ⚡ **Adaptive Performance** - Smart refresh rates based on game state and network conditions
+- 🎨 **Multiple Display Layouts** - Stacked scores or big-logos mode with team colors
+
+---
+
+## 🚀 Quick Start
+
+### 🏀 **Single Sport (WNBA Only)**
+
+```bash
+# 1. Set up your favorite teams
+cp config/favorites.json config/favorites.json.backup
+nano config/favorites.json
+
+# 2. Install Python environment  
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Fetch team assets
+python scripts/fetch_wnba_assets.py
+
+# 4. Test in simulation mode
+python app.py --sim --once
+# Check output: ls -la out/frame.png
+
+# 5. Run on hardware (Raspberry Pi)
+sudo -E $(pwd)/.venv/bin/python app.py
+```
+
+### 🏒🏀 **Multi-Sport (WNBA + NHL)**
+
+```bash
+# 1. Use multi-sport configuration template
+cp config/multi-sport-example.json config/favorites.json
+
+# 2. Fetch assets for both sports
+python scripts/fetch_wnba_assets.py
+python scripts/fetch_nhl_assets.py
+
+# 3. Test multi-sport mode
+python app.py --multi-sport --sim --once
+
+# 4. Run with multi-sport priority resolution
+python app.py --multi-sport
+```
+
+> 📖 **Need detailed setup?** See the [complete deployment guide](#-deployment-guide) below.
+
+---
+
+## 🏒🏀 Multi-Sport Features
+
+The system supports **simultaneous WNBA and NHL games** with intelligent conflict resolution and priority management.
+
+### 🎯 **Smart Priority Resolution**
+
+When both WNBA and NHL games are active, the system uses intelligent rules to decide which game to display:
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**🔥 High Priority Boosts**
+- 🔴 **Live Games** - Active games beat pre-game/final  
+- ⭐ **Favorite Teams** - Your teams get priority boost
+- 📊 **Close Games** - Games within 3 points during live play
+- 🏆 **Overtime/Shootout** - High excitement factor
+
+</td>
+<td width="50%" valign="top">
+
+**⚙️ Configurable Rules**
+- 🏅 **Sport Priority Order** - WNBA #1, NHL #2 (configurable)
+- 🎛️ **Manual Override** - Force specific games via web admin
+- 📱 **Real-time Switching** - Change priorities on the fly
+- 🔄 **Auto-resolution** - Intelligent conflict handling
+
+</td>
+</tr>
+</table>
+
+### 🎮 **Multi-Sport Operation Modes**
+
+| Mode | Command | Description |
+|------|---------|-------------|
+| **Legacy** | `python app.py --legacy` | WNBA-only mode (backward compatible) |
+| **Auto-detect** | `python app.py` | Detects config format automatically |
+| **Multi-sport** | `python app.py --multi-sport` | Explicit multi-sport mode |
+| **Environment** | `MULTI_SPORT_MODE=true python app.py` | Environment-controlled |
+
+### ⚙️ **Configuration Options**
+
+<details>
+<summary><b>🏀 Single Sport Configuration (Legacy)</b></summary>
+
+```json
+{
+  "favorites": [
+    { "name": "Seattle Storm", "id": "18", "abbr": "SEA" },
+    { "name": "Las Vegas Aces", "id": "26", "abbr": "LVA" }
+  ],
+  "timezone": "America/Los_Angeles"
+}
+```
+*Automatically migrated to multi-sport format when NHL is enabled*
+</details>
+
+<details>
+<summary><b>🏒🏀 Multi-Sport Configuration</b></summary>
+
+```json
+{
+  "sports": [
+    {
+      "sport": "wnba",
+      "enabled": true,
+      "priority": 1,
+      "favorites": [
+        { "name": "Seattle Storm", "id": "18", "abbr": "SEA" }
+      ]
+    },
+    {
+      "sport": "nhl", 
+      "enabled": true,
+      "priority": 2,
+      "favorites": [
+        { "name": "Seattle Kraken", "id": "55", "abbr": "SEA" }
+      ]
+    }
+  ],
+  "sport_priority": {
+    "conflict_resolution": "priority",
+    "live_game_boost": true,
+    "favorite_team_boost": true,
+    "close_game_boost": true
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>🌐 Environment Variable Control</b></summary>
+
+```bash
+# Multi-sport mode control
+MULTI_SPORT_MODE=true           # Enable multi-sport mode
+LEGACY_MODE=false               # Force single-sport legacy mode
+
+# Sport enablement
+ENABLE_WNBA=true               # Enable/disable WNBA
+ENABLE_NHL=true                # Enable/disable NHL
+
+# Priority configuration  
+SPORT_PRIORITIES=wnba,nhl      # Priority order (comma-separated)
+LIVE_GAME_BOOST=true           # Boost live games
+FAVORITE_TEAM_BOOST=true       # Boost favorite teams
+CLOSE_GAME_BOOST=true          # Boost close games
+CONFLICT_RESOLUTION=priority   # priority|live_first|manual
+
+# NHL API settings
+NHL_CACHE_TTL=300              # NHL API cache duration
+NHL_CIRCUIT_FAILURE_THRESHOLD=3 # Failures before circuit breaker opens
+```
+</details>
+
+### 📱 **Web Admin Multi-Sport Interface**
+
+The web admin now includes a **Multi-Sport tab** with comprehensive sport management:
+
+- 🏀🏒 **Sport Toggle Cards** - Enable/disable WNBA, NHL with visual priority ordering
+- ⭐ **Favorite Team Management** - Per-sport team selection with conference/division grouping
+- 🎯 **Live Game Monitor** - Real-time view of active games across all sports
+- 🔄 **Manual Override** - Force specific games with timed overrides
+- ⚙️ **Priority Configuration** - Visual settings for conflict resolution rules
+- 📊 **Game Selection Explanation** - Clear reasoning for why specific games are chosen
+
+## ⚽ **Future Sports Support**
+
+The architecture is designed for easy expansion to additional sports:
+
+<table>
+<tr>
+<td width="50%">
+
+**🏀 Basketball Sports**
+- ✅ **WNBA** - Live support
+- 📅 **NBA** - Architecture ready
+- 📅 **College Basketball** - Architecture ready
+
+**🏒 Hockey Sports** 
+- ✅ **NHL** - Live support
+- 📅 **International Hockey** - Architecture ready
+
+</td>
+<td width="50%">
+
+**⚾ Baseball Sports**
+- 📅 **MLB** - Architecture ready
+- 📅 **College Baseball** - Architecture ready
+
+**🏈 Football Sports**
+- 📅 **NFL** - Architecture ready  
+- 📅 **College Football** - Architecture ready
+
+</td>
+</tr>
+</table>
+
+> 🔮 **Coming Soon:** NBA, MLB, and NFL support using the same multi-sport architecture
+
+---
+
+## 🔧⚡ Hardware Setup
+
+### 📦 **Required Hardware**
+- **Raspberry Pi 3B+** or newer with Raspbian OS
+- **RGB LED Matrix** (64x32 recommended, configurable)
+- **RGB Matrix HAT** (Adafruit HAT or compatible)
+- **5V Power Supply** (3A+ recommended for larger displays)
+
+### 🛠️ **Installation Commands**
+
+```bash
+# Install RGB matrix Python bindings
+bash scripts/install_rgbmatrix.sh
+
+# Test your hardware configuration
+bash scripts/hardware_self_test.sh
+
+# Test with custom settings
+bash scripts/hardware_self_test.sh --rows 32 --cols 64 --brightness 60
+```
+
+> ⚡ **Note:** All hardware commands require `sudo -E` for GPIO access
+
+---
+
+## 🎨 Team Assets & Logos
+
+### 🏀 **WNBA Assets**
+
+```bash
+# Fetch WNBA teams, logos, and colors from ESPN
+source .venv/bin/activate  
+python scripts/fetch_wnba_assets.py
+```
+
+### 🏒 **NHL Assets**
+
+```bash
+# Fetch NHL teams, logos, and colors from NHL API
+source .venv/bin/activate
+python scripts/fetch_nhl_assets.py
+```
+
+**Generated Assets for Each Sport:**
+- 📁 `assets/{sport}_teams.json` - Team data (IDs, names, colors, logo paths)
+- 🖼️ `assets/{sport}_logos/{id}.png` - Original high-res logos  
+- 🔍 `assets/{sport}_logos/variants/{id}_mini.png` - Small logos (~10px tall)
+- 📏 `assets/{sport}_logos/variants/{id}_banner.png` - Banner logos (~20px tall)
+
+### 🔍 **Asset Verification**
+
+```bash
+# Check WNBA assets
+python scripts/check_assets.py
+
+# Verify what was generated
+ls -la assets/*teams.json assets/*/logos/ assets/*/logos/variants/
+```
+
+> 💡 **Missing logos?** The display gracefully falls back to outlined boxes for any missing team assets.
+
+---
+
+## ⚙️ Configuration Management
+
+### 📁 **Configuration Files**
+
+| File | Purpose | Format |
+|------|---------|--------|
+| `config/favorites.json` | **Primary config** - Legacy single-sport format | Required |
+| `config/multi-sport-example.json` | **Multi-sport template** - Example configuration | Template |
+| `.env` | **Environment overrides** - Runtime settings | Optional |
+
+### 🔧 **Configuration Examples**
+
+<details>
+<summary><b>🏀 Legacy Format (Backward Compatible)</b></summary>
+
+```json
+{
+  "favorites": [
+    { "name": "Seattle Storm", "id": "18", "abbr": "SEA" },
+    { "name": "Minnesota Lynx", "abbr": "MIN" },
+    { "name": "Chicago Sky", "abbr": "CHI" }
+  ],
+  "timezone": "America/Los_Angeles",
+  "matrix": {
+    "width": 64,
+    "height": 32,
+    "brightness": 80
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>🏒🏀 Multi-Sport Format (Recommended)</b></summary>
+
+```json
+{
+  "sports": [
+    {
+      "sport": "wnba",
+      "enabled": true,
+      "priority": 1,
+      "favorites": [
+        { "name": "Seattle Storm", "id": "18", "abbr": "SEA" },
+        { "name": "Las Vegas Aces", "id": "26", "abbr": "LVA" }
+      ]
+    },
+    {
+      "sport": "nhl",
+      "enabled": true, 
+      "priority": 2,
+      "favorites": [
+        { "name": "Seattle Kraken", "id": "55", "abbr": "SEA" },
+        { "name": "Vegas Golden Knights", "id": "54", "abbr": "VGK" }
+      ]
+    }
+  ],
+  "sport_priority": {
+    "conflict_resolution": "priority",
+    "live_game_boost": true,
+    "favorite_team_boost": true,
+    "close_game_boost": true,
+    "playoff_boost": true
+  }
+}
+```
+</details>
+
+### 🌐 **Environment Variables**
+
+<details>
+<summary><b>🖥️ Display Settings</b></summary>
+
+```bash
+# Matrix hardware (.env)
+MATRIX_WIDTH=64
+MATRIX_HEIGHT=32
+MATRIX_BRIGHTNESS=80
+LIVE_LAYOUT=stacked         # or "big-logos"
+LOGO_VARIANT=mini          # or "banner"
+```
+</details>
+
+<details>
+<summary><b>🏒🏀 Multi-Sport Settings</b></summary>
+
+```bash
+# Mode control
+MULTI_SPORT_MODE=true       # Enable multi-sport support
+LEGACY_MODE=false           # Force legacy single-sport mode
+
+# Sport enablement
+ENABLE_WNBA=true           # Enable WNBA games
+ENABLE_NHL=false           # Enable NHL games
+
+# Priority rules
+SPORT_PRIORITIES=wnba,nhl  # Priority order (comma-separated)
+LIVE_GAME_BOOST=true       # Boost live games
+FAVORITE_TEAM_BOOST=true   # Boost favorite team games
+CLOSE_GAME_BOOST=true      # Boost close games
+CONFLICT_RESOLUTION=priority # priority|live_first|manual
+```
+</details>
+
+<details>
+<summary><b>🌐 Network Resilience</b></summary>
+
+```bash
+# WNBA/ESPN API resilience
+ESPN_CACHE_TTL=300                    # Cache duration (5 min)
+ESPN_CIRCUIT_FAILURE_THRESHOLD=3     # Failures before circuit opens
+ESPN_MAX_FALLBACK_AGE_MINUTES=30     # Emergency fallback age limit
+
+# NHL API resilience  
+NHL_CACHE_TTL=300                     # NHL cache duration (5 min)
+NHL_CIRCUIT_FAILURE_THRESHOLD=3      # NHL failures before circuit opens
+NHL_MAX_FALLBACK_AGE_MINUTES=30      # NHL emergency fallback age limit
+
+# General network settings
+HTTP_TIMEOUT=10                       # Request timeout (seconds)
+```
+</details>
+
+---
+
+## 📁 Project Architecture
+
+```
+wnba-led-scoreboard/
+├── 🐍 app.py                    # Main multi-sport scoreboard application
+├── 📁 src/                      # Python source code
+│   ├── config/                  # Configuration management (legacy + multi-sport)
+│   ├── data/                    # API clients with resilience (ESPN, enhanced)
+│   ├── model/                   # Data models (legacy + sport-agnostic)
+│   ├── sports/                  # 🆕 Multi-sport architecture
+│   │   ├── base.py             # Sport abstraction layer
+│   │   ├── aggregator.py       # Multi-sport priority resolution
+│   │   ├── wnba.py             # WNBA client adapter
+│   │   └── nhl.py              # NHL client implementation
+│   ├── render/                  # LED display rendering (sport-aware)
+│   ├── runtime/                 # Adaptive refresh, hot-reload  
+│   └── select/                  # Game selection logic
+├── 🌐 web-admin/                # Next.js admin interface
+│   ├── src/components/
+│   │   ├── sports/             # 🆕 Multi-sport UI components
+│   │   ├── ui/                 # Reusable component library
+│   │   └── layout/             # Application layout
+│   ├── src/pages/
+│   │   ├── api/                # API endpoints (including multi-sport)
+│   │   └── device/[id].tsx     # 🆕 Device management with Multi-Sport tab
+│   └── src/lib/                # Utilities and Supabase client
+├── ⚙️ config/                   # Configuration files
+│   ├── favorites.json          # Legacy single-sport config
+│   └── multi-sport-example.json # 🆕 Multi-sport template
+├── 🎨 assets/                   # Team assets (organized by sport)
+│   ├── teams.json              # WNBA teams (legacy location)
+│   ├── wnba_teams.json         # 🆕 WNBA teams (new location)
+│   ├── nhl_teams.json          # 🆕 NHL teams
+│   └── {sport}_logos/          # 🆕 Sport-specific logo directories
+├── 🗄️ supabase/                 # Database schema and functions
+│   └── migrations/
+│       └── *_multi_sport_support.sql # 🆕 Multi-sport database schema
+└── 🔧 scripts/                  # Setup and maintenance scripts
+    ├── fetch_wnba_assets.py    # WNBA asset fetcher
+    └── fetch_nhl_assets.py     # 🆕 NHL asset fetcher
+```
+
+---
+
+## 🛡️ Advanced Features
 The system includes comprehensive reliability improvements to ensure consistent operation even when network conditions are poor:
 
 Network Resilience
