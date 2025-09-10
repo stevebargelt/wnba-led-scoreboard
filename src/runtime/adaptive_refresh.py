@@ -199,8 +199,17 @@ class AdaptiveRefreshManager:
         """Estimate hours since game ended (rough approximation)."""
         # This is approximate - we don't have exact end time
         # Assume game lasted about 2.5 hours from start
-        estimated_end = snapshot.start_time_local.replace(tzinfo=current_time.tzinfo) + \
-                       timedelta(hours=2.5)
+        
+        # Handle both naive and timezone-aware start_time_local
+        start_time = snapshot.start_time_local
+        if start_time.tzinfo is None:
+            # If start_time is naive, assume it's in the same timezone as current_time
+            start_time = start_time.replace(tzinfo=current_time.tzinfo)
+        elif current_time.tzinfo is not None:
+            # If both are timezone-aware, convert start_time to current_time's timezone
+            start_time = start_time.astimezone(current_time.tzinfo)
+        
+        estimated_end = start_time + timedelta(hours=2.5)
         delta = current_time - estimated_end
         return max(0, delta.total_seconds() / 3600)
     
