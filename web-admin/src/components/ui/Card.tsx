@@ -21,13 +21,7 @@ const shadowVariants = {
   lg: 'shadow-lg',
 }
 
-export function Card({
-  padding = 'md',
-  shadow = 'md',
-  children,
-  className,
-  ...props
-}: CardProps) {
+export function Card({ padding = 'md', shadow = 'md', children, className, ...props }: CardProps) {
   return (
     <div
       className={clsx(

@@ -12,7 +12,7 @@ describe('Button Component', () => {
 
   it('renders different variants correctly', () => {
     const variants = ['primary', 'secondary', 'ghost', 'warning'] as const
-    
+
     variants.forEach(variant => {
       const { rerender } = render(<Button variant={variant}>Test</Button>)
       const button = screen.getByRole('button')
@@ -23,7 +23,7 @@ describe('Button Component', () => {
 
   it('renders different sizes correctly', () => {
     const sizes = ['sm', 'md', 'lg'] as const
-    
+
     sizes.forEach(size => {
       const { rerender } = render(<Button size={size}>Test</Button>)
       const button = screen.getByRole('button')
@@ -35,10 +35,10 @@ describe('Button Component', () => {
   it('handles click events', () => {
     const handleClick = jest.fn()
     render(<Button onClick={handleClick}>Click me</Button>)
-    
+
     const button = screen.getByRole('button')
     fireEvent.click(button)
-    
+
     expect(handleClick).toHaveBeenCalledTimes(1)
   })
 
@@ -60,13 +60,13 @@ describe('Button Component', () => {
   it('renders with left and right icons', () => {
     const LeftIcon = <span data-testid="left-icon">←</span>
     const RightIcon = <span data-testid="right-icon">→</span>
-    
+
     render(
       <Button leftIcon={LeftIcon} rightIcon={RightIcon}>
         With Icons
       </Button>
     )
-    
+
     expect(screen.getByTestId('left-icon')).toBeInTheDocument()
     expect(screen.getByTestId('right-icon')).toBeInTheDocument()
     expect(screen.getByText('With Icons')).toBeInTheDocument()
@@ -79,7 +79,11 @@ describe('Button Component', () => {
   })
 
   it('forwards additional props to button element', () => {
-    render(<Button data-testid="custom-button" aria-label="Custom button">Test</Button>)
+    render(
+      <Button data-testid="custom-button" aria-label="Custom button">
+        Test
+      </Button>
+    )
     const button = screen.getByTestId('custom-button')
     expect(button).toHaveAttribute('aria-label', 'Custom button')
   })

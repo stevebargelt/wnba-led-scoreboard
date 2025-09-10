@@ -10,7 +10,7 @@ describe('Badge Component', () => {
 
   it('renders different variants correctly', () => {
     const variants = ['default', 'success', 'warning', 'error', 'info'] as const
-    
+
     variants.forEach(variant => {
       const { rerender } = render(<Badge variant={variant}>Test</Badge>)
       expect(screen.getByText('Test')).toBeInTheDocument()
@@ -20,7 +20,7 @@ describe('Badge Component', () => {
 
   it('renders different sizes correctly', () => {
     const sizes = ['sm', 'md', 'lg'] as const
-    
+
     sizes.forEach(size => {
       const { rerender } = render(<Badge size={size}>Test</Badge>)
       expect(screen.getByText('Test')).toBeInTheDocument()

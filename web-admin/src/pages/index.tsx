@@ -53,7 +53,7 @@ export default function Home() {
       .single()
     if (error) setMessage(error.message)
     else {
-      setDevices((prev) => [...prev, { id: data!.id, name: data!.name, last_seen_ts: null }])
+      setDevices(prev => [...prev, { id: data!.id, name: data!.name, last_seen_ts: null }])
       setNewDeviceName('')
       setMessage('Device created. Open it and mint a token from its page.')
     }
@@ -75,7 +75,11 @@ export default function Home() {
       setMessage('Email and password required')
       return
     }
-    const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } })
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: window.location.origin },
+    })
     if (error) setMessage(error.message)
     else setMessage('Sign-up complete. Check your email for confirmation (if required).')
   }
@@ -92,9 +96,7 @@ export default function Home() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-center">
-              WNBA LED Web Admin
-            </CardTitle>
+            <CardTitle className="text-center">WNBA LED Web Admin</CardTitle>
             <p className="text-center text-gray-600 dark:text-gray-400 mt-2">
               Sign in to manage your LED scoreboards
             </p>
@@ -106,7 +108,7 @@ export default function Home() {
               type="email"
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={e => setEmail(e.target.value)}
               leftIcon={<UserIcon className="h-4 w-4" />}
             />
             <Input
@@ -114,9 +116,9 @@ export default function Home() {
               type="password"
               placeholder="••••••••"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={e => setPassword(e.target.value)}
             />
-            
+
             <div className="flex space-x-2">
               <Button onClick={signIn} loading={loading} className="flex-1">
                 Sign In
@@ -125,11 +127,9 @@ export default function Home() {
                 Sign Up
               </Button>
             </div>
-            
+
             {message && (
-              <p className="text-sm text-center text-red-600 dark:text-red-400">
-                {message}
-              </p>
+              <p className="text-sm text-center text-red-600 dark:text-red-400">{message}</p>
             )}
           </div>
         </Card>
@@ -143,18 +143,14 @@ export default function Home() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Dashboard
-            </h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
             <p className="text-gray-600 dark:text-gray-400">
               Manage your LED scoreboards and devices
             </p>
           </div>
           <div className="flex space-x-3">
             <Link href="/register">
-              <Button leftIcon={<PlusIcon className="h-4 w-4" />}>
-                Add Device
-              </Button>
+              <Button leftIcon={<PlusIcon className="h-4 w-4" />}>Add Device</Button>
             </Link>
             <Button variant="secondary" onClick={() => supabase.auth.signOut()}>
               Sign Out
@@ -171,18 +167,14 @@ export default function Home() {
             <Input
               placeholder="Device name (e.g., Living Room Display)"
               value={newDeviceName}
-              onChange={(e) => setNewDeviceName(e.target.value)}
+              onChange={e => setNewDeviceName(e.target.value)}
               className="flex-1"
             />
             <Button onClick={createDevice} loading={loading}>
               Create Device
             </Button>
           </div>
-          {message && (
-            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-              {message}
-            </p>
-          )}
+          {message && <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p>}
         </Card>
 
         {/* Devices list */}
@@ -190,7 +182,7 @@ export default function Home() {
           <CardHeader>
             <CardTitle>Your Devices ({devices.length})</CardTitle>
           </CardHeader>
-          
+
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
@@ -204,8 +196,11 @@ export default function Home() {
             </div>
           ) : (
             <div className="space-y-3">
-              {devices.map((device) => (
-                <div key={device.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              {devices.map(device => (
+                <div
+                  key={device.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                >
                   <div className="flex items-center space-x-3">
                     <div>
                       <Link href={`/device/${device.id}`}>
@@ -214,10 +209,10 @@ export default function Home() {
                         </span>
                       </Link>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Last seen: {device.last_seen_ts 
+                        Last seen:{' '}
+                        {device.last_seen_ts
                           ? new Date(device.last_seen_ts).toLocaleString()
-                          : 'Never'
-                        }
+                          : 'Never'}
                       </p>
                     </div>
                   </div>

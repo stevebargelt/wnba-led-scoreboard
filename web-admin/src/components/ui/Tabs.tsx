@@ -19,9 +19,7 @@ export function Tabs({ children, defaultValue, className }: TabsProps) {
 
   return (
     <TabsContext.Provider value={{ activeTab, setActiveTab }}>
-      <div className={clsx('w-full', className)}>
-        {children}
-      </div>
+      <div className={clsx('w-full', className)}>{children}</div>
     </TabsContext.Provider>
   )
 }
@@ -33,10 +31,7 @@ interface TabsListProps {
 
 export function TabsList({ children, className }: TabsListProps) {
   return (
-    <div className={clsx(
-      'flex space-x-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1',
-      className
-    )}>
+    <div className={clsx('flex space-x-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1', className)}>
       {children}
     </div>
   )

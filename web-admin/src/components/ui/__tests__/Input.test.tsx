@@ -41,12 +41,12 @@ describe('Input Component', () => {
   it('handles user input correctly', async () => {
     const user = userEvent.setup()
     const handleChange = jest.fn()
-    
+
     render(<Input onChange={handleChange} />)
     const input = screen.getByRole('textbox')
-    
+
     await user.type(input, 'test value')
-    
+
     expect(handleChange).toHaveBeenCalled()
     expect(input).toHaveValue('test value')
   })
@@ -72,7 +72,7 @@ describe('Input Component', () => {
   it('sets correct accessibility attributes', () => {
     render(<Input label="Email" error="Invalid email" id="email-input" />)
     const input = screen.getByRole('textbox')
-    
+
     expect(input).toHaveAttribute('id', 'email-input')
     expect(input).toHaveAttribute('aria-describedby', 'email-input-error')
     expect(input).toHaveAttribute('aria-invalid', 'true')
@@ -81,7 +81,7 @@ describe('Input Component', () => {
   it('forwards additional input props', () => {
     render(<Input type="email" placeholder="Enter email" disabled />)
     const input = screen.getByRole('textbox')
-    
+
     expect(input).toHaveAttribute('type', 'email')
     expect(input).toHaveAttribute('placeholder', 'Enter email')
     expect(input).toBeDisabled()

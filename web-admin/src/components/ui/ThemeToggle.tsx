@@ -38,7 +38,7 @@ export function ThemeToggle() {
 
 export function ThemeToggleButton() {
   const { theme, setTheme, resolvedTheme } = useTheme()
-  
+
   const cycleTheme = () => {
     const themes = ['light', 'dark', 'system'] as const
     const currentIndex = themes.indexOf(theme)

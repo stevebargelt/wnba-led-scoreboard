@@ -98,6 +98,7 @@ npm run test:coverage
 ### Test Coverage
 
 The project maintains high test coverage with the following targets:
+
 - **Branches**: 80%
 - **Functions**: 80%
 - **Lines**: 80%
@@ -327,6 +328,7 @@ The application supports comprehensive device configuration:
 ### Common Issues
 
 **Build Failures**
+
 ```bash
 # Clear Next.js cache
 rm -rf .next
@@ -334,11 +336,13 @@ npm run build
 ```
 
 **Environment Variables**
+
 - Ensure all required environment variables are set
 - Check Supabase project URL and API keys
 - Verify Edge Function URLs are correct
 
 **Database Connection Issues**
+
 - Verify Supabase project is active
 - Check RLS policies are properly configured
 - Ensure user has proper permissions

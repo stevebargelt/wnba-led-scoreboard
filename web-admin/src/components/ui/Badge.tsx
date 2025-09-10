@@ -53,10 +53,7 @@ export function Badge({
     >
       {dot && (
         <span
-          className={clsx(
-            'w-1.5 h-1.5 rounded-full mr-1.5',
-            dotColors[variant]
-          )}
+          className={clsx('w-1.5 h-1.5 rounded-full mr-1.5', dotColors[variant])}
           aria-hidden="true"
         />
       )}
@@ -66,13 +63,12 @@ export function Badge({
 }
 
 // Status Badge Components for common use cases
-export function StatusBadge({ online, ...props }: { online: boolean } & Omit<BadgeProps, 'variant' | 'dot' | 'children'>) {
+export function StatusBadge({
+  online,
+  ...props
+}: { online: boolean } & Omit<BadgeProps, 'variant' | 'dot' | 'children'>) {
   return (
-    <Badge
-      variant={online ? 'success' : 'default'}
-      dot
-      {...props}
-    >
+    <Badge variant={online ? 'success' : 'default'} dot {...props}>
       {online ? 'online' : 'offline'}
     </Badge>
   )

@@ -12,6 +12,5 @@ export const WNBATEAMS: Team[] = [
   { name: 'New York Liberty', abbr: 'NYL' },
   { name: 'Phoenix Mercury', abbr: 'PHX' },
   { name: 'Seattle Storm', abbr: 'SEA' },
-  { name: 'Washington Mystics', abbr: 'WAS' }
+  { name: 'Washington Mystics', abbr: 'WAS' },
 ]
-

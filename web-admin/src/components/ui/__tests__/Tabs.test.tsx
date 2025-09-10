@@ -25,10 +25,10 @@ describe('Tabs Components', () => {
 
     it('sets default active tab correctly', () => {
       render(<TestTabsComponent />)
-      
+
       const tab1 = screen.getByRole('tab', { name: 'Tab 1' })
       const tab2 = screen.getByRole('tab', { name: 'Tab 2' })
-      
+
       expect(tab1).toHaveAttribute('aria-selected', 'true')
       expect(tab2).toHaveAttribute('aria-selected', 'false')
       expect(screen.getByText('Content 1')).toBeInTheDocument()
@@ -38,10 +38,10 @@ describe('Tabs Components', () => {
     it('switches tabs when clicked', async () => {
       const user = userEvent.setup()
       render(<TestTabsComponent />)
-      
+
       const tab2 = screen.getByRole('tab', { name: 'Tab 2' })
       await user.click(tab2)
-      
+
       expect(tab2).toHaveAttribute('aria-selected', 'true')
       expect(screen.getByText('Content 2')).toBeInTheDocument()
       expect(screen.queryByText('Content 1')).not.toBeInTheDocument()
@@ -53,7 +53,7 @@ describe('Tabs Components', () => {
           <div>Test</div>
         </Tabs>
       )
-      
+
       const tabsContainer = screen.getByText('Test').parentElement
       expect(tabsContainer).toHaveClass('custom-tabs')
     })
@@ -68,7 +68,7 @@ describe('Tabs Components', () => {
           </TabsList>
         </Tabs>
       )
-      
+
       expect(screen.getByRole('tab', { name: 'Test Tab' })).toBeInTheDocument()
     })
 
@@ -80,7 +80,7 @@ describe('Tabs Components', () => {
           </TabsList>
         </Tabs>
       )
-      
+
       const tabsList = screen.getByRole('tab').parentElement
       expect(tabsList).toHaveClass('custom-tabs-list')
     })
@@ -89,9 +89,9 @@ describe('Tabs Components', () => {
   describe('TabsTrigger', () => {
     it('has correct accessibility attributes', () => {
       render(<TestTabsComponent />)
-      
+
       const tab1 = screen.getByRole('tab', { name: 'Tab 1' })
-      
+
       expect(tab1).toHaveAttribute('role', 'tab')
       expect(tab1).toHaveAttribute('aria-selected', 'true')
       expect(tab1).toHaveAttribute('aria-controls', 'tabpanel-tab1')
@@ -100,24 +100,24 @@ describe('Tabs Components', () => {
 
     it('handles keyboard navigation', () => {
       render(<TestTabsComponent />)
-      
+
       const tab1 = screen.getByRole('tab', { name: 'Tab 1' })
       tab1.focus()
-      
+
       // Tab should be focusable
       expect(tab1).toHaveFocus()
     })
 
     it('applies correct styling for active and inactive states', () => {
       render(<TestTabsComponent />)
-      
+
       const activeTab = screen.getByRole('tab', { name: 'Tab 1' })
       const inactiveTab = screen.getByRole('tab', { name: 'Tab 2' })
-      
+
       // Active tab should have specific classes
       expect(activeTab).toHaveClass('bg-white')
       expect(activeTab).toHaveClass('text-gray-900')
-      
+
       // Inactive tab should have different classes
       expect(inactiveTab).toHaveClass('text-gray-600')
     })
@@ -132,7 +132,7 @@ describe('Tabs Components', () => {
           </TabsList>
         </Tabs>
       )
-      
+
       const trigger = screen.getByRole('tab')
       expect(trigger).toHaveClass('custom-trigger')
     })
@@ -141,16 +141,16 @@ describe('Tabs Components', () => {
   describe('TabsContent', () => {
     it('shows content when tab is active', () => {
       render(<TestTabsComponent />)
-      
+
       expect(screen.getByText('Content 1')).toBeInTheDocument()
       expect(screen.queryByText('Content 2')).not.toBeInTheDocument()
     })
 
     it('has correct accessibility attributes', () => {
       render(<TestTabsComponent />)
-      
+
       const content1 = screen.getByText('Content 1')
-      
+
       expect(content1).toHaveAttribute('role', 'tabpanel')
       expect(content1).toHaveAttribute('aria-labelledby', 'tab-tab1')
       expect(content1).toHaveAttribute('id', 'tabpanel-tab1')
@@ -164,7 +164,7 @@ describe('Tabs Components', () => {
           </TabsContent>
         </Tabs>
       )
-      
+
       const content = screen.getByText('Test Content')
       expect(content).toHaveClass('custom-content')
     })

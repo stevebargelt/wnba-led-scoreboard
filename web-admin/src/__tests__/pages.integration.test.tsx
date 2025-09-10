@@ -5,9 +5,7 @@ import Home from '../pages/index'
 import Register from '../pages/register'
 
 const Providers = ({ children }: { children: React.ReactNode }) => (
-  <ThemeProvider>
-    {children}
-  </ThemeProvider>
+  <ThemeProvider>{children}</ThemeProvider>
 )
 
 // Mock fetch for API calls
@@ -25,7 +23,7 @@ describe('Page Integration Tests', () => {
           <Home />
         </Providers>
       )
-      
+
       await waitFor(() => {
         expect(screen.getByText('WNBA LED Scoreboard')).toBeInTheDocument()
       })
@@ -37,7 +35,7 @@ describe('Page Integration Tests', () => {
           <Home />
         </Providers>
       )
-      
+
       await waitFor(() => {
         expect(screen.getByRole('button', { name: /toggle theme/i })).toBeInTheDocument()
       })
@@ -49,7 +47,7 @@ describe('Page Integration Tests', () => {
           <Home />
         </Providers>
       )
-      
+
       await waitFor(() => {
         expect(screen.getByText(/register a new device/i)).toBeInTheDocument()
       })
@@ -63,7 +61,7 @@ describe('Page Integration Tests', () => {
           <Register />
         </Providers>
       )
-      
+
       await waitFor(() => {
         expect(screen.getByText('Register New Device')).toBeInTheDocument()
       })
@@ -75,7 +73,7 @@ describe('Page Integration Tests', () => {
           <Register />
         </Providers>
       )
-      
+
       await waitFor(() => {
         expect(screen.getByLabelText(/device name/i)).toBeInTheDocument()
         expect(screen.getByRole('button', { name: /register device/i })).toBeInTheDocument()
@@ -90,7 +88,7 @@ describe('Page Integration Tests', () => {
           <Home />
         </Providers>
       )
-      
+
       // Theme toggle should be present and functional
       const themeToggle = await screen.findByRole('button', { name: /toggle theme/i })
       expect(themeToggle).toBeInTheDocument()
@@ -104,16 +102,16 @@ describe('Page Integration Tests', () => {
           <Home />
         </Providers>
       )
-      
+
       // Check for navigation elements
       expect(screen.getByRole('banner')).toBeInTheDocument()
-      
+
       rerender(
         <Providers>
           <Register />
         </Providers>
       )
-      
+
       // Layout should persist across page changes
       expect(screen.getByRole('banner')).toBeInTheDocument()
     })

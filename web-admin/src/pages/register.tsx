@@ -18,53 +18,53 @@ export default function RegisterDevice() {
   const submit = async () => {
     setLoading(true)
     setMessage('')
-    if (!name.trim()) { 
+    if (!name.trim()) {
       setMessage('Enter a device name')
       setLoading(false)
-      return 
+      return
     }
-    
+
     try {
       const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) { 
+      if (!userData.user) {
         setMessage('Sign in first')
         setLoading(false)
-        return 
+        return
       }
-      
+
       const { data, error } = await supabase
         .from('devices')
         .insert({ name, owner_user_id: userData.user.id })
         .select('id')
         .single()
-      
-      if (error) { 
+
+      if (error) {
         setMessage(error.message)
         setLoading(false)
-        return 
+        return
       }
-      
+
       setDeviceId(data!.id)
-      
+
       // Mint token
       const { data: sess } = await supabase.auth.getSession()
       const jwt = sess.session?.access_token
-      if (!jwt) { 
+      if (!jwt) {
         setMessage('No session')
         setLoading(false)
-        return 
+        return
       }
-      
+
       const resp = await fetch(FN_MINT, {
-        method: 'POST', 
-        headers: { 
-          'Content-Type': 'application/json', 
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, 
-          Authorization: `Bearer ${jwt}` 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${jwt}`,
         },
-        body: JSON.stringify({ device_id: data!.id, ttl_days: 30 })
+        body: JSON.stringify({ device_id: data!.id, ttl_days: 30 }),
       })
-      
+
       const body = await resp.json()
       if (resp.ok && body.token) {
         setToken(body.token)
@@ -79,18 +79,21 @@ export default function RegisterDevice() {
     }
   }
 
-  const envSnippet = deviceId && token ? `# /etc/wnba-led-agent.env
+  const envSnippet =
+    deviceId && token
+      ? `# /etc/wnba-led-agent.env
 SUPABASE_URL=${process.env.NEXT_PUBLIC_SUPABASE_URL}
 SUPABASE_ANON_KEY=${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}
 DEVICE_ID=${deviceId}
 DEVICE_TOKEN=${token}
 CONFIG_PATH=/home/pi/wnba-led-scoreboard/config/favorites.json
-SCOREBOARD_SERVICE=wnba-led.service` : ''
+SCOREBOARD_SERVICE=wnba-led.service`
+      : ''
 
   const copyText = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text)
-      setCopied(`${label} copied!`) 
+      setCopied(`${label} copied!`)
       setTimeout(() => setCopied(''), 2000)
     } catch (e) {
       setCopied(`Failed to copy ${label}`)
@@ -126,26 +129,28 @@ SCOREBOARD_SERVICE=wnba-led.service` : ''
               Device Information
             </CardTitle>
           </CardHeader>
-          
+
           <div className="space-y-4">
             <Input
               label="Device Name"
               placeholder="e.g., Living Room Display, Kitchen Scoreboard"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={e => setName(e.target.value)}
               helperText="Choose a descriptive name to identify this device"
             />
-            
+
             <Button onClick={submit} loading={loading} disabled={!name.trim()}>
               Create Device & Generate Token
             </Button>
-            
+
             {message && (
-              <div className={`p-3 rounded-md text-sm ${
-                message.includes('successfully') 
-                  ? 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300'
-                  : 'bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300'
-              }`}>
+              <div
+                className={`p-3 rounded-md text-sm ${
+                  message.includes('successfully')
+                    ? 'bg-green-50 text-green-700 dark:bg-green-900 dark:text-green-300'
+                    : 'bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300'
+                }`}
+              >
                 {message}
               </div>
             )}
@@ -158,7 +163,7 @@ SCOREBOARD_SERVICE=wnba-led.service` : ''
             <CardHeader>
               <CardTitle>Device Configuration</CardTitle>
             </CardHeader>
-            
+
             <div className="space-y-6">
               {/* Device ID */}
               <div>
@@ -210,7 +215,11 @@ SCOREBOARD_SERVICE=wnba-led.service` : ''
                       Raspberry Pi Environment File
                     </label>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                      Save this configuration as <code className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">/etc/wnba-led-agent.env</code> on your Raspberry Pi
+                      Save this configuration as{' '}
+                      <code className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">
+                        /etc/wnba-led-agent.env
+                      </code>{' '}
+                      on your Raspberry Pi
                     </p>
                     <div className="relative">
                       <pre className="bg-gray-100 dark:bg-gray-700 p-4 rounded-md text-sm overflow-x-auto border border-gray-300 dark:border-gray-600">
@@ -235,9 +244,21 @@ SCOREBOARD_SERVICE=wnba-led.service` : ''
                     </h4>
                     <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-decimal list-inside">
                       <li>Copy the environment configuration to your Raspberry Pi</li>
-                      <li>Save it as <code className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 rounded">/etc/wnba-led-agent.env</code></li>
-                      <li>Restart the agent service: <code className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 rounded">sudo systemctl restart wnba-led-agent.service</code></li>
-                      <li>Your device should appear online in the dashboard within a few seconds</li>
+                      <li>
+                        Save it as{' '}
+                        <code className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 rounded">
+                          /etc/wnba-led-agent.env
+                        </code>
+                      </li>
+                      <li>
+                        Restart the agent service:{' '}
+                        <code className="px-1 py-0.5 bg-blue-200 dark:bg-blue-800 rounded">
+                          sudo systemctl restart wnba-led-agent.service
+                        </code>
+                      </li>
+                      <li>
+                        Your device should appear online in the dashboard within a few seconds
+                      </li>
                     </ol>
                   </div>
 

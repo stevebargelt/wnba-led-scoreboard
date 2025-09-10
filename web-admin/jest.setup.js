@@ -45,10 +45,10 @@ jest.mock('./src/lib/supabaseClient', () => ({
     auth: {
       getSession: jest.fn().mockResolvedValue({
         data: { session: null },
-        error: null
+        error: null,
       }),
       onAuthStateChange: jest.fn().mockReturnValue({
-        data: { subscription: { unsubscribe: jest.fn() } }
+        data: { subscription: { unsubscribe: jest.fn() } },
       }),
       signInWithPassword: jest.fn(),
       signOut: jest.fn(),
@@ -75,6 +75,8 @@ jest.mock('./src/lib/supabaseClient', () => ({
 // Mock environment variables
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key'
-process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE = 'https://test.supabase.co/functions/v1/on-config-write'
+process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE =
+  'https://test.supabase.co/functions/v1/on-config-write'
 process.env.NEXT_PUBLIC_FUNCTION_ON_ACTION = 'https://test.supabase.co/functions/v1/on-action'
-process.env.NEXT_PUBLIC_FUNCTION_MINT_DEVICE_TOKEN = 'https://test.supabase.co/functions/v1/mint-device-token'
+process.env.NEXT_PUBLIC_FUNCTION_MINT_DEVICE_TOKEN =
+  'https://test.supabase.co/functions/v1/mint-device-token'

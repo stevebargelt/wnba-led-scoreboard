@@ -25,19 +25,26 @@ export function Input({
   return (
     <div className="w-full">
       {label && (
-        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
+        <label
+          htmlFor={inputId}
+          className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1"
+        >
           {label}
-          {props.required && <span className="text-error-500 ml-1" aria-label="required">*</span>}
+          {props.required && (
+            <span className="text-error-500 ml-1" aria-label="required">
+              *
+            </span>
+          )}
         </label>
       )}
-      
+
       <div className="relative">
         {leftIcon && (
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <span className="text-gray-400 text-sm">{leftIcon}</span>
           </div>
         )}
-        
+
         <input
           id={inputId}
           className={clsx(
@@ -61,20 +68,24 @@ export function Input({
           }
           {...props}
         />
-        
+
         {rightIcon && (
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
             <span className="text-gray-400 text-sm">{rightIcon}</span>
           </div>
         )}
       </div>
-      
+
       {error && (
-        <p id={`${inputId}-error`} className="mt-1 text-sm text-error-600 dark:text-error-400" role="alert">
+        <p
+          id={`${inputId}-error`}
+          className="mt-1 text-sm text-error-600 dark:text-error-400"
+          role="alert"
+        >
           {error}
         </p>
       )}
-      
+
       {!error && helperText && (
         <p id={`${inputId}-helper`} className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           {helperText}
