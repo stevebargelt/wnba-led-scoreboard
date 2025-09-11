@@ -10,7 +10,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:ci": "npm run pretest:ci && jest --coverage --watchAll=false",
-    "pretest:ci": "npm install --no-save @next/swc-linux-x64-gnu @next/swc-linux-x64-musl || true",
+    "pretest:ci": "(npm install --no-save @next/swc-linux-x64-gnu || true) && (npm install --no-save @next/swc-linux-x64-musl || true)",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",

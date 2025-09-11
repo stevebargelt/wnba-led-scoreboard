@@ -16,6 +16,8 @@ import {
   TabsTrigger,
   TabsContent,
 } from '../../components/ui'
+import { SportManagement } from '../../components/sports/SportManagement'
+import { LiveGameMonitor } from '../../components/sports/LiveGameMonitor'
 
 const FN_CONFIG = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE!
 const FN_ACTION = process.env.NEXT_PUBLIC_FUNCTION_ON_ACTION!
@@ -402,12 +404,26 @@ export default function DevicePage() {
 
         {/* Tabbed Interface */}
         <Tabs defaultValue="actions" className="w-full">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-5 w-full">
+            <TabsTrigger value="sports">Multi-Sport</TabsTrigger>
             <TabsTrigger value="actions">Device Actions</TabsTrigger>
             <TabsTrigger value="token">Device Token</TabsTrigger>
             <TabsTrigger value="config">Config/Favorites Editor</TabsTrigger>
             <TabsTrigger value="events">Recent Events</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="sports">
+            <div className="space-y-6">
+              <SportManagement deviceId={id as string} />
+              <LiveGameMonitor
+                deviceId={id as string}
+                onGameOverride={async (sport, gameEventId, reason) => {
+                  // This will be handled by the SportManagement component
+                  console.log('Game override requested:', { sport, gameEventId, reason })
+                }}
+              />
+            </div>
+          </TabsContent>
 
           <TabsContent value="actions">
             <Card>

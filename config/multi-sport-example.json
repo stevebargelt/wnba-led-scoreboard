@@ -1,0 +1,53 @@
+{
+  "sports": [
+    {
+      "sport": "wnba",
+      "enabled": true,
+      "priority": 1,
+      "favorites": [
+        { "name": "Seattle Storm", "id": "18", "abbr": "SEA" },
+        { "name": "Las Vegas Aces", "id": "26", "abbr": "LVA" },
+        { "name": "Minnesota Lynx", "abbr": "MIN" }
+      ]
+    },
+    {
+      "sport": "nhl", 
+      "enabled": true,
+      "priority": 2,
+      "favorites": [
+        { "name": "Seattle Kraken", "id": "55", "abbr": "SEA" },
+        { "name": "Vegas Golden Knights", "id": "54", "abbr": "VGK" },
+        { "name": "Minnesota Wild", "id": "30", "abbr": "MIN" }
+      ]
+    }
+  ],
+  "sport_priority": {
+    "conflict_resolution": "priority",
+    "live_game_boost": true,
+    "favorite_team_boost": true,
+    "close_game_boost": true,
+    "playoff_boost": true,
+    "manual_override_duration_minutes": 60,
+    "auto_clear_override_on_game_end": true
+  },
+  "timezone": "America/Los_Angeles",
+  "matrix": {
+    "width": 64,
+    "height": 32,
+    "chain_length": 1,
+    "parallel": 1,
+    "gpio_slowdown": 2,
+    "hardware_mapping": "adafruit-hat",
+    "brightness": 80,
+    "pwm_bits": 11
+  },
+  "refresh": {
+    "pregame_sec": 30,
+    "ingame_sec": 5,
+    "final_sec": 60
+  },
+  "render": {
+    "live_layout": "stacked",
+    "logo_variant": "mini"
+  }
+}
