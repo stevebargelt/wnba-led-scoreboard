@@ -10,41 +10,37 @@ interface ToggleProps {
   className?: string
 }
 
-export function Toggle({ 
-  checked, 
-  onChange, 
-  disabled = false, 
+export function Toggle({
+  checked,
+  onChange,
+  disabled = false,
   size = 'md',
   label,
-  className = '' 
+  className = '',
 }: ToggleProps) {
   const sizeClasses = {
     sm: {
       toggle: 'h-5 w-9',
       thumb: 'h-3 w-3',
-      thumbTranslate: checked ? 'translate-x-5' : 'translate-x-1'
+      thumbTranslate: checked ? 'translate-x-5' : 'translate-x-1',
     },
     md: {
-      toggle: 'h-6 w-11', 
+      toggle: 'h-6 w-11',
       thumb: 'h-4 w-4',
-      thumbTranslate: checked ? 'translate-x-6' : 'translate-x-1'
+      thumbTranslate: checked ? 'translate-x-6' : 'translate-x-1',
     },
     lg: {
       toggle: 'h-7 w-12',
-      thumb: 'h-5 w-5', 
-      thumbTranslate: checked ? 'translate-x-6' : 'translate-x-1'
-    }
+      thumb: 'h-5 w-5',
+      thumbTranslate: checked ? 'translate-x-6' : 'translate-x-1',
+    },
   }
 
   const sizes = sizeClasses[size]
 
   return (
     <div className={clsx('flex items-center', className)}>
-      {label && (
-        <label className="mr-3 text-sm font-medium text-gray-700">
-          {label}
-        </label>
-      )}
+      {label && <label className="mr-3 text-sm font-medium text-gray-700">{label}</label>}
       <button
         type="button"
         disabled={disabled}

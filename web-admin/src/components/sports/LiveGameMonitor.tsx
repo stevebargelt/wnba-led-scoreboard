@@ -33,16 +33,16 @@ interface LiveGameMonitorProps {
 
 const SPORT_ICONS = {
   wnba: '🏀',
-  nhl: '🏒', 
+  nhl: '🏒',
   nba: '🏀',
   mlb: '⚾',
-  nfl: '🏈'
+  nfl: '🏈',
 }
 
 const STATE_COLORS = {
   PRE: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   LIVE: 'bg-red-100 text-red-800 border-red-200',
-  FINAL: 'bg-gray-100 text-gray-800 border-gray-200'
+  FINAL: 'bg-gray-100 text-gray-800 border-gray-200',
 }
 
 export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorProps) {
@@ -73,7 +73,7 @@ export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorPro
           startTime: '2025-09-10T19:00:00Z',
           priorityScore: 1500,
           isSelected: true,
-          selectionReason: 'WNBA priority #1 (LIVE game boost, favorite team)'
+          selectionReason: 'WNBA priority #1 (LIVE game boost, favorite team)',
         },
         {
           sport: 'nhl',
@@ -86,10 +86,10 @@ export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorPro
           startTime: '2025-09-10T19:30:00Z',
           priorityScore: 1200,
           isSelected: false,
-          selectionReason: 'NHL priority #2 (LIVE game boost, favorite team)'
-        }
+          selectionReason: 'NHL priority #2 (LIVE game boost, favorite team)',
+        },
       ]
-      
+
       setLiveGames(mockGames)
     } catch (error) {
       console.error('Error loading live games:', error)
@@ -100,10 +100,14 @@ export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorPro
 
   const handleGameSelect = async (game: LiveGame) => {
     setSelectedGame(game)
-    
+
     if (game.eventId && onGameOverride) {
       try {
-        await onGameOverride(game.sport, game.eventId, overrideReason || 'Manual selection from live monitor')
+        await onGameOverride(
+          game.sport,
+          game.eventId,
+          overrideReason || 'Manual selection from live monitor'
+        )
         setOverrideReason('')
         await loadLiveGames() // Refresh
       } catch (error) {
@@ -144,9 +148,7 @@ export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorPro
                 <Badge variant="default" className="border-blue-300 text-blue-700">
                   {currentGame.sport.toUpperCase()}
                 </Badge>
-                <Badge className={STATE_COLORS[currentGame.state]}>
-                  {currentGame.state}
-                </Badge>
+                <Badge className={STATE_COLORS[currentGame.state]}>{currentGame.state}</Badge>
               </div>
             </div>
 
@@ -155,13 +157,13 @@ export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorPro
                 <div className="font-medium">{currentGame.awayTeam.abbreviation}</div>
                 <div className="text-2xl font-bold">{currentGame.awayTeam.score}</div>
               </div>
-              
+
               <div className="text-center">
                 <div className="text-sm text-gray-600">@</div>
                 <div className="font-medium">{currentGame.period}</div>
                 <div className="text-sm">{currentGame.clock}</div>
               </div>
-              
+
               <div className="text-left">
                 <div className="font-medium">{currentGame.homeTeam.abbreviation}</div>
                 <div className="text-2xl font-bold">{currentGame.homeTeam.score}</div>
@@ -184,7 +186,7 @@ export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorPro
             <h3 className="font-semibold text-gray-900 mb-3">Other Active Games</h3>
             <div className="space-y-2">
               {availableGames.map(game => (
-                <div 
+                <div
                   key={game.eventId}
                   className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
                 >
@@ -192,14 +194,15 @@ export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorPro
                     <span className="text-lg">{SPORT_ICONS[game.sport]}</span>
                     <div>
                       <div className="font-medium">
-                        {game.awayTeam.abbreviation} {game.awayTeam.score} - {game.homeTeam.score} {game.homeTeam.abbreviation}
+                        {game.awayTeam.abbreviation} {game.awayTeam.score} - {game.homeTeam.score}{' '}
+                        {game.homeTeam.abbreviation}
                       </div>
                       <div className="text-sm text-gray-600">
                         {game.period} • {game.clock}
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     <Badge variant="default" className="text-xs">
                       {game.sport.toUpperCase()}
@@ -210,11 +213,7 @@ export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorPro
                     <Badge variant="default" size="sm">
                       Score: {game.priorityScore}
                     </Badge>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleGameSelect(game)}
-                    >
+                    <Button size="sm" variant="secondary" onClick={() => handleGameSelect(game)}>
                       Show This Game
                     </Button>
                   </div>
@@ -234,12 +233,7 @@ export function LiveGameMonitor({ deviceId, onGameOverride }: LiveGameMonitorPro
             <p className="text-sm text-gray-600">
               No games are currently available across enabled sports.
             </p>
-            <Button 
-              size="sm" 
-              variant="secondary" 
-              onClick={loadLiveGames}
-              className="mt-3"
-            >
+            <Button size="sm" variant="secondary" onClick={loadLiveGames} className="mt-3">
               Refresh Games
             </Button>
           </div>

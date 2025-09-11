@@ -414,10 +414,8 @@ export default function DevicePage() {
 
           <TabsContent value="sports">
             <div className="space-y-6">
-              <SportManagement 
-                deviceId={id as string}
-              />
-              <LiveGameMonitor 
+              <SportManagement deviceId={id as string} />
+              <LiveGameMonitor
                 deviceId={id as string}
                 onGameOverride={async (sport, gameEventId, reason) => {
                   // This will be handled by the SportManagement component

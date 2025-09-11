@@ -33,14 +33,14 @@ export function SportManagement({ deviceId }: SportManagementProps) {
     nhl: [],
     nba: [],
     mlb: [],
-    nfl: []
+    nfl: [],
   })
   const [prioritySettings, setPrioritySettings] = useState<PrioritySettings>({
     conflictResolution: 'priority',
     liveGameBoost: true,
     favoriteTeamBoost: true,
     closeGameBoost: true,
-    playoffBoost: true
+    playoffBoost: true,
   })
   const [currentGame, setCurrentGame] = useState<CurrentGame | null>(null)
   const [activeOverride, setActiveOverride] = useState<any>(null)
@@ -55,11 +55,11 @@ export function SportManagement({ deviceId }: SportManagementProps) {
   const loadData = async () => {
     try {
       setLoading(true)
-      
+
       // Load available sports and teams
       const sportsRes = await fetch('/api/sports')
       const sportsData = await sportsRes.json()
-      
+
       if (sportsData.sports) {
         setAvailableTeams(sportsData.sports)
       }
@@ -67,41 +67,42 @@ export function SportManagement({ deviceId }: SportManagementProps) {
       // Load device sport configuration
       const deviceRes = await fetch(`/api/device/${deviceId}/sports`)
       const deviceData = await deviceRes.json()
-      
+
       if (deviceData.sportConfigs) {
         // Convert to SportConfig format with proper typing
-        const configs: SportConfig[] = deviceData.sportConfigs.map((config: any): SportConfig => ({
-          sport: config.sport as SportType,
-          enabled: Boolean(config.enabled),
-          priority: Number(config.priority),
-          favoriteTeams: Array.isArray(config.favorite_teams) ? config.favorite_teams : []
-        }))
-        
+        const configs: SportConfig[] = deviceData.sportConfigs.map(
+          (config: any): SportConfig => ({
+            sport: config.sport as SportType,
+            enabled: Boolean(config.enabled),
+            priority: Number(config.priority),
+            favoriteTeams: Array.isArray(config.favorite_teams) ? config.favorite_teams : [],
+          })
+        )
+
         // Ensure all sports are represented
         const allSports: SportType[] = ['wnba', 'nhl', 'nba', 'mlb', 'nfl']
         const configMap = new Map(configs.map(c => [c.sport, c]))
-        
+
         const fullConfigs: SportConfig[] = allSports.map((sport): SportConfig => {
           const existing = configMap.get(sport)
           if (existing) {
             return existing
           }
-          
+
           return {
             sport,
             enabled: sport === 'wnba', // WNBA enabled by default
             priority: sport === 'wnba' ? 1 : allSports.indexOf(sport) + 1,
-            favoriteTeams: []
+            favoriteTeams: [],
           }
         })
-        
+
         setSportConfigs(fullConfigs)
       }
-      
+
       if (deviceData.activeOverride) {
         setActiveOverride(deviceData.activeOverride)
       }
-      
     } catch (error) {
       console.error('Error loading sport management data:', error)
     } finally {
@@ -110,33 +111,27 @@ export function SportManagement({ deviceId }: SportManagementProps) {
   }
 
   const handleSportToggle = (sport: SportType, enabled: boolean) => {
-    setSportConfigs(prev => 
-      prev.map(config => 
-        config.sport === sport ? { ...config, enabled } : config
-      )
+    setSportConfigs(prev =>
+      prev.map(config => (config.sport === sport ? { ...config, enabled } : config))
     )
   }
 
   const handlePriorityChange = (sport: SportType, priority: number) => {
-    setSportConfigs(prev => 
-      prev.map(config => 
-        config.sport === sport ? { ...config, priority } : config
-      )
+    setSportConfigs(prev =>
+      prev.map(config => (config.sport === sport ? { ...config, priority } : config))
     )
   }
 
   const handleFavoriteTeamsChange = (sport: SportType, teams: string[]) => {
-    setSportConfigs(prev => 
-      prev.map(config => 
-        config.sport === sport ? { ...config, favoriteTeams: teams } : config
-      )
+    setSportConfigs(prev =>
+      prev.map(config => (config.sport === sport ? { ...config, favoriteTeams: teams } : config))
     )
   }
 
   const handleSave = async () => {
     try {
       setSaving(true)
-      
+
       const response = await fetch(`/api/device/${deviceId}/sports`, {
         method: 'PUT',
         headers: {
@@ -147,10 +142,10 @@ export function SportManagement({ deviceId }: SportManagementProps) {
             sport: config.sport,
             enabled: config.enabled,
             priority: config.priority,
-            favoriteTeams: config.favoriteTeams
+            favoriteTeams: config.favoriteTeams,
           })),
-          prioritySettings
-        })
+          prioritySettings,
+        }),
       })
 
       if (!response.ok) {
@@ -158,10 +153,9 @@ export function SportManagement({ deviceId }: SportManagementProps) {
       }
 
       console.log('Sport configuration saved successfully')
-      
+
       // Refresh data to show updated state
       await loadData()
-      
     } catch (error) {
       console.error('Error saving sport configuration:', error)
     } finally {
@@ -181,8 +175,8 @@ export function SportManagement({ deviceId }: SportManagementProps) {
           sport,
           gameEventId,
           reason,
-          durationMinutes: 60
-        })
+          durationMinutes: 60,
+        }),
       })
 
       if (!response.ok) {
@@ -203,8 +197,8 @@ export function SportManagement({ deviceId }: SportManagementProps) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'clear_override'
-        })
+          action: 'clear_override',
+        }),
       })
 
       if (!response.ok) {
@@ -232,7 +226,7 @@ export function SportManagement({ deviceId }: SportManagementProps) {
     // Swap priorities
     const draggedConfig = sportConfigs.find(c => c.sport === draggedSport)
     const targetConfig = sportConfigs.find(c => c.sport === targetSport)
-    
+
     if (draggedConfig && targetConfig) {
       const newPriority = targetConfig.priority
       handlePriorityChange(draggedSport, newPriority)
@@ -261,11 +255,7 @@ export function SportManagement({ deviceId }: SportManagementProps) {
           <Badge variant={enabledSports > 1 ? 'success' : 'default'}>
             {enabledSports} Sport{enabledSports !== 1 ? 's' : ''} Enabled
           </Badge>
-          <Button 
-            onClick={handleSave}
-            disabled={saving || !hasChanges}
-            size="sm"
-          >
+          <Button onClick={handleSave} disabled={saving || !hasChanges} size="sm">
             {saving ? 'Saving...' : 'Save Configuration'}
           </Button>
         </div>
@@ -286,8 +276,8 @@ export function SportManagement({ deviceId }: SportManagementProps) {
                   Expires: {new Date(activeOverride.expires_at).toLocaleString()}
                 </p>
               </div>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="secondary"
                 onClick={handleClearOverride}
                 className="border-orange-300 text-orange-700 hover:bg-orange-100"
@@ -306,11 +296,11 @@ export function SportManagement({ deviceId }: SportManagementProps) {
           .map(config => (
             <div
               key={config.sport}
-              onDrop={(e) => {
+              onDrop={e => {
                 e.preventDefault()
                 handleDrop(config.sport)
               }}
-              onDragOver={(e) => e.preventDefault()}
+              onDragOver={e => e.preventDefault()}
             >
               <SportCard
                 sportConfig={config}
@@ -335,25 +325,31 @@ export function SportManagement({ deviceId }: SportManagementProps) {
               <span className="text-sm text-gray-700">Live games get priority boost</span>
               <Toggle
                 checked={prioritySettings.liveGameBoost}
-                onChange={(checked) => setPrioritySettings(prev => ({ ...prev, liveGameBoost: checked }))}
+                onChange={checked =>
+                  setPrioritySettings(prev => ({ ...prev, liveGameBoost: checked }))
+                }
                 size="sm"
               />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-700">Favorite teams get priority boost</span>
               <Toggle
                 checked={prioritySettings.favoriteTeamBoost}
-                onChange={(checked) => setPrioritySettings(prev => ({ ...prev, favoriteTeamBoost: checked }))}
+                onChange={checked =>
+                  setPrioritySettings(prev => ({ ...prev, favoriteTeamBoost: checked }))
+                }
                 size="sm"
               />
             </div>
-            
+
             <div className="flex items-center justify-between">
               <span className="text-sm text-gray-700">Close games get priority boost</span>
               <Toggle
                 checked={prioritySettings.closeGameBoost}
-                onChange={(checked) => setPrioritySettings(prev => ({ ...prev, closeGameBoost: checked }))}
+                onChange={checked =>
+                  setPrioritySettings(prev => ({ ...prev, closeGameBoost: checked }))
+                }
                 size="sm"
               />
             </div>
@@ -362,10 +358,12 @@ export function SportManagement({ deviceId }: SportManagementProps) {
               <span className="text-sm text-gray-700">Conflict resolution strategy</span>
               <select
                 value={prioritySettings.conflictResolution}
-                onChange={(e) => setPrioritySettings(prev => ({ 
-                  ...prev, 
-                  conflictResolution: e.target.value as any 
-                }))}
+                onChange={e =>
+                  setPrioritySettings(prev => ({
+                    ...prev,
+                    conflictResolution: e.target.value as any,
+                  }))
+                }
                 className="text-sm border border-gray-300 rounded px-2 py-1"
               >
                 <option value="priority">Sport Priority Order</option>
@@ -388,8 +386,8 @@ export function SportManagement({ deviceId }: SportManagementProps) {
             <Button size="sm" variant="secondary" onClick={() => handleSportToggle('nhl', true)}>
               Enable NHL
             </Button>
-            <Button 
-              size="sm" 
+            <Button
+              size="sm"
               variant="secondary"
               onClick={() => {
                 setSportConfigs(prev => prev.map(config => ({ ...config, favoriteTeams: [] })))
@@ -397,11 +395,7 @@ export function SportManagement({ deviceId }: SportManagementProps) {
             >
               Clear All Favorites
             </Button>
-            <Button 
-              size="sm" 
-              variant="secondary"
-              onClick={loadData}
-            >
+            <Button size="sm" variant="secondary" onClick={loadData}>
               Refresh Data
             </Button>
           </div>

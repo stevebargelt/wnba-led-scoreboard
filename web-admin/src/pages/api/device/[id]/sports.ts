@@ -23,17 +23,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       // Get active game override if any
-      const { data: activeOverride, error: overrideError } = await supabase
-        .rpc('get_active_game_override', { target_device_id: deviceId })
+      const { data: activeOverride, error: overrideError } = await supabase.rpc(
+        'get_active_game_override',
+        { target_device_id: deviceId }
+      )
 
       if (overrideError) {
         console.error('Error fetching active override:', overrideError)
         // Don't fail the request, just log the error
       }
 
-      res.status(200).json({ 
+      res.status(200).json({
         sportConfigs: sportConfigs || [],
-        activeOverride: activeOverride?.[0] || null
+        activeOverride: activeOverride?.[0] || null,
       })
     } catch (error) {
       console.error('API error:', error)
@@ -52,17 +54,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { sport, enabled, priority, favoriteTeams } = config
 
         // Upsert sport configuration
-        const { error: upsertError } = await supabase
-          .from('device_sport_config')
-          .upsert({
+        const { error: upsertError } = await supabase.from('device_sport_config').upsert(
+          {
             device_id: deviceId,
             sport,
             enabled: enabled ?? false,
             priority: priority ?? 1,
-            favorite_teams: favoriteTeams || []
-          }, {
-            onConflict: 'device_id,sport'
-          })
+            favorite_teams: favoriteTeams || [],
+          },
+          {
+            onConflict: 'device_id,sport',
+          }
+        )
 
         if (upsertError) {
           console.error('Error upserting sport config:', upsertError)
@@ -74,16 +77,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (prioritySettings) {
         const configContent = {
           sport_priority: prioritySettings,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         }
 
-        const { error: configError } = await supabase
-          .from('configs')
-          .insert({
-            device_id: deviceId,
-            content: configContent,
-            source: 'cloud'
-          })
+        const { error: configError } = await supabase.from('configs').insert({
+          device_id: deviceId,
+          content: configContent,
+          source: 'cloud',
+        })
 
         if (configError) {
           console.error('Error saving priority config:', configError)
@@ -105,15 +106,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const expiresAt = new Date()
         expiresAt.setMinutes(expiresAt.getMinutes() + (durationMinutes || 60))
 
-        const { error: overrideError } = await supabase
-          .from('game_overrides')
-          .insert({
-            device_id: deviceId,
-            sport,
-            game_event_id: gameEventId,
-            expires_at: expiresAt.toISOString(),
-            reason: reason || 'Manual override from web admin'
-          })
+        const { error: overrideError } = await supabase.from('game_overrides').insert({
+          device_id: deviceId,
+          sport,
+          game_event_id: gameEventId,
+          expires_at: expiresAt.toISOString(),
+          reason: reason || 'Manual override from web admin',
+        })
 
         if (overrideError) {
           console.error('Error creating game override:', overrideError)

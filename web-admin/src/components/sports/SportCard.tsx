@@ -33,39 +33,39 @@ interface SportCardProps {
 const SPORT_DISPLAY_INFO = {
   wnba: {
     name: 'WNBA',
-    fullName: 'Women\'s National Basketball Association',
+    fullName: "Women's National Basketball Association",
     icon: '🏀',
     color: 'orange',
-    season: 'May - October'
+    season: 'May - October',
   },
   nhl: {
-    name: 'NHL', 
+    name: 'NHL',
     fullName: 'National Hockey League',
     icon: '🏒',
     color: 'blue',
-    season: 'October - June'
+    season: 'October - June',
   },
   nba: {
     name: 'NBA',
-    fullName: 'National Basketball Association', 
+    fullName: 'National Basketball Association',
     icon: '🏀',
     color: 'red',
-    season: 'October - June'
+    season: 'October - June',
   },
   mlb: {
     name: 'MLB',
     fullName: 'Major League Baseball',
     icon: '⚾',
-    color: 'green', 
-    season: 'March - October'
+    color: 'green',
+    season: 'March - October',
   },
   nfl: {
     name: 'NFL',
     fullName: 'National Football League',
     icon: '🏈',
     color: 'purple',
-    season: 'September - February'
-  }
+    season: 'September - February',
+  },
 }
 
 export function SportCard({
@@ -76,7 +76,7 @@ export function SportCard({
   onFavoriteTeamsChange,
   onDragStart,
   onDragEnd,
-  isDragging = false
+  isDragging = false,
 }: SportCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [selectedTeams, setSelectedTeams] = useState<Set<string>>(
@@ -92,7 +92,7 @@ export function SportCard({
     } else {
       newSelection.add(teamId)
     }
-    
+
     setSelectedTeams(newSelection)
     onFavoriteTeamsChange(sportConfig.sport, Array.from(newSelection))
   }
@@ -103,7 +103,7 @@ export function SportCard({
   }
 
   return (
-    <Card 
+    <Card
       className={`transition-all duration-200 ${
         isDragging ? 'opacity-50 scale-95' : 'opacity-100 scale-100'
       } ${sportConfig.enabled ? 'ring-2 ring-blue-200' : 'bg-gray-50'}`}
@@ -119,10 +119,7 @@ export function SportCard({
             <div>
               <div className="flex items-center space-x-2">
                 <h3 className="font-semibold text-lg">{sportInfo.name}</h3>
-                <Badge 
-                  variant={sportConfig.enabled ? 'success' : 'default'}
-                  size="sm"
-                >
+                <Badge variant={sportConfig.enabled ? 'success' : 'default'} size="sm">
                   Priority #{sportConfig.priority}
                 </Badge>
               </div>
@@ -130,7 +127,7 @@ export function SportCard({
               <p className="text-xs text-gray-500">{sportInfo.season}</p>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-3">
             {/* Priority Controls */}
             <div className="flex flex-col space-y-1">
@@ -144,7 +141,7 @@ export function SportCard({
                 ↑
               </Button>
               <Button
-                size="sm" 
+                size="sm"
                 variant="ghost"
                 onClick={() => handlePriorityChange(1)}
                 disabled={sportConfig.priority >= 10}
@@ -153,11 +150,11 @@ export function SportCard({
                 ↓
               </Button>
             </div>
-            
+
             {/* Enable/Disable Toggle */}
             <Toggle
               checked={sportConfig.enabled}
-              onChange={(checked) => onToggle(sportConfig.sport, checked)}
+              onChange={checked => onToggle(sportConfig.sport, checked)}
               label={sportInfo.name}
               size="md"
             />
@@ -184,14 +181,16 @@ export function SportCard({
             {/* Selected Teams Summary */}
             {selectedTeams.size > 0 && (
               <div className="flex flex-wrap gap-1 mb-2">
-                {Array.from(selectedTeams).slice(0, 5).map(teamId => {
-                  const team = availableTeams.find(t => t.id === teamId)
-                  return team ? (
-                    <Badge key={teamId} variant="info" size="sm">
-                      {team.abbreviation}
-                    </Badge>
-                  ) : null
-                })}
+                {Array.from(selectedTeams)
+                  .slice(0, 5)
+                  .map(teamId => {
+                    const team = availableTeams.find(t => t.id === teamId)
+                    return team ? (
+                      <Badge key={teamId} variant="info" size="sm">
+                        {team.abbreviation}
+                      </Badge>
+                    ) : null
+                  })}
                 {selectedTeams.size > 5 && (
                   <Badge variant="default" size="sm">
                     +{selectedTeams.size - 5} more
@@ -222,7 +221,7 @@ export function SportCard({
                     </label>
                   ))}
                 </div>
-                
+
                 {availableTeams.length === 0 && (
                   <p className="text-sm text-gray-500 text-center py-4">
                     No teams available. Try fetching {sportInfo.name} assets first.

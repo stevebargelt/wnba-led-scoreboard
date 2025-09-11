@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           conference: team.conference,
           division: team.division,
           colors: team.colors,
-          logoUrls: team.logo_urls
+          logoUrls: team.logo_urls,
         })
         return acc
       }, {})
