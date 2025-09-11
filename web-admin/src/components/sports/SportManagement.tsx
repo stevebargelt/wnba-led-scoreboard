@@ -57,33 +57,16 @@ export function SportManagement({ deviceId }: SportManagementProps) {
     try {
       setLoading(true)
 
-      // Get current user session for authenticated requests
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError || !session) {
-        console.error('Authentication required for sport management')
-        return
-      }
-
-      const authHeaders = {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      }
-
       // Load available sports and teams
-      const sportsRes = await fetch('/api/sports', {
-        headers: authHeaders
-      })
+      const sportsRes = await fetch('/api/sports')
       const sportsData = await sportsRes.json()
 
       if (sportsData.sports) {
         setAvailableTeams(sportsData.sports)
       }
 
-      // Load device sport configuration  
-      const deviceRes = await fetch(`/api/device/${deviceId}/sports`, {
-        headers: authHeaders
-      })
+      // Load device sport configuration
+      const deviceRes = await fetch(`/api/device/${deviceId}/sports`)
       const deviceData = await deviceRes.json()
 
       if (deviceData.sportConfigs) {
@@ -150,22 +133,11 @@ export function SportManagement({ deviceId }: SportManagementProps) {
     try {
       setSaving(true)
 
-      // Get current user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError || !session) {
-        console.error('Authentication required to save sport configuration')
-        return
-      }
-
-      const authHeaders = {
-        'Authorization': `Bearer ${session.access_token}`,
-        'Content-Type': 'application/json'
-      }
-
       const response = await fetch(`/api/device/${deviceId}/sports`, {
         method: 'PUT',
-        headers: authHeaders,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           sportConfigs: sportConfigs.map(config => ({
             sport: config.sport,
