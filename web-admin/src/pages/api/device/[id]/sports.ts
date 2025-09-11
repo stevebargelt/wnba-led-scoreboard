@@ -4,6 +4,10 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
+// In-memory storage for mock data (per device)
+const mockSportConfigs: { [deviceId: string]: any[] } = {}
+const mockOverrides: { [deviceId: string]: any } = {}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id: deviceId } = req.query
 
@@ -15,28 +19,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
-      // For now, return mock data until auth is properly configured
-      // TODO: Implement proper database queries once RLS is working
-      console.log('[DEV] Returning mock sport configuration for device:', deviceId)
-
-      const mockSportConfigs = [
-        {
-          sport: 'wnba',
-          enabled: true,
-          priority: 1,
-          favorite_teams: ['SEA', 'LVA'],
-        },
-        {
-          sport: 'nhl',
-          enabled: false,
-          priority: 2,
-          favorite_teams: ['SEA', 'VGK'],
-        },
-      ]
+      // Return persistent mock data for this device
+      console.log('[DEV] Getting sport configuration for device:', deviceId)
+      
+      // Initialize default config if not exists
+      if (!mockSportConfigs[deviceId as string]) {
+        mockSportConfigs[deviceId as string] = [
+          {
+            sport: 'wnba',
+            enabled: true,
+            priority: 1,
+            favorite_teams: ['SEA', 'LVA'],
+          },
+          {
+            sport: 'nhl',
+            enabled: false,
+            priority: 2,
+            favorite_teams: ['SEA', 'VGK'],
+          },
+        ]
+      }
 
       res.status(200).json({
-        sportConfigs: mockSportConfigs,
-        activeOverride: null,
+        sportConfigs: mockSportConfigs[deviceId as string],
+        activeOverride: mockOverrides[deviceId as string] || null,
       })
     } catch (error) {
       console.error('API error:', error)
@@ -50,14 +56,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ error: 'sportConfigs must be an array' })
       }
 
-      // Mock save for testing UI
-      console.log('[DEV] Mock saving sport configuration:', { 
-        deviceId, 
+      // Save to mock storage (persistent across requests)
+      console.log('[DEV] Saving sport configuration:', {
+        deviceId,
         sportConfigs: sportConfigs.length,
-        prioritySettings 
+        prioritySettings,
       })
+
+      // Update mock storage
+      mockSportConfigs[deviceId as string] = sportConfigs.map(config => ({
+        sport: config.sport,
+        enabled: config.enabled,
+        priority: config.priority,
+        favorite_teams: config.favoriteTeams || [],
+      }))
+
+      console.log('[DEV] Updated mock config:', mockSportConfigs[deviceId as string])
       
-      // TODO: Implement real database save once auth is working
       res.status(200).json({ success: true, message: 'Configuration saved (development mode)' })
     } catch (error) {
       console.error('API error:', error)
@@ -72,8 +87,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (action === 'override_game') {
         const expiresAt = new Date()
         expiresAt.setMinutes(expiresAt.getMinutes() + (durationMinutes || 60))
-        
-        res.status(200).json({ success: true, expiresAt: expiresAt.toISOString(), message: 'Override created (development mode)' })
+
+        res
+          .status(200)
+          .json({
+            success: true,
+            expiresAt: expiresAt.toISOString(),
+            message: 'Override created (development mode)',
+          })
       } else if (action === 'clear_override') {
         res.status(200).json({ success: true, message: 'Override cleared (development mode)' })
       } else {
