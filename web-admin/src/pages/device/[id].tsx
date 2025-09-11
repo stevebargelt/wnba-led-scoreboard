@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
-import { WNBATEAMS } from '@/lib/wnbaTeams'
+import { MultiSportTeamSelector } from '../../components/config/MultiSportTeamSelector'
 import { makeValidator } from '@/lib/schema'
 import { Layout } from '../../components/layout'
 import {
@@ -39,9 +39,9 @@ export default function DevicePage() {
   const [favorites, setFavorites] = useState<
     { name: string; id?: string | null; abbr?: string | null }[]
   >([])
-  const [newFav, setNewFav] = useState<{ name: string; abbr?: string }>({ name: '', abbr: '' })
+  const [newFav, setNewFav] = useState<{ name: string; abbr?: string; id?: string }>({ name: '', abbr: '' })
   const [teamList, setTeamList] =
-    useState<{ name: string; abbr?: string; id?: string }[]>(WNBATEAMS)
+    useState<{ name: string; abbr?: string; id?: string }[]>([])
   const [schemaError, setSchemaError] = useState<string>('')
   const [schemaErrors, setSchemaErrors] = useState<any[]>([])
   // Inline editable settings (with reasonable defaults)
@@ -663,20 +663,16 @@ export default function DevicePage() {
                     ))}
                   </ul>
                   <div className="flex items-center gap-2">
-                    <input
-                      className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
-                      list="teams"
-                      placeholder="Team name"
-                      value={newFav.name}
-                      onChange={e => setNewFav({ ...newFav, name: e.target.value })}
+                    <MultiSportTeamSelector
+                      selectedTeam={newFav.name ? newFav : null}
+                      onTeamSelect={(team) => setNewFav({ 
+                        name: team.name, 
+                        abbr: team.abbr,
+                        id: team.id 
+                      })}
+                      placeholder="Search teams across all sports..."
+                      className="flex-1"
                     />
-                    <datalist id="teams">
-                      {WNBATEAMS.map(t => (
-                        <option key={t.abbr} value={t.name}>
-                          {t.abbr}
-                        </option>
-                      ))}
-                    </datalist>
                     <Input
                       placeholder="abbr"
                       value={newFav.abbr || ''}
