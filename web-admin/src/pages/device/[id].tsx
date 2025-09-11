@@ -664,8 +664,8 @@ export default function DevicePage() {
                       </li>
                     ))}
                   </ul>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 min-w-0">
+                  <div className="grid grid-cols-12 gap-2 items-center">
+                    <div className="col-span-8">
                       <MultiSportTeamSelector
                         selectedTeam={newFav.name ? newFav : null}
                         onTeamSelect={team =>
@@ -676,18 +676,21 @@ export default function DevicePage() {
                           })
                         }
                         placeholder="Search teams across all sports..."
-                        className="w-full"
                       />
                     </div>
-                    <Input
-                      placeholder="abbr"
-                      value={newFav.abbr || ''}
-                      onChange={e => setNewFav({ ...newFav, abbr: e.target.value })}
-                      className="w-16 flex-shrink-0"
-                    />
-                    <Button onClick={addFav} size="sm">
-                      Add
-                    </Button>
+                    <div className="col-span-2">
+                      <Input
+                        placeholder="abbr"
+                        value={newFav.abbr || ''}
+                        onChange={e => setNewFav({ ...newFav, abbr: e.target.value })}
+                        className="w-full text-center"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Button onClick={addFav} size="sm" className="w-full">
+                        Add
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex gap-3">
                     <Button onClick={syncToJson} variant="secondary" size="sm">
