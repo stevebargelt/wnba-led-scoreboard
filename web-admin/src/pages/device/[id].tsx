@@ -39,9 +39,11 @@ export default function DevicePage() {
   const [favorites, setFavorites] = useState<
     { name: string; id?: string | null; abbr?: string | null }[]
   >([])
-  const [newFav, setNewFav] = useState<{ name: string; abbr?: string; id?: string }>({ name: '', abbr: '' })
-  const [teamList, setTeamList] =
-    useState<{ name: string; abbr?: string; id?: string }[]>([])
+  const [newFav, setNewFav] = useState<{ name: string; abbr?: string; id?: string }>({
+    name: '',
+    abbr: '',
+  })
+  const [teamList, setTeamList] = useState<{ name: string; abbr?: string; id?: string }[]>([])
   const [schemaError, setSchemaError] = useState<string>('')
   const [schemaErrors, setSchemaErrors] = useState<any[]>([])
   // Inline editable settings (with reasonable defaults)
@@ -663,21 +665,25 @@ export default function DevicePage() {
                     ))}
                   </ul>
                   <div className="flex items-center gap-2">
-                    <MultiSportTeamSelector
-                      selectedTeam={newFav.name ? newFav : null}
-                      onTeamSelect={(team) => setNewFav({ 
-                        name: team.name, 
-                        abbr: team.abbr,
-                        id: team.id 
-                      })}
-                      placeholder="Search teams across all sports..."
-                      className="flex-1"
-                    />
+                    <div className="flex-1 min-w-0">
+                      <MultiSportTeamSelector
+                        selectedTeam={newFav.name ? newFav : null}
+                        onTeamSelect={team =>
+                          setNewFav({
+                            name: team.name,
+                            abbr: team.abbr,
+                            id: team.id,
+                          })
+                        }
+                        placeholder="Search teams across all sports..."
+                        className="w-full"
+                      />
+                    </div>
                     <Input
                       placeholder="abbr"
                       value={newFav.abbr || ''}
                       onChange={e => setNewFav({ ...newFav, abbr: e.target.value })}
-                      className="w-20"
+                      className="w-16 flex-shrink-0"
                     />
                     <Button onClick={addFav} size="sm">
                       Add
