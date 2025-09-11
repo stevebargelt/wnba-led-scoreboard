@@ -1,5 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '@/lib/supabaseClient'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id: deviceId } = req.query
@@ -7,6 +10,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!deviceId || typeof deviceId !== 'string') {
     return res.status(400).json({ error: 'Device ID is required' })
   }
+
+  // Get auth token from request headers
+  const authHeader = req.headers.authorization
+  const token = authHeader?.split(' ')[1] // Remove 'Bearer ' prefix
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' })
+  }
+
+  // Create Supabase client with user's auth token
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+
+  // Set the auth token for this request
+  await supabase.auth.setSession({
+    access_token: token,
+    refresh_token: '' // Not needed for API calls
+  })
 
   if (req.method === 'GET') {
     try {
