@@ -19,18 +19,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Authentication required' })
   }
 
-  // Create Supabase client with user's auth token
+  // Create Supabase client with user's auth token in headers
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
+    },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     }
-  })
-
-  // Set the auth token for this request
-  await supabase.auth.setSession({
-    access_token: token,
-    refresh_token: '' // Not needed for API calls
   })
 
   if (req.method === 'GET') {
