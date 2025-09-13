@@ -116,7 +116,9 @@ export default function DevicePage() {
         // Fetch available sports/teams to resolve identifiers to canonical names/abbrs
         let sportDirectory: Record<string, any[]> = {}
         try {
-          const sRes = await fetch('/api/sports', { headers: jwt ? { Authorization: `Bearer ${jwt}` } : {} })
+          const sRes = await fetch('/api/sports', {
+            headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+          })
           if (sRes.ok) {
             const sJson = await sRes.json()
             sportDirectory = sJson.sports || {}
@@ -135,26 +137,44 @@ export default function DevicePage() {
             const idStr = String(identifier)
             const byId = list.find(t => String(t.id) === idStr)
             if (byId) return { id: String(byId.id), name: byId.name, abbr: byId.abbreviation }
-            const byAbbr = list.find(t => String(t.abbreviation).toUpperCase() === idStr.toUpperCase())
-            if (byAbbr) return { id: String(byAbbr.id), name: byAbbr.name, abbr: byAbbr.abbreviation }
+            const byAbbr = list.find(
+              t => String(t.abbreviation).toUpperCase() === idStr.toUpperCase()
+            )
+            if (byAbbr)
+              return { id: String(byAbbr.id), name: byAbbr.name, abbr: byAbbr.abbreviation }
             const byName = list.find(t => String(t.name).toLowerCase() === idStr.toLowerCase())
-            if (byName) return { id: String(byName.id), name: byName.name, abbr: byName.abbreviation }
+            if (byName)
+              return { id: String(byName.id), name: byName.name, abbr: byName.abbreviation }
             return { id: idStr, name: idStr, abbr: idStr }
           }
 
           // Map DB rows to editor format with enrichment using directory if available
           const wnba = sportConfigs.find(c => String(c.sport) === 'wnba') || {
-            sport: 'wnba', enabled: true, favorite_teams: [], priority: 1,
+            sport: 'wnba',
+            enabled: true,
+            favorite_teams: [],
+            priority: 1,
           }
           const nhl = sportConfigs.find(c => String(c.sport) === 'nhl') || {
-            sport: 'nhl', enabled: false, favorite_teams: [], priority: 2,
+            sport: 'nhl',
+            enabled: false,
+            favorite_teams: [],
+            priority: 2,
           }
           const mapFavs = (arr: any[], sport: string) =>
             (Array.isArray(arr) ? arr : []).map(v => resolveFav(sport, v))
           setMultiSportConfig({
             sports: [
-              { sport: 'wnba', enabled: !!wnba.enabled, favorites: mapFavs(wnba.favorite_teams, 'wnba') },
-              { sport: 'nhl', enabled: !!nhl.enabled, favorites: mapFavs(nhl.favorite_teams, 'nhl') },
+              {
+                sport: 'wnba',
+                enabled: !!wnba.enabled,
+                favorites: mapFavs(wnba.favorite_teams, 'wnba'),
+              },
+              {
+                sport: 'nhl',
+                enabled: !!nhl.enabled,
+                favorites: mapFavs(nhl.favorite_teams, 'nhl'),
+              },
             ],
           })
         }

@@ -31,31 +31,31 @@ const SPORT_INFO = {
     name: 'WNBA',
     icon: '🏀',
     color: 'bg-orange-100 text-orange-800 border-orange-200',
-    description: 'Women\'s National Basketball Association'
+    description: "Women's National Basketball Association",
   },
   nhl: {
     name: 'NHL',
-    icon: '🏒', 
+    icon: '🏒',
     color: 'bg-blue-100 text-blue-800 border-blue-200',
-    description: 'National Hockey League'
-  }
+    description: 'National Hockey League',
+  },
 }
 
-export function MultiSportFavoritesEditor({ 
-  deviceId, 
-  onConfigChange, 
-  initialConfig 
+export function MultiSportFavoritesEditor({
+  deviceId,
+  onConfigChange,
+  initialConfig,
 }: MultiSportFavoritesEditorProps) {
   const { teams, loading, error } = useMultiSportTeams()
   const [wnbaConfig, setWnbaConfig] = useState<SportConfig>({
     sport: 'wnba',
     enabled: true,
-    favorites: []
+    favorites: [],
   })
   const [nhlConfig, setNhlConfig] = useState<SportConfig>({
-    sport: 'nhl', 
+    sport: 'nhl',
     enabled: false,
-    favorites: []
+    favorites: [],
   })
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string>('')
@@ -80,7 +80,7 @@ export function MultiSportFavoritesEditor({
   // Notify parent of changes
   useEffect(() => {
     onConfigChange({
-      sports: [wnbaConfig, nhlConfig]
+      sports: [wnbaConfig, nhlConfig],
     })
   }, [wnbaConfig, nhlConfig, onConfigChange])
 
@@ -97,8 +97,14 @@ export function MultiSportFavoritesEditor({
     if (!last) return true
     const current = { wnba: wnbaConfig, nhl: nhlConfig }
     return !deepEqual(
-      { w: { e: last.wnba.enabled, f: last.wnba.favorites }, n: { e: last.nhl.enabled, f: last.nhl.favorites } },
-      { w: { e: current.wnba.enabled, f: current.wnba.favorites }, n: { e: current.nhl.enabled, f: current.nhl.favorites } },
+      {
+        w: { e: last.wnba.enabled, f: last.wnba.favorites },
+        n: { e: last.nhl.enabled, f: last.nhl.favorites },
+      },
+      {
+        w: { e: current.wnba.enabled, f: current.wnba.favorites },
+        n: { e: current.nhl.enabled, f: current.nhl.favorites },
+      }
     )
   })()
 
@@ -115,10 +121,21 @@ export function MultiSportFavoritesEditor({
         return
       }
       // Build payload: identifiers prefer id, then abbr, then name
-      const ids = (favs: FavoriteTeam[]) => favs.map(f => String(f.id || f.abbr || f.name)).filter(Boolean)
+      const ids = (favs: FavoriteTeam[]) =>
+        favs.map(f => String(f.id || f.abbr || f.name)).filter(Boolean)
       const sportConfigs = [
-        { sport: 'wnba', enabled: wnbaConfig.enabled, priority: 1, favoriteTeams: ids(wnbaConfig.favorites) },
-        { sport: 'nhl', enabled: nhlConfig.enabled, priority: 2, favoriteTeams: ids(nhlConfig.favorites) },
+        {
+          sport: 'wnba',
+          enabled: wnbaConfig.enabled,
+          priority: 1,
+          favoriteTeams: ids(wnbaConfig.favorites),
+        },
+        {
+          sport: 'nhl',
+          enabled: nhlConfig.enabled,
+          priority: 2,
+          favoriteTeams: ids(nhlConfig.favorites),
+        },
       ]
       const resp = await fetch(`/api/device/${deviceId}/sports`, {
         method: 'PUT',
@@ -150,7 +167,7 @@ export function MultiSportFavoritesEditor({
     const setConfig = sportKey === 'wnba' ? setWnbaConfig : setNhlConfig
     const sportTeams = teams[sportKey] || []
     const sportInfo = SPORT_INFO[sportKey]
-    
+
     const [newTeam, setNewTeam] = useState({ name: '', abbr: '', id: '' })
     // simple inputs + native datalist for suggestions
 
@@ -189,7 +206,7 @@ export function MultiSportFavoritesEditor({
       const teamToAdd = team || {
         name: newTeam.name.trim(),
         abbreviation: newTeam.abbr.trim().toUpperCase(),
-        id: newTeam.id.trim() || undefined
+        id: newTeam.id.trim() || undefined,
       }
 
       if (!teamToAdd.name || !teamToAdd.abbreviation) {
@@ -197,8 +214,8 @@ export function MultiSportFavoritesEditor({
       }
 
       // Check if already exists
-      const exists = config.favorites.some(fav => 
-        fav.name === teamToAdd.name || fav.abbr === teamToAdd.abbreviation
+      const exists = config.favorites.some(
+        fav => fav.name === teamToAdd.name || fav.abbr === teamToAdd.abbreviation
       )
 
       if (exists) {
@@ -209,12 +226,12 @@ export function MultiSportFavoritesEditor({
       const newFavorite: FavoriteTeam = {
         name: teamToAdd.name,
         abbr: teamToAdd.abbreviation,
-        id: teamToAdd.id
+        id: teamToAdd.id,
       }
 
       setConfig({
         ...config,
-        favorites: [...config.favorites, newFavorite]
+        favorites: [...config.favorites, newFavorite],
       })
 
       setNewTeam({ name: '', abbr: '', id: '' })
@@ -224,7 +241,7 @@ export function MultiSportFavoritesEditor({
       const newFavorites = config.favorites.filter((_, i) => i !== index)
       setConfig({
         ...config,
-        favorites: newFavorites
+        favorites: newFavorites,
       })
     }
 
@@ -239,26 +256,27 @@ export function MultiSportFavoritesEditor({
     const autoFillTeamIds = () => {
       const updatedFavorites = config.favorites.map(fav => {
         // Find matching team in this sport's teams
-        const matchingTeam = sportTeams.find(team => 
-          team.abbreviation.toLowerCase() === fav.abbr.toLowerCase() ||
-          team.name.toLowerCase() === fav.name.toLowerCase()
+        const matchingTeam = sportTeams.find(
+          team =>
+            team.abbreviation.toLowerCase() === fav.abbr.toLowerCase() ||
+            team.name.toLowerCase() === fav.name.toLowerCase()
         )
-        
+
         if (matchingTeam) {
           return {
             ...fav,
             id: matchingTeam.id,
             name: matchingTeam.name, // Use canonical name
-            abbr: matchingTeam.abbreviation // Use canonical abbreviation
+            abbr: matchingTeam.abbreviation, // Use canonical abbreviation
           }
         }
-        
+
         return fav
       })
 
       setConfig({
         ...config,
-        favorites: updatedFavorites
+        favorites: updatedFavorites,
       })
     }
 
@@ -267,7 +285,13 @@ export function MultiSportFavoritesEditor({
     useEffect(() => {
       if (!sportTeams.length) return
       // Heuristic: enrich if any favorite is missing id/name/abbr or looks placeholder (name==abbr)
-      const needsEnrich = config.favorites.some(f => !f.id || !f.name || !f.abbr || (f.name && f.abbr && f.name.toUpperCase() === f.abbr.toUpperCase()))
+      const needsEnrich = config.favorites.some(
+        f =>
+          !f.id ||
+          !f.name ||
+          !f.abbr ||
+          (f.name && f.abbr && f.name.toUpperCase() === f.abbr.toUpperCase())
+      )
       if (!needsEnrich && enrichedOnce.current) return
       const updated = config.favorites.map(fav => {
         // Match by id first
@@ -296,7 +320,7 @@ export function MultiSportFavoritesEditor({
     const toggleEnabled = () => {
       setConfig({
         ...config,
-        enabled: !config.enabled
+        enabled: !config.enabled,
       })
     }
 
@@ -382,11 +406,17 @@ export function MultiSportFavoritesEditor({
                       className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700"
                     >
                       <div className="flex items-center space-x-3">
-                        <Badge variant="info" size="sm">{fav.abbr}</Badge>
+                        <Badge variant="info" size="sm">
+                          {fav.abbr}
+                        </Badge>
                         <div>
-                          <div className="font-medium text-gray-900 dark:text-gray-100">{fav.name}</div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">
+                            {fav.name}
+                          </div>
                           {fav.id && (
-                            <div className="text-xs text-gray-500 dark:text-gray-300">ID: {fav.id}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-300">
+                              ID: {fav.id}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -440,34 +470,38 @@ export function MultiSportFavoritesEditor({
                   <div className="col-span-5">
                     <Input
                       value={newTeam.name}
-                      onChange={(e) => setNewTeam({ ...newTeam, name: e.target.value })}
+                      onChange={e => setNewTeam({ ...newTeam, name: e.target.value })}
                       placeholder="Team name"
                       list={`${sportKey}-name-list`}
                     />
                     <datalist id={`${sportKey}-name-list`}>
                       {sportTeams.slice(0, 50).map(t => (
-                        <option key={`name-opt-${t.id}`} value={t.name}>{t.abbreviation}</option>
+                        <option key={`name-opt-${t.id}`} value={t.name}>
+                          {t.abbreviation}
+                        </option>
                       ))}
                     </datalist>
                   </div>
                   <div className="col-span-2">
                     <Input
                       value={newTeam.abbr}
-                      onChange={(e) => setNewTeam({ ...newTeam, abbr: e.target.value.toUpperCase() })}
+                      onChange={e => setNewTeam({ ...newTeam, abbr: e.target.value.toUpperCase() })}
                       placeholder="ABR"
                       className="text-center"
                       list={`${sportKey}-abbr-list`}
                     />
                     <datalist id={`${sportKey}-abbr-list`}>
                       {sportTeams.slice(0, 50).map(t => (
-                        <option key={`abbr-opt-${t.id}`} value={t.abbreviation}>{t.name}</option>
+                        <option key={`abbr-opt-${t.id}`} value={t.abbreviation}>
+                          {t.name}
+                        </option>
                       ))}
                     </datalist>
                   </div>
                   <div className="col-span-3">
                     <Input
                       value={newTeam.id}
-                      onChange={(e) => setNewTeam({ ...newTeam, id: e.target.value })}
+                      onChange={e => setNewTeam({ ...newTeam, id: e.target.value })}
                       placeholder="Team ID"
                     />
                   </div>
@@ -520,13 +554,13 @@ export function MultiSportFavoritesEditor({
               </p>
             </div>
             <div className="flex items-center space-x-2">
-              <Badge 
+              <Badge
                 variant={wnbaConfig.enabled ? 'success' : 'default'}
                 className={SPORT_INFO.wnba.color}
               >
                 🏀 {wnbaConfig.favorites.length} WNBA
               </Badge>
-              <Badge 
+              <Badge
                 variant={nhlConfig.enabled ? 'success' : 'default'}
                 className={SPORT_INFO.nhl.color}
               >
@@ -537,9 +571,7 @@ export function MultiSportFavoritesEditor({
               </Button>
             </div>
           </div>
-          {saveMsg && (
-            <div className="mt-2 text-xs text-gray-600">{saveMsg}</div>
-          )}
+          {saveMsg && <div className="mt-2 text-xs text-gray-600">{saveMsg}</div>}
         </div>
       </Card>
 
@@ -607,7 +639,8 @@ export function MultiSportFavoritesEditor({
             </div>
           </div>
           <div className="mt-3 p-2 bg-blue-100 rounded text-xs text-blue-700">
-            <strong>Priority:</strong> WNBA games take priority over NHL games when both sports have active games involving your favorite teams.
+            <strong>Priority:</strong> WNBA games take priority over NHL games when both sports have
+            active games involving your favorite teams.
           </div>
         </div>
       </Card>
@@ -620,22 +653,26 @@ export function MultiSportFavoritesEditor({
             Use this JSON in your multi-sport configuration file:
           </p>
           <pre className="bg-gray-100 p-3 rounded text-xs overflow-x-auto">
-{JSON.stringify({
-  sports: [
-    {
-      sport: 'wnba',
-      enabled: wnbaConfig.enabled,
-      priority: 1,
-      favorites: wnbaConfig.favorites
-    },
-    {
-      sport: 'nhl', 
-      enabled: nhlConfig.enabled,
-      priority: 2,
-      favorites: nhlConfig.favorites
-    }
-  ]
-}, null, 2)}
+            {JSON.stringify(
+              {
+                sports: [
+                  {
+                    sport: 'wnba',
+                    enabled: wnbaConfig.enabled,
+                    priority: 1,
+                    favorites: wnbaConfig.favorites,
+                  },
+                  {
+                    sport: 'nhl',
+                    enabled: nhlConfig.enabled,
+                    priority: 2,
+                    favorites: nhlConfig.favorites,
+                  },
+                ],
+              },
+              null,
+              2
+            )}
           </pre>
         </div>
       </Card>

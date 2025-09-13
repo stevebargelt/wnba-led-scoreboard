@@ -40,7 +40,10 @@ export function useMultiSportTeams() {
 
         const data = await response.json()
         const sports = data.sports || {}
-        const total = Object.values(sports).reduce((acc: number, arr: any) => acc + (Array.isArray(arr) ? arr.length : 0), 0)
+        const total = Object.values(sports).reduce(
+          (acc: number, arr: any) => acc + (Array.isArray(arr) ? arr.length : 0),
+          0
+        )
         if (!total) {
           throw new Error('No teams available')
         }

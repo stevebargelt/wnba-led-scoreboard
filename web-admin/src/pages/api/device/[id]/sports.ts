@@ -69,7 +69,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         sport: String(c.sport),
         enabled: Boolean(c.enabled),
         priority: Number(c.priority),
-        favorite_teams: Array.isArray(c.favoriteTeams) ? c.favoriteTeams : Array.isArray(c.favorite_teams) ? c.favorite_teams : [],
+        favorite_teams: Array.isArray(c.favoriteTeams)
+          ? c.favoriteTeams
+          : Array.isArray(c.favorite_teams)
+            ? c.favorite_teams
+            : [],
       }))
 
       const { error } = await userScoped

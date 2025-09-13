@@ -24,7 +24,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       const resp = await admin
         .from('sport_teams')
-        .select('sport, external_id, name, display_name, abbreviation, conference, division, is_active')
+        .select(
+          'sport, external_id, name, display_name, abbreviation, conference, division, is_active'
+        )
         .eq('is_active', true)
       data = resp.data
       error = resp.error
@@ -40,7 +42,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       const resp = await userClient
         .from('sport_teams')
-        .select('sport, external_id, name, display_name, abbreviation, conference, division, is_active')
+        .select(
+          'sport, external_id, name, display_name, abbreviation, conference, division, is_active'
+        )
         .eq('is_active', true)
       data = resp.data
       error = resp.error
@@ -53,9 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const supportedSports = ['wnba', 'nhl', 'nba', 'mlb', 'nfl'] as const
-    const grouped: Record<string, any[]> = Object.fromEntries(
-      supportedSports.map(s => [s, []])
-    )
+    const grouped: Record<string, any[]> = Object.fromEntries(supportedSports.map(s => [s, []]))
 
     if (data && data.length > 0) {
       for (const row of data) {
