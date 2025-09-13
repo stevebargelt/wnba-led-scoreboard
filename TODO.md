@@ -49,3 +49,16 @@ Risks/Notes
 - Until Task #1 is implemented, devices won’t see DB-only favorites without manually building/sending JSON.
 - Keep RLS intact; server-side synthesis must authenticate and verify device ownership.
 
+6) Deprecate legacy `assets/teams.json` (use per-sport files)
+- Replace all consumers of `assets/teams.json` with sport-specific files:
+  - WNBA: `assets/wnba_teams.json`
+  - NHL: `assets/nhl_teams.json`
+- Web-admin:
+  - Remove or refactor `web-admin/src/pages/api/teams.ts` (legacy endpoint reading `assets/teams.json`).
+  - Ensure `/api/sports` is the single source for team lists (already supports DB + asset fallback).
+  - Update `useMultiSportTeams` to rely on `/api/sports` only; drop any direct/legacy fallback to `teams.json`.
+- Python/scripts:
+  - Ensure fetch scripts populate per-sport files; remove references to `assets/teams.json` in scripts and README.
+- Cleanup:
+  - Remove `assets/teams.json` from the repo once no code references remain.
+  - Update documentation (README and supabase/README.md) to reference per-sport files and `/api/sports`.
