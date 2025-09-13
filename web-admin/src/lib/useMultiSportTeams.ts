@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { supabase } from './supabaseClient'
 
 export interface Team {
   id: string
@@ -28,24 +29,33 @@ export function useMultiSportTeams() {
         setLoading(true)
         setError(null)
 
-        const response = await fetch('/api/sports')
+        const { data: sess } = await supabase.auth.getSession()
+        const jwt = sess.session?.access_token
+        const response = await fetch('/api/sports', {
+          headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+        })
         if (!response.ok) {
           throw new Error('Failed to fetch teams')
         }
 
         const data = await response.json()
-        setTeams(data.sports || {})
+        const sports = data.sports || {}
+        const total = Object.values(sports).reduce((acc: number, arr: any) => acc + (Array.isArray(arr) ? arr.length : 0), 0)
+        if (!total) {
+          throw new Error('No teams available')
+        }
+        setTeams(sports)
       } catch (err) {
         console.error('Error fetching teams:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch teams')
-        
+
         // Fallback to legacy WNBA teams if API fails
         const { WNBATEAMS } = await import('./wnbaTeams')
         const legacyTeams = WNBATEAMS.map(team => ({
           id: team.id || team.abbr,
           name: team.name,
           abbreviation: team.abbr,
-          sport: 'wnba'
+          sport: 'wnba',
         }))
         setTeams({ wnba: legacyTeams })
       } finally {
@@ -105,20 +115,21 @@ export function useMultiSportTeams() {
     getAllTeams,
     getTeamsByGroup,
     findTeam,
-    getTeamsForSport
+    getTeamsForSport,
   }
 }
 
 // Legacy compatibility export
 export function useLegacyTeams() {
   const { teams, loading, error } = useMultiSportTeams()
-  
+
   // Convert to legacy format for backward compatibility
-  const legacyTeams = teams.wnba?.map(team => ({
-    name: team.name,
-    abbr: team.abbreviation,
-    id: team.id
-  })) || []
+  const legacyTeams =
+    teams.wnba?.map(team => ({
+      name: team.name,
+      abbr: team.abbreviation,
+      id: team.id,
+    })) || []
 
   return { teams: legacyTeams, loading, error }
 }

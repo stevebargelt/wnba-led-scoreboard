@@ -17,21 +17,21 @@ const SPORT_INFO = {
     name: 'WNBA',
     icon: '🏀',
     color: 'orange',
-    description: 'Women\'s National Basketball Association'
+    description: "Women's National Basketball Association",
   },
   nhl: {
-    name: 'NHL', 
+    name: 'NHL',
     icon: '🏒',
     color: 'blue',
-    description: 'National Hockey League'
-  }
+    description: 'National Hockey League',
+  },
 }
 
-export function SportSpecificFavorites({ 
-  sport, 
-  selectedTeams, 
-  onTeamsChange, 
-  onAddTeam 
+export function SportSpecificFavorites({
+  sport,
+  selectedTeams,
+  onTeamsChange,
+  onAddTeam,
 }: SportSpecificFavoritesProps) {
   const { getTeamsForSport, loading, error } = useMultiSportTeams()
   const [searchTerm, setSearchTerm] = useState('')
@@ -43,25 +43,22 @@ export function SportSpecificFavorites({
   const filteredTeams = sportTeams.filter(team => {
     if (!searchTerm) return true
     const term = searchTerm.toLowerCase()
-    return team.name.toLowerCase().includes(term) || 
-           team.abbreviation.toLowerCase().includes(term)
+    return team.name.toLowerCase().includes(term) || team.abbreviation.toLowerCase().includes(term)
   })
 
   const handleTeamSelect = (team: Team) => {
     onAddTeam({
       name: team.name,
       abbr: team.abbreviation,
-      id: team.id
+      id: team.id,
     })
     setSearchTerm('')
     setIsExpanded(false)
   }
 
   const isTeamSelected = (team: Team) => {
-    return selectedTeams.some(selected => 
-      selected === team.name || 
-      selected === team.abbreviation ||
-      selected === team.id
+    return selectedTeams.some(
+      selected => selected === team.name || selected === team.abbreviation || selected === team.id
     )
   }
 
@@ -116,12 +113,13 @@ export function SportSpecificFavorites({
             <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Teams:</h4>
             <div className="flex flex-wrap gap-1">
               {selectedTeams.map((teamIdentifier, index) => {
-                const team = sportTeams.find(t => 
-                  t.name === teamIdentifier || 
-                  t.abbreviation === teamIdentifier ||
-                  t.id === teamIdentifier
+                const team = sportTeams.find(
+                  t =>
+                    t.name === teamIdentifier ||
+                    t.abbreviation === teamIdentifier ||
+                    t.id === teamIdentifier
                 )
-                
+
                 return (
                   <div key={index} className="flex items-center space-x-1">
                     <Badge variant="success" size="sm">
@@ -131,13 +129,13 @@ export function SportSpecificFavorites({
                       onClick={() => {
                         const newTeams = selectedTeams.filter((_, i) => i !== index)
                         const teamObjects = newTeams.map(id => {
-                          const t = sportTeams.find(team => 
-                            team.name === id || team.abbreviation === id || team.id === id
+                          const t = sportTeams.find(
+                            team => team.name === id || team.abbreviation === id || team.id === id
                           )
                           return {
                             name: t?.name || id,
                             abbr: t?.abbreviation || id,
-                            id: t?.id
+                            id: t?.id,
                           }
                         })
                         onTeamsChange(teamObjects)
@@ -159,7 +157,7 @@ export function SportSpecificFavorites({
           <div className="flex items-center space-x-2">
             <Input
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               placeholder={`Search ${sportInfo.name} teams...`}
               className="flex-1"
               onFocus={() => setIsExpanded(true)}
@@ -179,10 +177,12 @@ export function SportSpecificFavorites({
             <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
               {filteredTeams.length === 0 && (
                 <div className="p-3 text-center text-gray-500 text-sm">
-                  {searchTerm ? `No ${sportInfo.name} teams match "${searchTerm}"` : `No ${sportInfo.name} teams available`}
+                  {searchTerm
+                    ? `No ${sportInfo.name} teams match "${searchTerm}"`
+                    : `No ${sportInfo.name} teams available`}
                 </div>
               )}
-              
+
               {filteredTeams.map(team => (
                 <button
                   key={team.id}
@@ -224,7 +224,7 @@ export function SportSpecificFavorites({
               <Button
                 key={team.id}
                 size="sm"
-                variant={isTeamSelected(team) ? "success" : "ghost"}
+                variant={isTeamSelected(team) ? 'success' : 'ghost'}
                 onClick={() => !isTeamSelected(team) && handleTeamSelect(team)}
                 disabled={isTeamSelected(team)}
                 className="text-xs px-2 py-1 h-6"

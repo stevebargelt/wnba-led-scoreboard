@@ -57,8 +57,12 @@ export function SportManagement({ deviceId }: SportManagementProps) {
     try {
       setLoading(true)
 
-      // Load available sports and teams
-      const sportsRes = await fetch('/api/sports')
+      // Load available sports and teams (forward JWT if present for RLS fallback)
+      const { data: sess1 } = await supabase.auth.getSession()
+      const jwt1 = sess1.session?.access_token
+      const sportsRes = await fetch('/api/sports', {
+        headers: jwt1 ? { Authorization: `Bearer ${jwt1}` } : {},
+      })
       const sportsData = await sportsRes.json()
 
       if (sportsData.sports) {
@@ -66,7 +70,12 @@ export function SportManagement({ deviceId }: SportManagementProps) {
       }
 
       // Load device sport configuration
-      const deviceRes = await fetch(`/api/device/${deviceId}/sports`)
+      // Include user JWT so API can pass RLS
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      const deviceRes = await fetch(`/api/device/${deviceId}/sports`, {
+        headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+      })
       const deviceData = await deviceRes.json()
 
       if (deviceData.sportConfigs) {
@@ -133,10 +142,13 @@ export function SportManagement({ deviceId }: SportManagementProps) {
     try {
       setSaving(true)
 
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
       const response = await fetch(`/api/device/${deviceId}/sports`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
         },
         body: JSON.stringify({
           sportConfigs: sportConfigs.map(config => ({
@@ -166,10 +178,13 @@ export function SportManagement({ deviceId }: SportManagementProps) {
 
   const handleOverrideGame = async (sport: SportType, gameEventId: string, reason: string = '') => {
     try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
       const response = await fetch(`/api/device/${deviceId}/sports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
         },
         body: JSON.stringify({
           action: 'override_game',
@@ -192,10 +207,13 @@ export function SportManagement({ deviceId }: SportManagementProps) {
 
   const handleClearOverride = async () => {
     try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
       const response = await fetch(`/api/device/${deviceId}/sports`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(jwt ? { Authorization: `Bearer ${jwt}` } : {}),
         },
         body: JSON.stringify({
           action: 'clear_override',

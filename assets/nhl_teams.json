@@ -1,0 +1,450 @@
+[
+  {
+    "id": "1",
+    "name": "New Jersey Devils",
+    "displayName": "New Jersey Devils",
+    "abbreviation": "NJD",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/1.svg"
+  },
+  {
+    "id": "2",
+    "name": "New York Islanders",
+    "displayName": "New York Islanders",
+    "abbreviation": "NYI",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/2.svg"
+  },
+  {
+    "id": "3",
+    "name": "New York Rangers",
+    "displayName": "New York Rangers",
+    "abbreviation": "NYR",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/3.svg"
+  },
+  {
+    "id": "4",
+    "name": "Philadelphia Flyers",
+    "displayName": "Philadelphia Flyers",
+    "abbreviation": "PHI",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/4.svg"
+  },
+  {
+    "id": "5",
+    "name": "Pittsburgh Penguins",
+    "displayName": "Pittsburgh Penguins",
+    "abbreviation": "PIT",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/5.svg"
+  },
+  {
+    "id": "6",
+    "name": "Boston Bruins",
+    "displayName": "Boston Bruins",
+    "abbreviation": "BOS",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/6.svg"
+  },
+  {
+    "id": "7",
+    "name": "Buffalo Sabres",
+    "displayName": "Buffalo Sabres",
+    "abbreviation": "BUF",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/7.svg"
+  },
+  {
+    "id": "8",
+    "name": "Toronto Maple Leafs",
+    "displayName": "Toronto Maple Leafs",
+    "abbreviation": "TOR",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/8.svg"
+  },
+  {
+    "id": "9",
+    "name": "Carolina Hurricanes",
+    "displayName": "Carolina Hurricanes",
+    "abbreviation": "CAR",
+    "conference": "Eastern",
+    "division": "Metropolitan",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/9.svg"
+  },
+  {
+    "id": "10",
+    "name": "Columbus Blue Jackets",
+    "displayName": "Columbus Blue Jackets",
+    "abbreviation": "CBJ",
+    "conference": "Eastern",
+    "division": "Metropolitan",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/10.svg"
+  },
+  {
+    "id": "11",
+    "name": "Washington Capitals",
+    "displayName": "Washington Capitals",
+    "abbreviation": "WSH",
+    "conference": "Eastern",
+    "division": "Metropolitan",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/11.svg"
+  },
+  {
+    "id": "12",
+    "name": "Chicago Blackhawks",
+    "displayName": "Chicago Blackhawks",
+    "abbreviation": "CHI",
+    "conference": "Western",
+    "division": "Central",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/12.svg"
+  },
+  {
+    "id": "13",
+    "name": "Colorado Avalanche",
+    "displayName": "Colorado Avalanche",
+    "abbreviation": "COL",
+    "conference": "Western",
+    "division": "Central",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/13.svg"
+  },
+  {
+    "id": "14",
+    "name": "Dallas Stars",
+    "displayName": "Dallas Stars",
+    "abbreviation": "DAL",
+    "conference": "Western",
+    "division": "Central",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/14.svg"
+  },
+  {
+    "id": "15",
+    "name": "Minnesota Wild",
+    "displayName": "Minnesota Wild",
+    "abbreviation": "MIN",
+    "conference": "Western",
+    "division": "Central",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/15.svg"
+  },
+  {
+    "id": "16",
+    "name": "Nashville Predators",
+    "displayName": "Nashville Predators",
+    "abbreviation": "NSH",
+    "conference": "Western",
+    "division": "Central",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/16.svg"
+  },
+  {
+    "id": "17",
+    "name": "St. Louis Blues",
+    "displayName": "St. Louis Blues",
+    "abbreviation": "STL",
+    "conference": "Western",
+    "division": "Central",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/17.svg"
+  },
+  {
+    "id": "18",
+    "name": "Winnipeg Jets",
+    "displayName": "Winnipeg Jets",
+    "abbreviation": "WPG",
+    "conference": "Western",
+    "division": "Central",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/18.svg"
+  },
+  {
+    "id": "19",
+    "name": "Utah Hockey Club",
+    "displayName": "Utah Hockey Club",
+    "abbreviation": "UTA",
+    "conference": "Western",
+    "division": "Central",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/19.svg"
+  },
+  {
+    "id": "20",
+    "name": "Anaheim Ducks",
+    "displayName": "Anaheim Ducks",
+    "abbreviation": "ANA",
+    "conference": "Western",
+    "division": "Pacific",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/20.svg"
+  },
+  {
+    "id": "21",
+    "name": "Calgary Flames",
+    "displayName": "Calgary Flames",
+    "abbreviation": "CGY",
+    "conference": "Western",
+    "division": "Pacific",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/21.svg"
+  },
+  {
+    "id": "22",
+    "name": "Edmonton Oilers",
+    "displayName": "Edmonton Oilers",
+    "abbreviation": "EDM",
+    "conference": "Western",
+    "division": "Pacific",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/22.svg"
+  },
+  {
+    "id": "23",
+    "name": "Los Angeles Kings",
+    "displayName": "Los Angeles Kings",
+    "abbreviation": "LAK",
+    "conference": "Western",
+    "division": "Pacific",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/23.svg"
+  },
+  {
+    "id": "24",
+    "name": "San Jose Sharks",
+    "displayName": "San Jose Sharks",
+    "abbreviation": "SJS",
+    "conference": "Western",
+    "division": "Pacific",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/24.svg"
+  },
+  {
+    "id": "25",
+    "name": "Seattle Kraken",
+    "displayName": "Seattle Kraken",
+    "abbreviation": "SEA",
+    "conference": "Western",
+    "division": "Pacific",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/25.svg"
+  },
+  {
+    "id": "26",
+    "name": "Vancouver Canucks",
+    "displayName": "Vancouver Canucks",
+    "abbreviation": "VAN",
+    "conference": "Western",
+    "division": "Pacific",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/26.svg"
+  },
+  {
+    "id": "27",
+    "name": "Vegas Golden Knights",
+    "displayName": "Vegas Golden Knights",
+    "abbreviation": "VGK",
+    "conference": "Western",
+    "division": "Pacific",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/27.svg"
+  },
+  {
+    "id": "28",
+    "name": "Florida Panthers",
+    "displayName": "Florida Panthers",
+    "abbreviation": "FLA",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/28.svg"
+  },
+  {
+    "id": "29",
+    "name": "Tampa Bay Lightning",
+    "displayName": "Tampa Bay Lightning",
+    "abbreviation": "TBL",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/29.svg"
+  },
+  {
+    "id": "30",
+    "name": "Detroit Red Wings",
+    "displayName": "Detroit Red Wings",
+    "abbreviation": "DET",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/30.svg"
+  },
+  {
+    "id": "31",
+    "name": "Montreal Canadiens",
+    "displayName": "Montreal Canadiens",
+    "abbreviation": "MTL",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/31.svg"
+  },
+  {
+    "id": "32",
+    "name": "Ottawa Senators",
+    "displayName": "Ottawa Senators",
+    "abbreviation": "OTT",
+    "conference": "Eastern",
+    "division": "Atlantic",
+    "colors": {
+      "primary": "#000000",
+      "secondary": "#FFFFFF"
+    },
+    "sport": "nhl",
+    "logo": "assets/nhl_logos/32.svg"
+  }
+]

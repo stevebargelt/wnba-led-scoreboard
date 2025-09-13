@@ -1,58 +1,133 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '@/lib/supabaseClient'
+import { createClient } from '@supabase/supabase-js'
+import fs from 'fs/promises'
+import path from 'path'
+
+// Server-side: use service role if available to read sport_teams regardless of session
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method === 'GET') {
-    try {
-      // For development, return mock team data for both sports
-      console.log('[DEV] Returning mock sports team data')
-
-      const wnbaTeams = [
-        { id: '18', name: 'Seattle Storm', abbreviation: 'SEA', conference: 'Western', division: 'Western' },
-        { id: '26', name: 'Las Vegas Aces', abbreviation: 'LVA', conference: 'Western', division: 'Western' },
-        { id: 'MIN', name: 'Minnesota Lynx', abbreviation: 'MIN', conference: 'Western', division: 'Western' },
-        { id: 'CHI', name: 'Chicago Sky', abbreviation: 'CHI', conference: 'Eastern', division: 'Eastern' },
-        { id: 'ATL', name: 'Atlanta Dream', abbreviation: 'ATL', conference: 'Eastern', division: 'Eastern' },
-        { id: 'CON', name: 'Connecticut Sun', abbreviation: 'CON', conference: 'Eastern', division: 'Eastern' },
-        { id: 'DAL', name: 'Dallas Wings', abbreviation: 'DAL', conference: 'Western', division: 'Western' },
-        { id: 'IND', name: 'Indiana Fever', abbreviation: 'IND', conference: 'Eastern', division: 'Eastern' },
-        { id: 'NYL', name: 'New York Liberty', abbreviation: 'NYL', conference: 'Eastern', division: 'Eastern' },
-        { id: 'PHX', name: 'Phoenix Mercury', abbreviation: 'PHX', conference: 'Western', division: 'Western' },
-        { id: 'WAS', name: 'Washington Mystics', abbreviation: 'WAS', conference: 'Eastern', division: 'Eastern' },
-        { id: 'LAS', name: 'Los Angeles Sparks', abbreviation: 'LAS', conference: 'Western', division: 'Western' }
-      ]
-
-      const nhlTeams = [
-        { id: '25', name: 'Seattle Kraken', abbreviation: 'SEA', conference: 'Western', division: 'Pacific' },
-        { id: '54', name: 'Vegas Golden Knights', abbreviation: 'VGK', conference: 'Western', division: 'Pacific' },
-        { id: '15', name: 'Minnesota Wild', abbreviation: 'MIN', conference: 'Western', division: 'Central' },
-        { id: '6', name: 'Boston Bruins', abbreviation: 'BOS', conference: 'Eastern', division: 'Atlantic' },
-        { id: '3', name: 'New York Rangers', abbreviation: 'NYR', conference: 'Eastern', division: 'Atlantic' },
-        { id: '8', name: 'Toronto Maple Leafs', abbreviation: 'TOR', conference: 'Eastern', division: 'Atlantic' },
-        { id: '13', name: 'Colorado Avalanche', abbreviation: 'COL', conference: 'Western', division: 'Central' },
-        { id: '14', name: 'Dallas Stars', abbreviation: 'DAL', conference: 'Western', division: 'Central' },
-        { id: '29', name: 'Tampa Bay Lightning', abbreviation: 'TBL', conference: 'Eastern', division: 'Atlantic' },
-        { id: '28', name: 'Florida Panthers', abbreviation: 'FLA', conference: 'Eastern', division: 'Atlantic' },
-        { id: '22', name: 'Edmonton Oilers', abbreviation: 'EDM', conference: 'Western', division: 'Pacific' },
-        { id: '23', name: 'Los Angeles Kings', abbreviation: 'LAK', conference: 'Western', division: 'Pacific' },
-        { id: '20', name: 'Anaheim Ducks', abbreviation: 'ANA', conference: 'Western', division: 'Pacific' },
-        { id: '21', name: 'Calgary Flames', abbreviation: 'CGY', conference: 'Western', division: 'Pacific' },
-        { id: '26', name: 'Vancouver Canucks', abbreviation: 'VAN', conference: 'Western', division: 'Pacific' },
-        { id: '24', name: 'San Jose Sharks', abbreviation: 'SJS', conference: 'Western', division: 'Pacific' }
-      ]
-
-      const mockSportData = {
-        wnba: wnbaTeams.map(team => ({ ...team, sport: 'wnba' })),
-        nhl: nhlTeams.map(team => ({ ...team, sport: 'nhl' }))
-      }
-
-      res.status(200).json({ sports: mockSportData })
-    } catch (error) {
-      console.error('API error:', error)
-      res.status(500).json({ error: 'Internal server error' })
-    }
-  } else {
+  if (req.method !== 'GET') {
     res.setHeader('Allow', ['GET'])
-    res.status(405).json({ error: `Method ${req.method} not allowed` })
+    return res.status(405).json({ error: `Method ${req.method} not allowed` })
+  }
+  try {
+    let data: any[] | null = null
+    let error: any = null
+
+    if (supabaseUrl && serviceKey) {
+      // Preferred: use service role on the server
+      const admin = createClient(supabaseUrl, serviceKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const resp = await admin
+        .from('sport_teams')
+        .select('sport, external_id, name, display_name, abbreviation, conference, division, is_active')
+        .eq('is_active', true)
+      data = resp.data
+      error = resp.error
+    } else if (supabaseUrl && anonKey) {
+      // Fallback: rely on RLS and a user JWT forwarded via Authorization
+      const authHeader = req.headers.authorization
+      if (!authHeader) {
+        return res.status(401).json({ error: 'Unauthorized: sign in required to list teams' })
+      }
+      const userClient = createClient(supabaseUrl, anonKey, {
+        global: { headers: { Authorization: authHeader } },
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const resp = await userClient
+        .from('sport_teams')
+        .select('sport, external_id, name, display_name, abbreviation, conference, division, is_active')
+        .eq('is_active', true)
+      data = resp.data
+      error = resp.error
+    } else {
+      return res.status(500).json({ error: 'Server misconfigured: missing Supabase env' })
+    }
+
+    if (error) {
+      console.error('sports API DB error:', error.message)
+    }
+
+    const supportedSports = ['wnba', 'nhl', 'nba', 'mlb', 'nfl'] as const
+    const grouped: Record<string, any[]> = Object.fromEntries(
+      supportedSports.map(s => [s, []])
+    )
+
+    if (data && data.length > 0) {
+      for (const row of data) {
+        const sport = String(row.sport)
+        if (!grouped[sport]) continue
+        grouped[sport].push({
+          id: row.external_id,
+          name: row.display_name || row.name,
+          abbreviation: row.abbreviation,
+          conference: row.conference,
+          division: row.division,
+          sport,
+        })
+      }
+      return res.status(200).json({ sports: grouped })
+    }
+
+    // Fallback: read from local assets when DB has no rows
+    try {
+      const root = path.resolve(process.cwd(), '..')
+      // WNBA fallback (prefer new file if present)
+      let wnba: any[] = []
+      try {
+        const wnbaPathNew = path.join(root, 'assets', 'wnba_teams.json')
+        const wnbaNew = JSON.parse(await fs.readFile(wnbaPathNew, 'utf-8'))
+        wnba = (wnbaNew.teams || wnbaNew || []).map((t: any) => ({
+          id: String(t.id || t.abbr),
+          name: t.name || t.displayName,
+          abbreviation: (t.abbr || t.abbreviation || '').toUpperCase(),
+          conference: t.conference,
+          division: t.division,
+          sport: 'wnba',
+        }))
+      } catch {
+        try {
+          const wnbaPathLegacy = path.join(root, 'assets', 'teams.json')
+          const legacy = JSON.parse(await fs.readFile(wnbaPathLegacy, 'utf-8'))
+          wnba = (legacy.teams || []).map((t: any) => ({
+            id: String(t.id || t.abbr),
+            name: t.name || t.displayName,
+            abbreviation: (t.abbr || t.abbreviation || '').toUpperCase(),
+            conference: t.conference,
+            division: t.division,
+            sport: 'wnba',
+          }))
+        } catch {}
+      }
+      // NHL fallback
+      let nhl: any[] = []
+      try {
+        const nhlPath = path.join(root, 'assets', 'nhl_teams.json')
+        const nhlJson = JSON.parse(await fs.readFile(nhlPath, 'utf-8'))
+        nhl = (nhlJson.teams || nhlJson || []).map((t: any) => ({
+          id: String(t.id || t.teamId || t.abbr),
+          name: t.name || t.teamName || t.displayName,
+          abbreviation: (t.abbr || t.abbreviation || t.triCode || '').toUpperCase(),
+          conference: t.conference,
+          division: t.division,
+          sport: 'nhl',
+        }))
+      } catch {}
+
+      // Build grouped response
+      grouped.wnba = wnba
+      grouped.nhl = nhl
+      return res.status(200).json({ sports: grouped })
+    } catch (e: any) {
+      console.error('sports API asset fallback error:', e?.message || e)
+      return res.status(200).json({ sports: { wnba: [], nhl: [], nba: [], mlb: [], nfl: [] } })
+    }
+  } catch (error: any) {
+    console.error('sports API error:', error)
+    return res.status(500).json({ error: 'Internal server error' })
   }
 }

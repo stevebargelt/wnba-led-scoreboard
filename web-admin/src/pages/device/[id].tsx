@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
 import { MultiSportTeamSelector } from '../../components/config/MultiSportTeamSelector'
+import { MultiSportFavoritesEditor } from '../../components/config/MultiSportFavoritesEditor'
 import { makeValidator } from '@/lib/schema'
 import { Layout } from '../../components/layout'
 import {
@@ -46,6 +47,10 @@ export default function DevicePage() {
   const [teamList, setTeamList] = useState<{ name: string; abbr?: string; id?: string }[]>([])
   const [schemaError, setSchemaError] = useState<string>('')
   const [schemaErrors, setSchemaErrors] = useState<any[]>([])
+  const [multiSportConfig, setMultiSportConfig] = useState<any>(null)
+  const handleMultiSportConfigChange = useCallback((config: any) => {
+    setMultiSportConfig(config)
+  }, [])
   // Inline editable settings (with reasonable defaults)
   const DEFAULTS = {
     timezone: 'America/Los_Angeles',
@@ -103,6 +108,60 @@ export default function DevicePage() {
         .order('created_at', { ascending: false })
         .limit(20)
       if (ev) setEvents(ev)
+
+      // Load device sport configuration for Multi-Sport Favorites editor
+      try {
+        const { data: sess } = await supabase.auth.getSession()
+        const jwt = sess.session?.access_token
+        // Fetch available sports/teams to resolve identifiers to canonical names/abbrs
+        let sportDirectory: Record<string, any[]> = {}
+        try {
+          const sRes = await fetch('/api/sports', { headers: jwt ? { Authorization: `Bearer ${jwt}` } : {} })
+          if (sRes.ok) {
+            const sJson = await sRes.json()
+            sportDirectory = sJson.sports || {}
+          }
+        } catch {}
+
+        const resp = await fetch(`/api/device/${id}/sports`, {
+          headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+        })
+        if (resp.ok) {
+          const body = await resp.json()
+          const sportConfigs: any[] = body.sportConfigs || []
+          // Helper to resolve identifier to {id,name,abbr}
+          const resolveFav = (sport: string, identifier: any) => {
+            const list = (sportDirectory[sport] || []) as any[]
+            const idStr = String(identifier)
+            const byId = list.find(t => String(t.id) === idStr)
+            if (byId) return { id: String(byId.id), name: byId.name, abbr: byId.abbreviation }
+            const byAbbr = list.find(t => String(t.abbreviation).toUpperCase() === idStr.toUpperCase())
+            if (byAbbr) return { id: String(byAbbr.id), name: byAbbr.name, abbr: byAbbr.abbreviation }
+            const byName = list.find(t => String(t.name).toLowerCase() === idStr.toLowerCase())
+            if (byName) return { id: String(byName.id), name: byName.name, abbr: byName.abbreviation }
+            return { id: idStr, name: idStr, abbr: idStr }
+          }
+
+          // Map DB rows to editor format with enrichment using directory if available
+          const wnba = sportConfigs.find(c => String(c.sport) === 'wnba') || {
+            sport: 'wnba', enabled: true, favorite_teams: [], priority: 1,
+          }
+          const nhl = sportConfigs.find(c => String(c.sport) === 'nhl') || {
+            sport: 'nhl', enabled: false, favorite_teams: [], priority: 2,
+          }
+          const mapFavs = (arr: any[], sport: string) =>
+            (Array.isArray(arr) ? arr : []).map(v => resolveFav(sport, v))
+          setMultiSportConfig({
+            sports: [
+              { sport: 'wnba', enabled: !!wnba.enabled, favorites: mapFavs(wnba.favorite_teams, 'wnba') },
+              { sport: 'nhl', enabled: !!nhl.enabled, favorites: mapFavs(nhl.favorite_teams, 'nhl') },
+            ],
+          })
+        }
+      } catch (e) {
+        // Non-fatal for the page
+        console.warn('Failed to load device sport configs for favorites editor', e)
+      }
     })()
   }, [id])
 
@@ -406,11 +465,12 @@ export default function DevicePage() {
 
         {/* Tabbed Interface */}
         <Tabs defaultValue="actions" className="w-full">
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className="grid grid-cols-6 w-full">
             <TabsTrigger value="sports">Multi-Sport</TabsTrigger>
+            <TabsTrigger value="favorites">Sport Favorites</TabsTrigger>
             <TabsTrigger value="actions">Device Actions</TabsTrigger>
             <TabsTrigger value="token">Device Token</TabsTrigger>
-            <TabsTrigger value="config">Config/Favorites Editor</TabsTrigger>
+            <TabsTrigger value="config">Legacy Config</TabsTrigger>
             <TabsTrigger value="events">Recent Events</TabsTrigger>
           </TabsList>
 
@@ -425,6 +485,14 @@ export default function DevicePage() {
                 }}
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="favorites">
+            <MultiSportFavoritesEditor
+              deviceId={id as string}
+              onConfigChange={handleMultiSportConfigChange}
+              initialConfig={multiSportConfig}
+            />
           </TabsContent>
 
           <TabsContent value="actions">

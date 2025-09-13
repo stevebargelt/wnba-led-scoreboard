@@ -30,14 +30,11 @@ export function MultiSportConfigEditor({ deviceId, onConfigChange }: MultiSportC
   const loadExistingFavorites = async () => {
     try {
       setLoading(true)
-      
+
       // This would load from the main config in a real implementation
       // For now, initialize with sample data
-      setWnbaFavorites([
-        { name: 'Seattle Storm', abbr: 'SEA', id: '18' }
-      ])
+      setWnbaFavorites([{ name: 'Seattle Storm', abbr: 'SEA', id: '18' }])
       setNhlFavorites([])
-      
     } catch (error) {
       console.error('Error loading existing favorites:', error)
     } finally {
@@ -56,10 +53,10 @@ export function MultiSportConfigEditor({ deviceId, onConfigChange }: MultiSportC
   }
 
   const handleAddWnbaTeam = (team: FavoriteTeam) => {
-    const isAlreadySelected = wnbaFavorites.some(existing => 
-      existing.name === team.name || existing.abbr === team.abbr
+    const isAlreadySelected = wnbaFavorites.some(
+      existing => existing.name === team.name || existing.abbr === team.abbr
     )
-    
+
     if (!isAlreadySelected) {
       const newFavorites = [...wnbaFavorites, team]
       setWnbaFavorites(newFavorites)
@@ -68,10 +65,10 @@ export function MultiSportConfigEditor({ deviceId, onConfigChange }: MultiSportC
   }
 
   const handleAddNhlTeam = (team: FavoriteTeam) => {
-    const isAlreadySelected = nhlFavorites.some(existing => 
-      existing.name === team.name || existing.abbr === team.abbr
+    const isAlreadySelected = nhlFavorites.some(
+      existing => existing.name === team.name || existing.abbr === team.abbr
     )
-    
+
     if (!isAlreadySelected) {
       const newFavorites = [...nhlFavorites, team]
       setNhlFavorites(newFavorites)
@@ -85,13 +82,13 @@ export function MultiSportConfigEditor({ deviceId, onConfigChange }: MultiSportC
         sports: [
           {
             sport: 'wnba',
-            favorites: wnbaFavorites
+            favorites: wnbaFavorites,
           },
           {
             sport: 'nhl',
-            favorites: nhlFavorites
-          }
-        ]
+            favorites: nhlFavorites,
+          },
+        ],
       }
       onConfigChange(combinedConfig)
     }
@@ -100,7 +97,7 @@ export function MultiSportConfigEditor({ deviceId, onConfigChange }: MultiSportC
   const handleSave = async () => {
     try {
       setSaving(true)
-      
+
       // Create the configuration object
       const config = {
         sports: [
@@ -108,22 +105,21 @@ export function MultiSportConfigEditor({ deviceId, onConfigChange }: MultiSportC
             sport: 'wnba',
             enabled: wnbaFavorites.length > 0,
             priority: 1,
-            favorites: wnbaFavorites
+            favorites: wnbaFavorites,
           },
           {
-            sport: 'nhl', 
+            sport: 'nhl',
             enabled: nhlFavorites.length > 0,
             priority: 2,
-            favorites: nhlFavorites
-          }
-        ]
+            favorites: nhlFavorites,
+          },
+        ],
       }
 
       console.log('Saving multi-sport configuration:', config)
-      
+
       // TODO: Integrate with actual config save mechanism
       // For now, just show success
-      
     } catch (error) {
       console.error('Error saving multi-sport config:', error)
     } finally {
@@ -165,11 +161,7 @@ export function MultiSportConfigEditor({ deviceId, onConfigChange }: MultiSportC
               <Badge variant={totalFavorites > 0 ? 'success' : 'default'}>
                 {totalFavorites} Total Favorites
               </Badge>
-              <Button 
-                onClick={handleSave}
-                disabled={saving}
-                size="sm"
-              >
+              <Button onClick={handleSave} disabled={saving} size="sm">
                 {saving ? 'Saving...' : 'Save Configuration'}
               </Button>
             </div>
@@ -225,8 +217,12 @@ export function MultiSportConfigEditor({ deviceId, onConfigChange }: MultiSportC
           <div className="p-4">
             <h4 className="font-medium text-blue-900 mb-2">Configuration Preview</h4>
             <div className="text-sm text-blue-800">
-              <div>🏀 <strong>WNBA:</strong> {wnbaFavorites.map(t => t.abbr).join(', ') || 'None'}</div>
-              <div>🏒 <strong>NHL:</strong> {nhlFavorites.map(t => t.abbr).join(', ') || 'None'}</div>
+              <div>
+                🏀 <strong>WNBA:</strong> {wnbaFavorites.map(t => t.abbr).join(', ') || 'None'}
+              </div>
+              <div>
+                🏒 <strong>NHL:</strong> {nhlFavorites.map(t => t.abbr).join(', ') || 'None'}
+              </div>
             </div>
             <p className="text-xs text-blue-600 mt-2">
               The scoreboard will prioritize games from these favorite teams in each sport.
