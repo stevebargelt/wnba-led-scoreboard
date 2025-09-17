@@ -64,7 +64,8 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
       additionalProperties: true
     }
   },
-  required: ["favorites"],
+  // Do not require favorites; allow synthesis from DB via on-config-build
+  // required: ["favorites"],
   additionalProperties: true
 };
 

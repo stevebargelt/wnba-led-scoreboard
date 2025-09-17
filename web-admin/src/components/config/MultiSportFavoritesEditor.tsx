@@ -648,7 +648,9 @@ export function MultiSportFavoritesEditor({
       {/* JSON Export */}
       <Card>
         <div className="p-4">
-          <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">Export Configuration</h4>
+          <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">
+            Export Configuration
+          </h4>
           <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
             Use this JSON in your multi-sport configuration file:
           </p>

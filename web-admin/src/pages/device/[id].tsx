@@ -23,6 +23,7 @@ import { LiveGameMonitor } from '../../components/sports/LiveGameMonitor'
 const FN_CONFIG = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE!
 const FN_ACTION = process.env.NEXT_PUBLIC_FUNCTION_ON_ACTION!
 const FN_MINT = process.env.NEXT_PUBLIC_FUNCTION_MINT_DEVICE_TOKEN!
+const FN_BUILD = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_BUILD
 
 export default function DevicePage() {
   const router = useRouter()
@@ -287,6 +288,116 @@ export default function DevicePage() {
     setLoading(false)
   }
 
+  const buildApplyFromDb = async () => {
+    if (!id || !FN_BUILD) {
+      setMessage('Build function not configured')
+      return
+    }
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setMessage('Not signed in')
+        setLoading(false)
+        return
+      }
+      const resp = await fetch(FN_BUILD, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ device_id: id, apply: true }),
+      })
+      const body = await resp.json()
+      if (resp.ok) {
+        setMessage('Built and applied config from DB favorites')
+        if (body?.content) setConfigText(JSON.stringify(body.content, null, 2))
+      } else {
+        setMessage(`Build failed: ${body?.error || 'Unknown error'}`)
+      }
+    } catch (e: any) {
+      setMessage(`Build error: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const previewFromDb = async () => {
+    if (!id || !FN_BUILD) {
+      setMessage('Build function not configured')
+      return
+    }
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setMessage('Not signed in')
+        setLoading(false)
+        return
+      }
+      const resp = await fetch(FN_BUILD, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ device_id: id, apply: false }),
+      })
+      const body = await resp.json()
+      if (resp.ok) {
+        setConfigText(JSON.stringify(body.content, null, 2))
+        setMessage('Previewed effective config (no apply)')
+      } else {
+        setMessage(`Preview failed: ${body?.error || 'Unknown error'}`)
+      }
+    } catch (e: any) {
+      setMessage(`Preview error: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const seedTeams = async () => {
+    try {
+      setLoading(true)
+      setMessage('')
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setMessage('Not signed in')
+        setLoading(false)
+        return
+      }
+      const resp = await fetch('/api/admin/seed-teams', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`,
+        },
+      })
+      const body = await resp.json()
+      if (resp.ok) {
+        const parts = Object.entries(body.results || {})
+          .map(([sport, r]: any) => `${sport}: ${r.upserted}`)
+          .join(', ')
+        setMessage(`Seeded teams (${parts || 'no files found'})`)
+      } else {
+        setMessage(`Seed failed: ${body?.error || 'Unknown error'}`)
+      }
+    } catch (e: any) {
+      setMessage(`Seed error: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const mintDeviceToken = async () => {
     if (!id) return
     setLoading(true)
@@ -484,13 +595,13 @@ export default function DevicePage() {
         </div>
 
         {/* Tabbed Interface */}
-        <Tabs defaultValue="actions" className="w-full">
+        <Tabs defaultValue="sports" className="w-full">
           <TabsList className="grid grid-cols-6 w-full">
-            <TabsTrigger value="sports">Multi-Sport</TabsTrigger>
-            <TabsTrigger value="favorites">Sport Favorites</TabsTrigger>
+            <TabsTrigger value="sports">Sports</TabsTrigger>
+            <TabsTrigger value="favorites">Favorite Teams</TabsTrigger>
+            <TabsTrigger value="config">Config</TabsTrigger>
             <TabsTrigger value="actions">Device Actions</TabsTrigger>
             <TabsTrigger value="token">Device Token</TabsTrigger>
-            <TabsTrigger value="config">Legacy Config</TabsTrigger>
             <TabsTrigger value="events">Recent Events</TabsTrigger>
           </TabsList>
 
@@ -678,14 +789,45 @@ export default function DevicePage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Configuration JSON</CardTitle>
-                    <Button
-                      onClick={loadLatestConfig}
-                      disabled={loading}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      Load Latest Config
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={loadLatestConfig}
+                        disabled={loading}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        Load Latest Config
+                      </Button>
+                      {FN_BUILD && (
+                        <Button
+                          onClick={previewFromDb}
+                          disabled={loading}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          Preview Effective Config
+                        </Button>
+                      )}
+                      <Button
+                        onClick={seedTeams}
+                        disabled={loading}
+                        variant="secondary"
+                        size="sm"
+                        title="Admin: upsert teams from local assets into DB"
+                      >
+                        Seed Teams
+                      </Button>
+                      {FN_BUILD && (
+                        <Button
+                          onClick={buildApplyFromDb}
+                          disabled={loading}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          Build + Apply From DB Favorites
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <div className="space-y-4">

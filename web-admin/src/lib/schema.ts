@@ -53,7 +53,8 @@ export const CONFIG_SCHEMA = {
       additionalProperties: true,
     },
   },
-  required: ['favorites'],
+  // favorites no longer required when using DB-sourced favorites
+  // required: ['favorites'],
   additionalProperties: true,
 } as const
 
