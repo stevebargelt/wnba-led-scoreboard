@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react'
-import { createPortal } from 'react-dom'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -19,6 +18,8 @@ interface SportConfig {
   enabled: boolean
   favorites: FavoriteTeam[]
 }
+
+type SportKey = 'wnba' | 'nhl'
 
 interface MultiSportFavoritesEditorProps {
   deviceId: string
@@ -47,20 +48,45 @@ export function MultiSportFavoritesEditor({
   initialConfig,
 }: MultiSportFavoritesEditorProps) {
   const { teams, loading, error } = useMultiSportTeams()
-  const [wnbaConfig, setWnbaConfig] = useState<SportConfig>({
-    sport: 'wnba',
-    enabled: true,
-    favorites: [],
-  })
-  const [nhlConfig, setNhlConfig] = useState<SportConfig>({
-    sport: 'nhl',
-    enabled: false,
-    favorites: [],
-  })
+  const [sportConfigs, setSportConfigs] = useState<Record<SportKey, SportConfig>>(() => ({
+    wnba: {
+      sport: 'wnba',
+      enabled: true,
+      favorites: [],
+    },
+    nhl: {
+      sport: 'nhl',
+      enabled: false,
+      favorites: [],
+    },
+  }))
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState<string>('')
-  const lastSavedRef = useRef<{ wnba: SportConfig; nhl: SportConfig } | null>(null)
+  const lastSavedRef = useRef<Record<SportKey, SportConfig> | null>(null)
   const [toast, setToast] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
+
+  const wnbaConfig = sportConfigs.wnba
+  const nhlConfig = sportConfigs.nhl
+
+  const cloneSportConfig = useCallback(
+    (config: SportConfig): SportConfig => ({
+      ...config,
+      favorites: config.favorites.map(f => ({ ...f })),
+    }),
+    []
+  )
+
+  const updateSportConfig = useCallback(
+    (sportKey: SportKey, updater: (config: SportConfig) => SportConfig) => {
+      setSportConfigs(prev => {
+        const current = prev[sportKey]
+        const nextConfig = updater(current)
+        if (nextConfig === current) return prev
+        return { ...prev, [sportKey]: nextConfig }
+      })
+    },
+    []
+  )
 
   // Load initial configuration exactly once to avoid clobbering in-progress edits
   const initRef = useRef(false)
@@ -68,21 +94,29 @@ export function MultiSportFavoritesEditor({
     if (!initRef.current && initialConfig) {
       const wnbaSport = initialConfig.sports.find(s => s.sport === 'wnba')
       const nhlSport = initialConfig.sports.find(s => s.sport === 'nhl')
-      if (wnbaSport) setWnbaConfig(wnbaSport)
-      if (nhlSport) setNhlConfig(nhlSport)
-      if (wnbaSport && nhlSport) {
-        lastSavedRef.current = { wnba: wnbaSport, nhl: nhlSport }
-      }
+      setSportConfigs(prev => {
+        const nextConfigs: Record<SportKey, SportConfig> = {
+          wnba: wnbaSport ? { ...wnbaSport } : prev.wnba,
+          nhl: nhlSport ? { ...nhlSport } : prev.nhl,
+        }
+        lastSavedRef.current = {
+          wnba: cloneSportConfig(nextConfigs.wnba),
+          nhl: cloneSportConfig(nextConfigs.nhl),
+        }
+        return nextConfigs
+      })
       initRef.current = true
     }
-  }, [initialConfig])
+  }, [initialConfig, cloneSportConfig])
+
+  const orderedConfigs = useMemo(() => [sportConfigs.wnba, sportConfigs.nhl], [sportConfigs])
 
   // Notify parent of changes
   useEffect(() => {
     onConfigChange({
-      sports: [wnbaConfig, nhlConfig],
+      sports: orderedConfigs,
     })
-  }, [wnbaConfig, nhlConfig, onConfigChange])
+  }, [orderedConfigs, onConfigChange])
 
   const deepEqual = (a: any, b: any): boolean => {
     try {
@@ -92,21 +126,20 @@ export function MultiSportFavoritesEditor({
     }
   }
 
-  const hasChanges = (() => {
+  const hasChanges = useMemo(() => {
     const last = lastSavedRef.current
     if (!last) return true
-    const current = { wnba: wnbaConfig, nhl: nhlConfig }
     return !deepEqual(
       {
         w: { e: last.wnba.enabled, f: last.wnba.favorites },
         n: { e: last.nhl.enabled, f: last.nhl.favorites },
       },
       {
-        w: { e: current.wnba.enabled, f: current.wnba.favorites },
-        n: { e: current.nhl.enabled, f: current.nhl.favorites },
+        w: { e: sportConfigs.wnba.enabled, f: sportConfigs.wnba.favorites },
+        n: { e: sportConfigs.nhl.enabled, f: sportConfigs.nhl.favorites },
       }
     )
-  })()
+  }, [sportConfigs])
 
   const handleSave = async () => {
     try {
@@ -123,24 +156,26 @@ export function MultiSportFavoritesEditor({
       // Build payload: identifiers prefer id, then abbr, then name
       const ids = (favs: FavoriteTeam[]) =>
         favs.map(f => String(f.id || f.abbr || f.name)).filter(Boolean)
-      const sportConfigs = [
+      const currentWnba = sportConfigs.wnba
+      const currentNhl = sportConfigs.nhl
+      const payloadConfigs = [
         {
           sport: 'wnba',
-          enabled: wnbaConfig.enabled,
+          enabled: currentWnba.enabled,
           priority: 1,
-          favoriteTeams: ids(wnbaConfig.favorites),
+          favoriteTeams: ids(currentWnba.favorites),
         },
         {
           sport: 'nhl',
-          enabled: nhlConfig.enabled,
+          enabled: currentNhl.enabled,
           priority: 2,
-          favoriteTeams: ids(nhlConfig.favorites),
+          favoriteTeams: ids(currentNhl.favorites),
         },
       ]
       const resp = await fetch(`/api/device/${deviceId}/sports`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-        body: JSON.stringify({ sportConfigs }),
+        body: JSON.stringify({ sportConfigs: payloadConfigs }),
       })
       if (!resp.ok) {
         const txt = await resp.text()
@@ -150,7 +185,10 @@ export function MultiSportFavoritesEditor({
         setSaveMsg('Favorites saved')
         setToast({ kind: 'success', text: 'Favorites saved' })
         // Update lastSaved snapshot
-        lastSavedRef.current = { wnba: wnbaConfig, nhl: nhlConfig }
+        lastSavedRef.current = {
+          wnba: cloneSportConfig(currentWnba),
+          nhl: cloneSportConfig(currentNhl),
+        }
       }
     } catch (e: any) {
       setSaveMsg(`Save error: ${e.message}`)
@@ -162,10 +200,13 @@ export function MultiSportFavoritesEditor({
     }
   }
 
-  const SportEditor = ({ sportKey }: { sportKey: 'wnba' | 'nhl' }) => {
-    const config = sportKey === 'wnba' ? wnbaConfig : nhlConfig
-    const setConfig = sportKey === 'wnba' ? setWnbaConfig : setNhlConfig
-    const sportTeams = teams[sportKey] || []
+  const SportEditor = ({ sportKey }: { sportKey: SportKey }) => {
+    const { wnba: wnbaTeams = [], nhl: nhlTeams = [] } = teams
+    const config = sportConfigs[sportKey]
+    const sportTeams = useMemo(
+      () => (sportKey === 'wnba' ? wnbaTeams : nhlTeams),
+      [sportKey, wnbaTeams, nhlTeams]
+    )
     const sportInfo = SPORT_INFO[sportKey]
 
     const [newTeam, setNewTeam] = useState({ name: '', abbr: '', id: '' })
@@ -200,7 +241,7 @@ export function MultiSportFavoritesEditor({
           }))
         }
       }
-    }, [newTeam.name, newTeam.abbr, sportTeams])
+    }, [newTeam.name, newTeam.abbr, newTeam.id, sportTeams])
 
     const addFavorite = (team?: Team) => {
       const teamToAdd = team || {
@@ -229,54 +270,53 @@ export function MultiSportFavoritesEditor({
         id: teamToAdd.id,
       }
 
-      setConfig({
-        ...config,
-        favorites: [...config.favorites, newFavorite],
-      })
+      updateSportConfig(sportKey, cfg => ({
+        ...cfg,
+        favorites: [...cfg.favorites, newFavorite],
+      }))
 
       setNewTeam({ name: '', abbr: '', id: '' })
     }
 
     const removeFavorite = (index: number) => {
-      const newFavorites = config.favorites.filter((_, i) => i !== index)
-      setConfig({
-        ...config,
-        favorites: newFavorites,
-      })
+      updateSportConfig(sportKey, cfg => ({
+        ...cfg,
+        favorites: cfg.favorites.filter((_, i) => i !== index),
+      }))
     }
 
     const moveFavorite = (from: number, to: number) => {
-      if (to < 0 || to >= config.favorites.length || from === to) return
-      const next = config.favorites.slice()
-      const [moved] = next.splice(from, 1)
-      next.splice(to, 0, moved)
-      setConfig({ ...config, favorites: next })
+      updateSportConfig(sportKey, cfg => {
+        if (to < 0 || to >= cfg.favorites.length || from === to) return cfg
+        const next = cfg.favorites.slice()
+        const [moved] = next.splice(from, 1)
+        next.splice(to, 0, moved)
+        return { ...cfg, favorites: next }
+      })
     }
 
     const autoFillTeamIds = () => {
-      const updatedFavorites = config.favorites.map(fav => {
-        // Find matching team in this sport's teams
-        const matchingTeam = sportTeams.find(
-          team =>
-            team.abbreviation.toLowerCase() === fav.abbr.toLowerCase() ||
-            team.name.toLowerCase() === fav.name.toLowerCase()
-        )
+      updateSportConfig(sportKey, cfg => {
+        const updatedFavorites = cfg.favorites.map(fav => {
+          const matchingTeam = sportTeams.find(
+            team =>
+              team.abbreviation.toLowerCase() === fav.abbr.toLowerCase() ||
+              team.name.toLowerCase() === fav.name.toLowerCase()
+          )
 
-        if (matchingTeam) {
-          return {
-            ...fav,
-            id: matchingTeam.id,
-            name: matchingTeam.name, // Use canonical name
-            abbr: matchingTeam.abbreviation, // Use canonical abbreviation
+          if (matchingTeam) {
+            return {
+              ...fav,
+              id: matchingTeam.id,
+              name: matchingTeam.name,
+              abbr: matchingTeam.abbreviation,
+            }
           }
-        }
 
-        return fav
-      })
+          return fav
+        })
 
-      setConfig({
-        ...config,
-        favorites: updatedFavorites,
+        return { ...cfg, favorites: updatedFavorites }
       })
     }
 
@@ -312,16 +352,23 @@ export function MultiSportFavoritesEditor({
       // Only commit if something changed
       const changed = JSON.stringify(updated) !== JSON.stringify(config.favorites)
       if (changed) {
-        setConfig({ ...config, favorites: updated })
+        setSportConfigs(prev => {
+          const current = prev[sportKey]
+          if (!current) return prev
+          return {
+            ...prev,
+            [sportKey]: { ...current, favorites: updated },
+          }
+        })
       }
       enrichedOnce.current = true
-    }, [sportTeams, config.favorites])
+    }, [sportTeams, config.favorites, sportKey])
 
     const toggleEnabled = () => {
-      setConfig({
-        ...config,
-        enabled: !config.enabled,
-      })
+      updateSportConfig(sportKey, cfg => ({
+        ...cfg,
+        enabled: !cfg.enabled,
+      }))
     }
 
     // no custom dropdown; rely on datalist to avoid clipping/stacking issues

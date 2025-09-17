@@ -10,17 +10,36 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: 'Device ID is required' })
   }
 
-  // Require user JWT so RLS can authorize based on ownership
-  const authHeader = req.headers.authorization
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Missing Authorization header' })
+  const authHeader = req.headers.authorization || ''
+  const tokenMatch = authHeader.match(/^Bearer\s+(.*)$/i)
+  if (!tokenMatch) {
+    return res.status(401).json({ error: 'Missing or invalid Authorization header' })
   }
+  const accessToken = tokenMatch[1]
 
-  // Create user-scoped client that forwards the caller's access token
   const userScoped = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  const { data: userData, error: authError } = await userScoped.auth.getUser(accessToken)
+  if (authError || !userData?.user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  // Ensure the authenticated user can access this device (leverages RLS)
+  const { data: deviceRow, error: deviceErr } = await userScoped
+    .from('devices')
+    .select('id')
+    .eq('id', deviceId)
+    .maybeSingle()
+
+  if (deviceErr && deviceErr.code !== 'PGRST116') {
+    return res.status(500).json({ error: deviceErr.message })
+  }
+  if (!deviceRow) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
 
   if (req.method === 'GET') {
     try {
@@ -99,10 +118,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         if (!sport || !gameEventId) {
           return res.status(400).json({ error: 'sport and gameEventId required' })
         }
-
-        // Get user id for audit
-        const { data: userData, error: userErr } = await userScoped.auth.getUser()
-        if (userErr || !userData?.user) return res.status(401).json({ error: 'Unauthorized' })
 
         const expires = new Date()
         expires.setMinutes(expires.getMinutes() + Number(durationMinutes || 60))

@@ -9,7 +9,10 @@ import path from 'path'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const adminEmails = (process.env.ADMIN_EMAILS || '').split(',').map(s => s.trim()).filter(Boolean)
+const adminEmails = (process.env.ADMIN_EMAILS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean)
 
 type Sport = 'wnba' | 'nhl' | 'nba' | 'mlb' | 'nfl'
 
@@ -23,7 +26,10 @@ function guessSportFromFilename(file: string): Sport | null {
   return null
 }
 
-function normalizeTeams(sport: Sport, json: any): Array<{
+function normalizeTeams(
+  sport: Sport,
+  json: any
+): Array<{
   sport: Sport
   external_id: string
   name: string
@@ -35,9 +41,11 @@ function normalizeTeams(sport: Sport, json: any): Array<{
 }> {
   const arr: any[] = Array.isArray(json) ? json : Array.isArray(json?.teams) ? json.teams : []
   return arr
-    .map((t) => {
+    .map(t => {
       const id = String(t.id ?? t.teamId ?? t.team_id ?? t.abbr ?? t.triCode ?? '').trim()
-      const abbr = String(t.abbr ?? t.abbreviation ?? t.triCode ?? '').toUpperCase().trim()
+      const abbr = String(t.abbr ?? t.abbreviation ?? t.triCode ?? '')
+        .toUpperCase()
+        .trim()
       const name = String(t.name ?? t.teamName ?? t.displayName ?? '').trim()
       const display = String(t.displayName ?? t.name ?? t.teamName ?? '').trim()
       const conference = t.conference ? String(t.conference) : null
@@ -64,7 +72,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (!supabaseUrl || !serviceKey) {
-    return res.status(500).json({ error: 'Server misconfigured: missing SUPABASE_SERVICE_ROLE_KEY' })
+    return res
+      .status(500)
+      .json({ error: 'Server misconfigured: missing SUPABASE_SERVICE_ROLE_KEY' })
   }
 
   try {
@@ -113,7 +123,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const chunkSize = 500
       for (let i = 0; i < rows.length; i += chunkSize) {
         const chunk = rows.slice(i, i + chunkSize)
-        const { error } = await admin.from('sport_teams').upsert(chunk, { onConflict: 'sport,external_id' })
+        const { error } = await admin
+          .from('sport_teams')
+          .upsert(chunk, { onConflict: 'sport,external_id' })
         if (error) {
           return res.status(500).json({ error: `Upsert failed for ${sport}: ${error.message}` })
         }
@@ -128,4 +140,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: e?.message || 'Internal error' })
   }
 }
-
