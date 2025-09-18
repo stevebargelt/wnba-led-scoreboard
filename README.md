@@ -713,6 +713,32 @@ Set environment variables in Vercel dashboard:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
+### ✅ Manual Verification Checklist
+
+Use this flow after updating favorites or provisioning a device:
+
+1. **Seed teams (first-time setup)**
+   ```bash
+   python scripts/fetch_wnba_assets.py
+   python scripts/fetch_nhl_assets.py
+   ```
+   In the web admin, click **Seed Teams** (admin only) to upsert the latest rosters into `sport_teams`.
+
+2. **Configure favorites**
+   - Open the device page → **Sports** tab.
+   - Enable the sports you care about and assign favorite teams.
+   - Save changes (they populate `device_sport_config`).
+
+3. **Build & apply from DB**
+   - On the **Config** tab, optionally click **Preview Effective Config** to inspect the merged JSON from `on-config-build`.
+   - Click **Build + Apply From DB** to persist the config via `on-config-write` and broadcast `APPLY_CONFIG` to the device.
+
+4. **Verify the device**
+   ```bash
+   sudo systemctl restart wnba-led.service    # if running under systemd
+   ```
+   Confirm the LED matrix shows the expected game. You can also inspect `/home/pi/wnba-led-scoreboard/config/favorites.json` on the device to see the applied payload.
+
 #### Production Deployment (Self-hosted)
 ```bash
 cd web-admin

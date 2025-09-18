@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 from typing import Any, Dict
+from zoneinfo import ZoneInfo
 from src.config.types import FavoriteTeam, MatrixConfig, RefreshConfig, RenderConfig
 from src.config.multi_sport_types import (
     MultiSportAppConfig, SportFavorites, SportPriorityConfig,

@@ -23,5 +23,5 @@
 - [x] Remove any conditional UI copy referencing WNBA-only support.
 
 ## Testing
-- [ ] Add/update unit/integration tests to cover multi-sport defaults; remove legacy baselines.
-- [ ] Write steps for a human user to: Run through end-to-end: seed teams → configure favorites → Build + Apply → verify device render.
+- [x] Add/update unit/integration tests to cover multi-sport defaults; remove legacy baselines.
+- [x] Write steps for a human user to: Run through end-to-end: seed teams → configure favorites → Build + Apply → verify device render.
