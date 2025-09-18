@@ -4,8 +4,8 @@ import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, Iterable, List, Optional, Sequence
-
 from zoneinfo import ZoneInfo
+import threading
 
 from src.config.multi_sport_types import MultiSportAppConfig
 from src.config.types import AppConfig, FavoriteTeam
@@ -469,10 +469,10 @@ class DemoSimulator:
         self.legacy_cfg = legacy_cfg
         self.options = options or DemoOptions()
         self.rng = random.Random()
+        self._lock = threading.Lock()
         now = datetime.now(legacy_cfg.tz)
         self.simulators: List[BaseSportDemo] = self._build_simulators(now)
         if not self.simulators:
-            # fall back to highest priority legacy favorites as generic demo
             fallback = GenericFallbackDemo(
                 sport=SportType.WNBA,
                 tz=legacy_cfg.tz,
@@ -480,6 +480,8 @@ class DemoSimulator:
                 rng=self.rng,
             )
             self.simulators = [fallback]
+        if not self.simulators:
+            raise ValueError("No demo simulators could be created; check demo sport configuration")
         self._current_index = 0
         self._last_switch = now
 
@@ -501,21 +503,22 @@ class DemoSimulator:
         return enabled or [SportType.WNBA]
 
     def get_snapshot(self, now_local: datetime) -> Optional[GameSnapshot]:
-        if not self.simulators:
-            return None
-        if self._should_rotate(now_local):
-            self._advance_rotation(now_local)
-        current = self.simulators[self._current_index]
+        with self._lock:
+            if not self.simulators:
+                return None
+            if self._should_rotate_unlocked(now_local):
+                self._advance_rotation_unlocked(now_local)
+            current = self.simulators[self._current_index]
         return current.get_snapshot(now_local)
 
-    def _should_rotate(self, now_local: datetime) -> bool:
+    def _should_rotate_unlocked(self, now_local: datetime) -> bool:
         if len(self.simulators) <= 1:
             return False
         if self.options.rotation_seconds <= 0:
             return False
         return (now_local - self._last_switch).total_seconds() >= self.options.rotation_seconds
 
-    def _advance_rotation(self, now_local: datetime) -> None:
+    def _advance_rotation_unlocked(self, now_local: datetime) -> None:
         self._current_index = (self._current_index + 1) % len(self.simulators)
         self.simulators[self._current_index].reset(now_local)
         self._last_switch = now_local
