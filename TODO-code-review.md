@@ -22,4 +22,10 @@ Consider adding tests for the authentication flow changes
 6. Suggestions
 - [ ] Add configuration validation: Consider adding a validation step that warns users about teams missing abbreviations or IDs
 
+7. Consider making the demo pregame countdown configurable via environment variable for different testing scenarios.
 
+8. Add logging for demo mode transitions and rotations to aid debugging.
+
+9. Document the threading model explicitly if the simulator will be accessed from multiple threads.
+
+10. Consider extracting sport-specific constants (period lengths, scoring patterns) to a configuration file for easier tuning.
