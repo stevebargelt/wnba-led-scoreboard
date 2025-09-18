@@ -24,4 +24,4 @@
 
 ## Testing
 - [ ] Add/update unit/integration tests to cover multi-sport defaults; remove legacy baselines.
-- [ ] Run through end-to-end: seed teams → configure favorites → Build + Apply → verify device render.
+- [ ] Write steps for a human user to: Run through end-to-end: seed teams → configure favorites → Build + Apply → verify device render.
