@@ -29,3 +29,12 @@ Consider adding tests for the authentication flow changes
 9. Document the threading model explicitly if the simulator will be accessed from multiple threads.
 
 10. Consider extracting sport-specific constants (period lengths, scoring patterns) to a configuration file for easier tuning.
+
+11. Package.json Script Complexity
+The pretest:ci script has become complex with conditional musl detection. Consider extracting this to a separate shell script for better maintainability.
+
+12. Test Data Duplication
+There is significant duplication of test data across files (team objects, mock responses). Consider extracting common test fixtures to a shared test utils file for reusability.
+
+13. Timer Management
+The use of jest.useFakeTimers() and jest.runOnlyPendingTimers() could be more robust. Consider using waitFor with specific assertions instead of manual timer advancement.
