@@ -42,7 +42,7 @@ class ResilientHTTPClient:
     ):
         self.base_url = base_url
         self.cache_dir = Path(cache_dir or "cache")
-        self.cache_dir.mkdir(exist_ok=True)
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # Circuit breaker state
         self.circuit_state = CircuitState.CLOSED

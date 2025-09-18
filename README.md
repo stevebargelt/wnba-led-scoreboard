@@ -34,27 +34,6 @@ This project displays **live sports scoreboards** on RGB LED matrices with suppo
 
 ## 🚀 Quick Start
 
-### 🏀 **Single Sport (WNBA Only)**
-
-```bash
-# 1. Set up your favorite teams
-cp config/favorites.json config/favorites.json.backup
-nano config/favorites.json
-
-# 2. Install Python environment  
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-
-# 3. Fetch team assets
-python scripts/fetch_wnba_assets.py
-
-# 4. Test in simulation mode
-python app.py --sim --once
-# Check output: ls -la out/frame.png
-
-# 5. Run on hardware (Raspberry Pi)
-sudo -E $(pwd)/.venv/bin/python app.py
-```
 
 ### 🏒🏀 **Multi-Sport (WNBA + NHL)**
 
