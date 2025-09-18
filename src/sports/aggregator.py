@@ -200,20 +200,23 @@ class MultiSportAggregator:
         if not favorite_team_identifiers:
             return False
         
-        # Normalize identifiers for comparison
-        favorites_lower = [fav.lower() for fav in favorite_team_identifiers]
+        # Normalize identifiers for comparison and drop None entries
+        favorites_lower = [str(fav).lower() for fav in favorite_team_identifiers if fav]
         
         # Check team ID, name, and abbreviation
+        def _normalize(value: Optional[str]) -> Optional[str]:
+            return value.lower() if isinstance(value, str) else (str(value).lower() if value is not None else None)
+
         home_matches = (
-            game.home.id and game.home.id.lower() in favorites_lower or
-            game.home.name.lower() in favorites_lower or
-            game.home.abbr.lower() in favorites_lower
+            (game.home.id and _normalize(game.home.id) in favorites_lower)
+            or (_normalize(game.home.name) in favorites_lower if game.home.name else False)
+            or (_normalize(game.home.abbr) in favorites_lower if game.home.abbr else False)
         )
-        
+
         away_matches = (
-            game.away.id and game.away.id.lower() in favorites_lower or
-            game.away.name.lower() in favorites_lower or
-            game.away.abbr.lower() in favorites_lower
+            (game.away.id and _normalize(game.away.id) in favorites_lower)
+            or (_normalize(game.away.name) in favorites_lower if game.away.name else False)
+            or (_normalize(game.away.abbr) in favorites_lower if game.away.abbr else False)
         )
         
         is_favorite = home_matches or away_matches

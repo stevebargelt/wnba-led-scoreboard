@@ -1172,11 +1172,12 @@ python -m json.tool config/favorites.json
 
 # Test configuration loading
 python -c "
-from src.config.loader import load_config
+from src.config.multi_sport_loader import load_multi_sport_config
 try:
-    cfg = load_config('config/favorites.json')
+    cfg = load_multi_sport_config('config/favorites.json')
     print('Configuration loaded successfully')
-    print(f'Found {len(cfg.favorites)} favorite teams')
+    enabled = ', '.join(s.value.upper() for s in cfg.get_enabled_sports())
+    print(f'Enabled sports: {enabled or "<none>"}')
 except Exception as e:
     print(f'Configuration error: {e}')
 "
