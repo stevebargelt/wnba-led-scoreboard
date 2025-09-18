@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from src.model.game import GameSnapshot
 from src.assets.logos import get_logo
+from ._helpers import infer_team_sport
 
 
 def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, now_local: datetime,
@@ -13,8 +14,11 @@ def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot
     # Top row: logos + VS
     w, h = img.size
     top_y = 2
-    alogo = get_logo(snap.away.id, snap.away.abbr, variant=logo_variant or "mini")
-    hlogo = get_logo(snap.home.id, snap.home.abbr, variant=logo_variant or "mini")
+    away_sport = infer_team_sport(snap, snap.away)
+    home_sport = infer_team_sport(snap, snap.home)
+
+    alogo = get_logo(snap.away.id, snap.away.abbr, sport=away_sport, variant=logo_variant or "mini")
+    hlogo = get_logo(snap.home.id, snap.home.abbr, sport=home_sport, variant=logo_variant or "mini")
     if alogo:
         img.paste(alogo, (2, top_y), alogo)
     if hlogo:

@@ -123,8 +123,8 @@ class EnhancedGameSnapshot:
     def to_legacy_game_snapshot(self):
         """Convert to legacy GameSnapshot for backward compatibility."""
         from src.model.game import GameSnapshot
-        
-        return GameSnapshot(
+
+        snapshot = GameSnapshot(
             event_id=self.event_id,
             start_time_local=self.start_time_local,
             state=self.state,
@@ -135,6 +135,10 @@ class EnhancedGameSnapshot:
             seconds_to_start=self.seconds_to_start,
             status_detail=self.status_detail,
         )
+        # Attach sport metadata for downstream legacy consumers
+        setattr(snapshot, "sport", self.sport)
+        setattr(snapshot, "sport_type", self.sport)
+        return snapshot
     
     def get_display_period(self) -> str:
         """Get appropriate period display for this sport."""
