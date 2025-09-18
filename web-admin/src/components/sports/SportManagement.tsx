@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Badge } from '@/components/ui/Badge'
@@ -49,11 +49,7 @@ export function SportManagement({ deviceId }: SportManagementProps) {
   const [saving, setSaving] = useState(false)
   const [draggedSport, setDraggedSport] = useState<SportType | null>(null)
 
-  useEffect(() => {
-    loadData()
-  }, [deviceId])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
 
@@ -118,7 +114,11 @@ export function SportManagement({ deviceId }: SportManagementProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [deviceId])
+
+  useEffect(() => {
+    loadData()
+  }, [deviceId, loadData])
 
   const handleSportToggle = (sport: SportType, enabled: boolean) => {
     setSportConfigs(prev =>

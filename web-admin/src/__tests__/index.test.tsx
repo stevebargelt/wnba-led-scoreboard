@@ -1,9 +1,9 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import Home from './index'
-import { ThemeProvider } from '../contexts/ThemeContext'
+import Home from '@/pages/index'
+import { ThemeProvider } from '@/contexts/ThemeContext'
 
-jest.mock('../lib/supabaseClient', () => ({
+jest.mock('@/lib/supabaseClient', () => ({
   supabase: {
     auth: {
       getSession: jest.fn(),
@@ -17,7 +17,7 @@ jest.mock('../lib/supabaseClient', () => ({
   },
 }))
 
-import { supabase } from '../lib/supabaseClient'
+import { supabase } from '@/lib/supabaseClient'
 
 const mockAuth = supabase.auth as any
 const mockFrom = supabase.from as jest.Mock
