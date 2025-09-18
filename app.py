@@ -93,9 +93,9 @@ def main():
                         if sport_config.enabled:
                             team_identifiers = []
                             for team in sport_config.teams:
-                                team_identifiers.extend([team.name, team.abbr])
-                                if team.id:
-                                    team_identifiers.append(team.id)
+                                for candidate in (team.name, team.abbr, team.id):
+                                    if candidate:
+                                        team_identifiers.append(candidate)
                             favorite_teams[sport_config.sport] = team_identifiers
 
                     enhanced_game = multi_sport_aggregator.get_featured_game(

@@ -263,17 +263,30 @@ export default function DevicePage() {
   const sendAction = async (type: string, payload?: any) => {
     if (!id) return
     setLoading(true)
-    const resp = await fetch(FN_ACTION, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
-      },
-      body: JSON.stringify({ device_id: id, type, payload: payload ?? {} }),
-    })
-    setMessage(resp.ok ? `${type} sent` : `Failed: ${await resp.text()}`)
-    setLoading(false)
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setMessage('Not signed in')
+        setLoading(false)
+        return
+      }
+
+      const resp = await fetch(FN_ACTION, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ device_id: id, type, payload: payload ?? {} }),
+      })
+      setMessage(resp.ok ? `${type} sent` : `Failed: ${await resp.text()}`)
+    } catch (e: any) {
+      setMessage(`Action failed: ${e.message ?? e}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const buildApplyFromDb = async () => {

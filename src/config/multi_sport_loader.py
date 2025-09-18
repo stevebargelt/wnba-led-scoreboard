@@ -1,5 +1,5 @@
 """
-Enhanced configuration loader with multi-sport support and backward compatibility.
+Enhanced configuration loader with multi-sport support.
 """
 
 from __future__ import annotations
@@ -8,11 +8,9 @@ import json
 import os
 from typing import Any, Dict
 from zoneinfo import ZoneInfo
+
 from src.config.types import FavoriteTeam, MatrixConfig, RefreshConfig, RenderConfig
-from src.config.multi_sport_types import (
-    MultiSportAppConfig, SportFavorites, SportPriorityConfig,
-    convert_multi_sport_to_legacy
-)
+from src.config.multi_sport_types import MultiSportAppConfig, SportFavorites, SportPriorityConfig
 from src.sports.base import SportType
 
 
@@ -237,68 +235,3 @@ def _update_sport_priority(config: MultiSportAppConfig, sport: SportType, priori
             sport_config.priority = priority
             break
 
-
-# Backward compatibility function
-def load_config(path: str) -> AppConfig:
-    """
-    Legacy config loader for backward compatibility.
-    
-    Loads multi-sport config but returns legacy AppConfig format.
-    This allows existing code to work unchanged during transition.
-    """
-    multi_sport_config = load_multi_sport_config(path)
-    legacy_config = convert_multi_sport_to_legacy(multi_sport_config)
-    
-    # Convert to legacy AppConfig format
-    cfg = AppConfig(
-        favorites=legacy_config.favorites,
-        timezone=legacy_config.timezone,
-        matrix=legacy_config.matrix,
-        refresh=legacy_config.refresh,
-        render=legacy_config.render,
-    )
-    cfg.tz = ZoneInfo(legacy_config.timezone)
-    return cfg
-
-
-def _parse_legacy_config(raw: Dict[str, Any]) -> LegacyAppConfig:
-    """Parse legacy configuration format."""
-    favorites = [FavoriteTeam(**t) for t in raw.get("favorites", [])]
-    timezone = os.getenv("TIMEZONE", raw.get("timezone", "America/Chicago"))
-    
-    # Matrix configuration (same parsing as original)
-    m = raw.get("matrix", {})
-    matrix = MatrixConfig(
-        width=int(os.getenv("MATRIX_WIDTH", m.get("width", 64))),
-        height=int(os.getenv("MATRIX_HEIGHT", m.get("height", 32))),
-        chain_length=int(os.getenv("MATRIX_CHAIN_LENGTH", m.get("chain_length", 1))),
-        parallel=int(os.getenv("MATRIX_PARALLEL", m.get("parallel", 1))),
-        gpio_slowdown=int(os.getenv("MATRIX_GPIO_SLOWDOWN", m.get("gpio_slowdown", 2))),
-        hardware_mapping=os.getenv("MATRIX_HARDWARE_MAPPING", m.get("hardware_mapping", "adafruit-hat")),
-        brightness=int(os.getenv("MATRIX_BRIGHTNESS", m.get("brightness", 80))),
-        pwm_bits=int(os.getenv("MATRIX_PWM_BITS", m.get("pwm_bits", 11))),
-    )
-    
-    # Refresh configuration (same parsing as original)
-    r = raw.get("refresh", {})
-    refresh = RefreshConfig(
-        pregame_sec=int(os.getenv("REFRESH_PREGAME_SEC", r.get("pregame_sec", 30))),
-        ingame_sec=int(os.getenv("REFRESH_INGAME_SEC", r.get("ingame_sec", 5))),
-        final_sec=int(os.getenv("REFRESH_FINAL_SEC", r.get("final_sec", 60))),
-    )
-    
-    # Render configuration (same parsing as original) 
-    rend = raw.get("render", {})
-    render = RenderConfig(
-        live_layout=os.getenv("LIVE_LAYOUT", rend.get("live_layout", "stacked")),
-        logo_variant=os.getenv("LOGO_VARIANT", rend.get("logo_variant", "mini")),
-    )
-    
-    return LegacyAppConfig(
-        favorites=favorites,
-        timezone=timezone,
-        matrix=matrix,
-        refresh=refresh,
-        render=render,
-        tz=ZoneInfo(timezone),
-    )
