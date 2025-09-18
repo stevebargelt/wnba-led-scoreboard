@@ -14,7 +14,7 @@ from src.model.sport_game import EnhancedGameSnapshot, GameTiming, SportTeam
 from src.sports.base import SportType
 
 DEFAULT_ROTATION_SECONDS = 120
-DEFAULT_PREGAME_SECONDS = 45
+DEFAULT_PREGAME_SECONDS = 10
 
 
 @dataclass
