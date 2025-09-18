@@ -29,7 +29,12 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
     w, h = img.size
 
     # 1) Status line (period + clock) at very top
-    period_label = "PRE" if snap.period <= 0 else ("OT" if snap.period > 4 else f"Q{snap.period}")
+    # Use status_detail if available (contains proper period name like P1, Q1, OT, etc.)
+    if hasattr(snap, 'status_detail') and snap.status_detail:
+        period_label = snap.status_detail
+    else:
+        # Fall back to generic Q{period} format
+        period_label = "PRE" if snap.period <= 0 else ("OT" if snap.period > 4 else f"Q{snap.period}")
     clock = (snap.display_clock or "").strip()
     status = f"{period_label} {clock}".strip()
     sth = 0

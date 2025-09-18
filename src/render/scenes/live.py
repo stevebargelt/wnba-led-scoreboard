@@ -44,6 +44,11 @@ def draw_live(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, n
     draw.text((score_right_x - htw, bot_y), hscore, fill=(255, 255, 255), font=font_large)
 
     # Bottom center: clock + period
-    status = f"Q{snap.period} {snap.display_clock or ''}".strip()
+    # Use status_detail if available (contains proper period name like P1, Q1, OT, etc.)
+    # Otherwise fall back to generic Q{period} format
+    if hasattr(snap, 'status_detail') and snap.status_detail:
+        status = f"{snap.status_detail} {snap.display_clock or ''}".strip()
+    else:
+        status = f"Q{snap.period} {snap.display_clock or ''}".strip()
     stw, sth = draw.textbbox((0, 0), status, font=font_small)[2:]
     draw.text(((w - stw) // 2, h - sth - 1), status, fill=(0, 255, 0), font=font_small)
