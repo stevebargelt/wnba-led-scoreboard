@@ -3,49 +3,15 @@ NHL API client implementation with resilience features.
 """
 
 import os
+import json
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 
 from src.data.resilient_client import ResilientHTTPClient
 from src.model.sport_game import EnhancedGameSnapshot, SportTeam, GameTiming, SportSituation
 from src.model.game import GameState
 from src.sports.base import SportClient, SportClientInfo, SportType
-
-
-STATIC_NHL_TEAMS: List[Dict[str, Any]] = [
-    {"id": "NJD", "name": "New Jersey Devils", "displayName": "New Jersey Devils", "abbreviation": "NJD", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "NYI", "name": "New York Islanders", "displayName": "New York Islanders", "abbreviation": "NYI", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "NYR", "name": "New York Rangers", "displayName": "New York Rangers", "abbreviation": "NYR", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "PHI", "name": "Philadelphia Flyers", "displayName": "Philadelphia Flyers", "abbreviation": "PHI", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "PIT", "name": "Pittsburgh Penguins", "displayName": "Pittsburgh Penguins", "abbreviation": "PIT", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "CAR", "name": "Carolina Hurricanes", "displayName": "Carolina Hurricanes", "abbreviation": "CAR", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "CBJ", "name": "Columbus Blue Jackets", "displayName": "Columbus Blue Jackets", "abbreviation": "CBJ", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "WSH", "name": "Washington Capitals", "displayName": "Washington Capitals", "abbreviation": "WSH", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "BOS", "name": "Boston Bruins", "displayName": "Boston Bruins", "abbreviation": "BOS", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "BUF", "name": "Buffalo Sabres", "displayName": "Buffalo Sabres", "abbreviation": "BUF", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "DET", "name": "Detroit Red Wings", "displayName": "Detroit Red Wings", "abbreviation": "DET", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "FLA", "name": "Florida Panthers", "displayName": "Florida Panthers", "abbreviation": "FLA", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "MTL", "name": "Montréal Canadiens", "displayName": "Montréal Canadiens", "abbreviation": "MTL", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "OTT", "name": "Ottawa Senators", "displayName": "Ottawa Senators", "abbreviation": "OTT", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "TBL", "name": "Tampa Bay Lightning", "displayName": "Tampa Bay Lightning", "abbreviation": "TBL", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "TOR", "name": "Toronto Maple Leafs", "displayName": "Toronto Maple Leafs", "abbreviation": "TOR", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "ARI", "name": "Arizona Coyotes", "displayName": "Arizona Coyotes", "abbreviation": "ARI", "conference": "Western", "division": "Central"},
-    {"id": "CHI", "name": "Chicago Blackhawks", "displayName": "Chicago Blackhawks", "abbreviation": "CHI", "conference": "Western", "division": "Central"},
-    {"id": "COL", "name": "Colorado Avalanche", "displayName": "Colorado Avalanche", "abbreviation": "COL", "conference": "Western", "division": "Central"},
-    {"id": "DAL", "name": "Dallas Stars", "displayName": "Dallas Stars", "abbreviation": "DAL", "conference": "Western", "division": "Central"},
-    {"id": "MIN", "name": "Minnesota Wild", "displayName": "Minnesota Wild", "abbreviation": "MIN", "conference": "Western", "division": "Central"},
-    {"id": "NSH", "name": "Nashville Predators", "displayName": "Nashville Predators", "abbreviation": "NSH", "conference": "Western", "division": "Central"},
-    {"id": "STL", "name": "St. Louis Blues", "displayName": "St. Louis Blues", "abbreviation": "STL", "conference": "Western", "division": "Central"},
-    {"id": "WPG", "name": "Winnipeg Jets", "displayName": "Winnipeg Jets", "abbreviation": "WPG", "conference": "Western", "division": "Central"},
-    {"id": "ANA", "name": "Anaheim Ducks", "displayName": "Anaheim Ducks", "abbreviation": "ANA", "conference": "Western", "division": "Pacific"},
-    {"id": "CGY", "name": "Calgary Flames", "displayName": "Calgary Flames", "abbreviation": "CGY", "conference": "Western", "division": "Pacific"},
-    {"id": "EDM", "name": "Edmonton Oilers", "displayName": "Edmonton Oilers", "abbreviation": "EDM", "conference": "Western", "division": "Pacific"},
-    {"id": "LAK", "name": "Los Angeles Kings", "displayName": "Los Angeles Kings", "abbreviation": "LAK", "conference": "Western", "division": "Pacific"},
-    {"id": "SJS", "name": "San Jose Sharks", "displayName": "San Jose Sharks", "abbreviation": "SJS", "conference": "Western", "division": "Pacific"},
-    {"id": "SEA", "name": "Seattle Kraken", "displayName": "Seattle Kraken", "abbreviation": "SEA", "conference": "Western", "division": "Pacific"},
-    {"id": "VAN", "name": "Vancouver Canucks", "displayName": "Vancouver Canucks", "abbreviation": "VAN", "conference": "Western", "division": "Pacific"},
-    {"id": "VGK", "name": "Vegas Golden Knights", "displayName": "Vegas Golden Knights", "abbreviation": "VGK", "conference": "Western", "division": "Pacific"}
-]
 
 
 class NHLClient(SportClient):
@@ -245,10 +211,21 @@ class NHLClient(SportClient):
                 dedup[key] = team
             return list(dedup.values())
 
-        # Offline fallback: bundled team list
+        # Offline fallback: use fetched teams from assets
+        nhl_teams_file = Path(__file__).parent.parent.parent / "assets" / "nhl_teams.json"
+        if nhl_teams_file.exists():
+            try:
+                with open(nhl_teams_file, "r") as f:
+                    teams_data = json.load(f)
+                    self.used_static_fallback = True
+                    print("[info] Using cached NHL team list from assets/nhl_teams.json")
+                    return teams_data
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"[warn] Failed to load NHL teams from {nhl_teams_file}: {e}")
+
+        print("[warn] No NHL team data available (run scripts/fetch_nhl_assets.py to populate)")
         self.used_static_fallback = True
-        print("[info] Using bundled NHL team list fallback")
-        return [dict(team) for team in STATIC_NHL_TEAMS]
+        return []
     
     def _parse_nhl_response(self, data: Dict[str, Any], target_date: date) -> List[EnhancedGameSnapshot]:
         """Parse NHL API response into EnhancedGameSnapshot objects."""

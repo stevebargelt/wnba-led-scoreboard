@@ -42,16 +42,19 @@ if SportType is not None:
 NHL_TEAM_MAP_CACHE = ASSETS_DIR / "nhl_team_ids.json"
 NHL_ABBR_TO_NUMERIC: Dict[str, str] = {}
 if SportType is not None and hasattr(SportType, "NHL"):
-    try:
-        from src.sports.nhl import STATIC_NHL_TEAMS  # type: ignore
-
-        NHL_ABBR_TO_NUMERIC = {
-            team.get("abbreviation", "").upper(): str(team.get("id") or team.get("teamId") or team.get("abbreviation"))
-            for team in STATIC_NHL_TEAMS
-            if team.get("abbreviation")
-        }
-    except Exception:
-        NHL_ABBR_TO_NUMERIC = {}
+    # Load NHL team mappings from fetched data
+    nhl_teams_file = ASSETS_DIR / "nhl_teams.json"
+    if nhl_teams_file.exists():
+        try:
+            with open(nhl_teams_file, "r") as f:
+                teams_data = json.load(f)
+                NHL_ABBR_TO_NUMERIC = {
+                    team.get("abbreviation", "").upper(): str(team.get("id", ""))
+                    for team in teams_data
+                    if team.get("abbreviation") and team.get("id")
+                }
+        except Exception:
+            NHL_ABBR_TO_NUMERIC = {}
 
 try:
     VARIANTS_DIR.mkdir(parents=True, exist_ok=True)
