@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from datetime import date, datetime
 from typing import Any, List
+from dateutil.parser import parse as parse_datetime
 
 import requests
 
@@ -56,7 +57,8 @@ def fetch_scoreboard(d: date) -> List[GameSnapshot]:
         period = int(comp.get("status", {}).get("period") or 0)
         start_time_iso = ev.get("date")
         # ESPN encodes in ISO 8601 UTC
-        start_dt_utc = datetime.fromisoformat(start_time_iso.replace("Z", "+00:00"))
+        # Use dateutil for robust parsing of various ISO formats
+        start_dt_utc = parse_datetime(start_time_iso)
 
         home = team_side(home_raw)
         away = team_side(away_raw)

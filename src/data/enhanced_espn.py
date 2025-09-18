@@ -5,6 +5,7 @@ Enhanced ESPN API client with resilience features.
 import os
 from datetime import date, datetime, timedelta
 from typing import List, Optional
+from dateutil.parser import parse as parse_datetime
 
 from src.data.resilient_client import ResilientHTTPClient
 from src.model.game import GameSnapshot, GameState, TeamSide
@@ -143,8 +144,9 @@ class EnhancedESPNClient:
             return None
         
         try:
-            start_dt_utc = datetime.fromisoformat(start_time_iso.replace("Z", "+00:00"))
-        except ValueError:
+            # Use dateutil for robust parsing of various ISO formats
+            start_dt_utc = parse_datetime(start_time_iso)
+        except (ValueError, TypeError):
             return None
         
         # Calculate seconds to start for pregame
