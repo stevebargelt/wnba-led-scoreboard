@@ -338,9 +338,6 @@ def get_logo(
     if img is None:
         return None
 
-    if img is None:
-        return None
-
     # Build variant
     if variant == "mini":
         target_h, max_w = 10, 18
