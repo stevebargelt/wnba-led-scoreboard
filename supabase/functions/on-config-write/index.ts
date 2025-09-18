@@ -17,19 +17,6 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
   title: "WNBA LED Scoreboard Config",
   type: "object",
   properties: {
-    favorites: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          name: { type: "string" },
-          id: { type: ["string", "null"] },
-          abbr: { type: ["string", "null"] }
-        },
-        required: ["name"],
-        additionalProperties: false
-      }
-    },
     timezone: { type: "string" },
     matrix: {
       type: "object",
@@ -62,10 +49,36 @@ const CONFIG_SCHEMA: Record<string, unknown> = {
         logo_variant: { type: "string", enum: ["mini", "banner"] }
       },
       additionalProperties: true
+    },
+    sports: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          sport: { type: "string", minLength: 1 },
+          enabled: { type: "boolean" },
+          priority: { type: "integer", minimum: 1 },
+          favorites: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                id: { type: ["string", "null"] },
+                abbr: { type: ["string", "null"] }
+              },
+              required: ["name"],
+              additionalProperties: false
+            }
+          }
+        },
+        required: ["sport", "enabled", "priority"],
+        additionalProperties: false
+      }
     }
   },
-  // Do not require favorites; allow synthesis from DB via on-config-build
-  // required: ["favorites"],
+  required: ["sports"],
   additionalProperties: true
 };
 
@@ -92,7 +105,7 @@ serve(async (req: Request) => {
     if (!device_id || !content) {
       return new Response(JSON.stringify({ error: 'device_id and content required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-    // Deep merge helper: replace arrays (favorites), merge objects, preserve base when patch missing
+    // Deep merge helper: replace arrays (e.g. sports), merge objects, preserve base when patch missing
     const deepMerge = (base: any, patch: any) => {
       if (Array.isArray(base) && Array.isArray(patch)) return patch;
       if (base && typeof base === 'object' && patch && typeof patch === 'object') {

@@ -38,14 +38,6 @@ export default function DevicePage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [mintedToken, setMintedToken] = useState('')
-  const [favorites, setFavorites] = useState<
-    { name: string; id?: string | null; abbr?: string | null }[]
-  >([])
-  const [newFav, setNewFav] = useState<{ name: string; abbr?: string; id?: string }>({
-    name: '',
-    abbr: '',
-  })
-  const [teamList, setTeamList] = useState<{ name: string; abbr?: string; id?: string }[]>([])
   const [schemaError, setSchemaError] = useState<string>('')
   const [schemaErrors, setSchemaErrors] = useState<any[]>([])
   const [multiSportConfig, setMultiSportConfig] = useState<any>(null)
@@ -76,12 +68,6 @@ export default function DevicePage() {
   useEffect(() => {
     if (!id) return
     ;(async () => {
-      // Load teams from server (assets/teams.json) if available
-      try {
-        const r = await fetch('/api/teams')
-        const j = await r.json()
-        if (Array.isArray(j.teams) && j.teams.length) setTeamList(j.teams)
-      } catch {}
       // load latest config for convenience
       const { data } = await supabase
         .from('configs')
@@ -91,7 +77,6 @@ export default function DevicePage() {
         .limit(1)
         .maybeSingle()
       if (data?.content) setConfigText(JSON.stringify(data.content, null, 2))
-      if (data?.content?.favorites) setFavorites(data.content.favorites as any)
       if ((data?.content as any)?.timezone) setTimezone((data!.content as any).timezone)
       if ((data?.content as any)?.matrix) setMatrix((data!.content as any).matrix)
       if ((data?.content as any)?.refresh) setRefreshCfg((data!.content as any).refresh)
@@ -225,13 +210,16 @@ export default function DevicePage() {
     if (!id) return
     try {
       const base = configText?.trim() ? JSON.parse(configText) : {}
-      const content = {
+      const content: any = {
         ...base,
-        favorites,
         timezone,
         matrix,
         refresh: refreshCfg,
         render: renderCfg,
+      }
+
+      if (multiSportConfig?.sports) {
+        content.sports = multiSportConfig.sports
       }
       const validate = makeValidator()
       const ok = validate(content)
@@ -314,7 +302,7 @@ export default function DevicePage() {
       })
       const body = await resp.json()
       if (resp.ok) {
-        setMessage('Built and applied config from DB favorites')
+        setMessage('Built and applied config from DB')
         if (body?.content) setConfigText(JSON.stringify(body.content, null, 2))
       } else {
         setMessage(`Build failed: ${body?.error || 'Unknown error'}`)
@@ -439,92 +427,6 @@ export default function DevicePage() {
     return Date.now() - last < 90_000
   }, [device?.last_seen_ts])
 
-  // Drag and drop handlers for favorites
-  const onDragStart = (e: React.DragEvent<HTMLLIElement>, index: number) => {
-    e.dataTransfer.setData('text/plain', String(index))
-  }
-  const onDrop = (e: React.DragEvent<HTMLLIElement>, index: number) => {
-    const from = Number(e.dataTransfer.getData('text/plain'))
-    if (Number.isNaN(from)) return
-    e.preventDefault()
-    const next = favorites.slice()
-    const [moved] = next.splice(from, 1)
-    next.splice(index, 0, moved)
-    setFavorites(next)
-  }
-  const onDragOver = (e: React.DragEvent<HTMLLIElement>) => e.preventDefault()
-  const removeFav = (i: number) => setFavorites(favorites.filter((_, idx) => idx !== i))
-  const addFav = () => {
-    if (!newFav.name.trim()) return
-    const found = teamList.find(t => t.name.toLowerCase() === newFav.name.trim().toLowerCase())
-    setFavorites([
-      ...favorites,
-      {
-        name: newFav.name.trim(),
-        abbr: (newFav.abbr || found?.abbr || '').toUpperCase() || undefined,
-        id: found?.id,
-      },
-    ])
-    setNewFav({ name: '', abbr: '' })
-  }
-  const enrichFavorites = () => {
-    let updates = 0
-    const next = favorites.map(f => {
-      if (f.id && f.abbr) return f
-      const byName = teamList.find(t => t.name?.toLowerCase() === (f.name || '').toLowerCase())
-      const byAbbr = f.abbr
-        ? teamList.find(t => (t.abbr || '').toUpperCase() === (f.abbr || '').toUpperCase())
-        : undefined
-      const match = byName || byAbbr
-      if (!match) return f
-      updates += 1
-      return {
-        ...f,
-        id: match.id || f.id,
-        abbr: (f.abbr || match.abbr || '').toUpperCase() || undefined,
-        name: f.name || match.name,
-      }
-    })
-    setFavorites(next)
-    setMessage(updates ? `Auto-filled ${updates} favorite(s)` : 'No matches found to auto-fill')
-  }
-  const moveUp = (i: number) => {
-    if (i <= 0) return
-    const next = favorites.slice()
-    const [m] = next.splice(i, 1)
-    next.splice(i - 1, 0, m)
-    setFavorites(next)
-  }
-  const moveDown = (i: number) => {
-    if (i >= favorites.length - 1) return
-    const next = favorites.slice()
-    const [m] = next.splice(i, 1)
-    next.splice(i + 1, 0, m)
-    setFavorites(next)
-  }
-  const syncToJson = () => {
-    let base: any = {}
-    try {
-      if (configText && configText.trim().length > 0) {
-        base = JSON.parse(configText)
-      }
-    } catch (e: any) {
-      // Proceed with empty base but inform user
-      setMessage('Parsed with defaults (existing JSON was invalid).')
-    }
-    const merged = {
-      ...DEFAULTS,
-      ...base,
-      favorites,
-      timezone,
-      matrix,
-      refresh: refreshCfg,
-      render: renderCfg,
-    }
-    setConfigText(JSON.stringify(merged, null, 2))
-    if (!schemaError) setMessage(`Favorites synced into JSON (${favorites.length})`)
-  }
-
   const loadLatestConfig = async () => {
     if (!id) return
     setLoading(true)
@@ -539,8 +441,6 @@ export default function DevicePage() {
         .maybeSingle()
       if (data?.content) {
         setConfigText(JSON.stringify(data.content, null, 2))
-        if (Array.isArray((data.content as any).favorites))
-          setFavorites((data.content as any).favorites)
         setMessage('Loaded latest saved config')
       } else {
         setMessage('No prior config found; using editor values')

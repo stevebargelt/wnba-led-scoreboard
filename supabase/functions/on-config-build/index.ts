@@ -11,14 +11,44 @@ import Ajv2020 from "https://esm.sh/ajv@8.12.0/dist/2020";
 
 type ConfigContent = Record<string, unknown>;
 
-// Legacy JSON schema (kept permissive via additionalProperties) — favorites required for backward compat.
-// We include a legacy favorites array synthesized from the highest-priority enabled sport.
-const LEGACY_SCHEMA: Record<string, unknown> = {
+// Config schema (permissive for additional properties) – requires sports array, favorites optional.
+const CONFIG_SCHEMA: Record<string, unknown> = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
   $id: "https://example.com/wnba-led-scoreboard/config.schema.json",
   title: "WNBA LED Scoreboard Config",
   type: "object",
   properties: {
+    timezone: { type: "string" },
+    matrix: { type: "object" },
+    refresh: { type: "object" },
+    render: { type: "object" },
+    sports: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        properties: {
+          sport: { type: "string", minLength: 1 },
+          enabled: { type: "boolean" },
+          priority: { type: "integer", minimum: 1 },
+          favorites: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                id: { type: ["string", "null"] },
+                abbr: { type: ["string", "null"] },
+              },
+              required: ["name"],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ["sport", "enabled", "priority"],
+        additionalProperties: false,
+      },
+    },
     favorites: {
       type: "array",
       items: {
@@ -32,17 +62,13 @@ const LEGACY_SCHEMA: Record<string, unknown> = {
         additionalProperties: false,
       },
     },
-    timezone: { type: "string" },
-    matrix: { type: "object" },
-    refresh: { type: "object" },
-    render: { type: "object" },
   },
-  required: ["favorites"],
+  required: ["sports"],
   additionalProperties: true,
 };
 
 const ajv = new Ajv2020({ allErrors: true });
-const validateLegacy = ajv.compile(LEGACY_SCHEMA);
+const validateConfig = ajv.compile(CONFIG_SCHEMA);
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -183,9 +209,9 @@ serve(async (req: Request) => {
 
     // Optionally apply: insert into configs and broadcast APPLY_CONFIG
     if (apply) {
-      const valid = validateLegacy(merged);
+      const valid = validateConfig(merged);
       if (!valid) {
-        return new Response(JSON.stringify({ error: "invalid content", details: validateLegacy.errors }), {
+        return new Response(JSON.stringify({ error: "invalid content", details: validateConfig.errors }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -228,4 +254,3 @@ serve(async (req: Request) => {
     });
   }
 });
-

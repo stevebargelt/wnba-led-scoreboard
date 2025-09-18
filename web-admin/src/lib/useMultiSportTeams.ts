@@ -51,16 +51,7 @@ export function useMultiSportTeams() {
       } catch (err) {
         console.error('Error fetching teams:', err)
         setError(err instanceof Error ? err.message : 'Failed to fetch teams')
-
-        // Fallback to legacy WNBA teams if API fails
-        const { WNBATEAMS } = await import('./wnbaTeams')
-        const legacyTeams = WNBATEAMS.map(team => ({
-          id: team.id || team.abbr,
-          name: team.name,
-          abbreviation: team.abbr,
-          sport: 'wnba',
-        }))
-        setTeams({ wnba: legacyTeams })
+        setTeams({})
       } finally {
         setLoading(false)
       }
@@ -122,17 +113,4 @@ export function useMultiSportTeams() {
   }
 }
 
-// Legacy compatibility export
-export function useLegacyTeams() {
-  const { teams, loading, error } = useMultiSportTeams()
-
-  // Convert to legacy format for backward compatibility
-  const legacyTeams =
-    teams.wnba?.map(team => ({
-      name: team.name,
-      abbr: team.abbreviation,
-      id: team.id,
-    })) || []
-
-  return { teams: legacyTeams, loading, error }
-}
+// Legacy export removed — consumers should rely on multi-sport API exclusively.

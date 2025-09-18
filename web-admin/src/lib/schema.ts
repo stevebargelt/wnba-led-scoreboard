@@ -6,19 +6,6 @@ export const CONFIG_SCHEMA = {
   title: 'WNBA LED Scoreboard Config',
   type: 'object',
   properties: {
-    favorites: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          name: { type: 'string' },
-          id: { type: ['string', 'null'] },
-          abbr: { type: ['string', 'null'] },
-        },
-        required: ['name'],
-        additionalProperties: false,
-      },
-    },
     timezone: { type: 'string' },
     matrix: {
       type: 'object',
@@ -52,9 +39,35 @@ export const CONFIG_SCHEMA = {
       },
       additionalProperties: true,
     },
+    sports: {
+      type: 'array',
+      minItems: 1,
+      items: {
+        type: 'object',
+        properties: {
+          sport: { type: 'string', minLength: 1 },
+          enabled: { type: 'boolean' },
+          priority: { type: 'integer', minimum: 1 },
+          favorites: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                id: { type: ['string', 'null'] },
+                abbr: { type: ['string', 'null'] },
+              },
+              required: ['name'],
+              additionalProperties: false,
+            },
+          },
+        },
+        required: ['sport', 'enabled', 'priority'],
+        additionalProperties: false,
+      },
+    },
   },
-  // favorites no longer required when using DB-sourced favorites
-  // required: ['favorites'],
+  required: ['sports'],
   additionalProperties: true,
 } as const
 

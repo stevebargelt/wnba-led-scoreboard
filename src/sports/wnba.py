@@ -60,10 +60,9 @@ class WNBAClient(SportClient):
         import json
         from pathlib import Path
         
-        # Read from existing teams.json asset file
-        teams_file = Path("assets/teams.json")
+        teams_file = Path("assets/wnba_teams.json")
         if not teams_file.exists():
-            print("[warn] WNBA teams.json not found - run fetch_wnba_assets.py")
+            print("[warn] WNBA asset file not found - run fetch_wnba_assets.py")
             return []
         
         try:
@@ -72,7 +71,8 @@ class WNBAClient(SportClient):
             
             # Convert to standardized format
             standardized_teams = []
-            for team in teams_data:
+            source_list = teams_data.get("teams") if isinstance(teams_data, dict) else teams_data
+            for team in source_list or []:
                 team_info = {
                     "id": str(team.get("id", "")),
                     "name": team.get("displayName", ""),
@@ -80,8 +80,8 @@ class WNBAClient(SportClient):
                     "abbreviation": team.get("abbreviation", ""),
                     "conference": team.get("conference", ""),
                     "colors": {
-                        "primary": team.get("color", {}).get("primary", "#000000"),
-                        "secondary": team.get("color", {}).get("secondary", "#FFFFFF"),
+                        "primary": team.get("primary", team.get("color", {}).get("primary", "#000000")),
+                        "secondary": team.get("secondary", team.get("color", {}).get("secondary", "#FFFFFF")),
                     },
                     "logo_url": team.get("logo", ""),
                     "sport": "wnba",

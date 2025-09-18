@@ -7,16 +7,12 @@ from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 
-from src.config.loader import load_config
-from src.config.multi_sport_loader import load_multi_sport_config, apply_environment_overrides_to_multi_sport_config, env_bool
+from src.config.multi_sport_loader import load_multi_sport_config, apply_environment_overrides_to_multi_sport_config
 from src.config.multi_sport_types import convert_multi_sport_to_legacy
-from src.data.enhanced_espn import fetch_scoreboard
 from src.model.game import GameSnapshot, GameState
 from src.model.sport_game import EnhancedGameSnapshot
 from typing import Optional
-from src.select.choose import choose_featured_game
 from src.sports.aggregator import MultiSportAggregator
-from src.sports.base import SportType
 from src.render.renderer import Renderer
 from src.demo.simulator import DemoSimulator
 from src.runtime.reload import ConfigWatcher
@@ -37,8 +33,6 @@ def parse_args():
     parser.add_argument("--sim", action="store_true", help="Force simulate display (no matrix)")
     parser.add_argument("--once", action="store_true", help="Run one update cycle and exit")
     parser.add_argument("--demo", action="store_true", help="Run in demo mode with a simulated game")
-    parser.add_argument("--multi-sport", action="store_true", help="Enable multi-sport mode (requires multi-sport config)")
-    parser.add_argument("--legacy", action="store_true", help="Force legacy single-sport mode")
     return parser.parse_args()
 
 
@@ -47,66 +41,25 @@ def main():
     load_dotenv()  # .env overrides
     args = parse_args()
 
-    # Determine operation mode
-    multi_sport_mode = args.multi_sport or env_bool("MULTI_SPORT_MODE", False)
-    legacy_mode = args.legacy or env_bool("LEGACY_MODE", False)
-    
-    # Load appropriate configuration
-    if legacy_mode:
-        print("[info] Running in legacy single-sport mode")
-        cfg = load_config(args.config)
-        multi_sport_aggregator = None
-    elif multi_sport_mode:
-        print("[info] Running in multi-sport mode")  
-        multi_cfg = load_multi_sport_config(args.config)
-        multi_cfg = apply_environment_overrides_to_multi_sport_config(multi_cfg)
-        cfg = convert_multi_sport_to_legacy(multi_cfg)  # For renderer compatibility
-        
-        # Initialize multi-sport aggregator
-        enabled_sports = multi_cfg.get_enabled_sports()
-        sport_priorities = multi_cfg.get_sport_priorities()
-        multi_sport_aggregator = MultiSportAggregator(sport_priorities, enabled_sports)
-        
-        # Configure priority rules
-        priority_config = multi_cfg.sport_priority
-        multi_sport_aggregator.configure_priority_rules(
-            live_game_boost=priority_config.live_game_boost,
-            favorite_team_boost=priority_config.favorite_team_boost,
-            close_game_boost=priority_config.close_game_boost,
-            playoff_boost=priority_config.playoff_boost,
-            conflict_resolution=priority_config.conflict_resolution,
-        )
-        
-        print(f"[info] Enabled sports: {[s.value.upper() for s in enabled_sports]}")
-    else:
-        # Auto-detect based on configuration format
-        try:
-            multi_cfg = load_multi_sport_config(args.config)
-            if len(multi_cfg.get_enabled_sports()) > 1:
-                print("[info] Auto-detected multi-sport configuration")
-                multi_sport_mode = True
-                cfg = convert_multi_sport_to_legacy(multi_cfg)
-                
-                enabled_sports = multi_cfg.get_enabled_sports()
-                sport_priorities = multi_cfg.get_sport_priorities() 
-                multi_sport_aggregator = MultiSportAggregator(sport_priorities, enabled_sports)
-                
-                priority_config = multi_cfg.sport_priority
-                multi_sport_aggregator.configure_priority_rules(
-                    live_game_boost=priority_config.live_game_boost,
-                    favorite_team_boost=priority_config.favorite_team_boost,
-                    close_game_boost=priority_config.close_game_boost,
-                    playoff_boost=priority_config.playoff_boost,
-                    conflict_resolution=priority_config.conflict_resolution,
-                )
-            else:
-                print("[info] Single sport detected - using legacy mode")
-                cfg = load_config(args.config)
-                multi_sport_aggregator = None
-        except Exception as e:
-            print(f"[warn] Multi-sport config detection failed: {e} - falling back to legacy")
-            cfg = load_config(args.config)
-            multi_sport_aggregator = None
+    # Load multi-sport configuration (single source of truth)
+    multi_cfg = load_multi_sport_config(args.config)
+    multi_cfg = apply_environment_overrides_to_multi_sport_config(multi_cfg)
+    cfg = convert_multi_sport_to_legacy(multi_cfg)  # Renderer still consumes legacy shape
+
+    enabled_sports = multi_cfg.get_enabled_sports()
+    sport_priorities = multi_cfg.get_sport_priorities()
+    multi_sport_aggregator = MultiSportAggregator(sport_priorities, enabled_sports)
+
+    priority_config = multi_cfg.sport_priority
+    multi_sport_aggregator.configure_priority_rules(
+        live_game_boost=priority_config.live_game_boost,
+        favorite_team_boost=priority_config.favorite_team_boost,
+        close_game_boost=priority_config.close_game_boost,
+        playoff_boost=priority_config.playoff_boost,
+        conflict_resolution=priority_config.conflict_resolution,
+    )
+
+    print(f"[info] Enabled sports: {[s.value.upper() for s in enabled_sports]}")
 
     renderer = Renderer(cfg, force_sim=args.sim)
 
@@ -131,57 +84,42 @@ def main():
             now_local = datetime.now(cfg.tz)
             if demo is not None:
                 snapshot: Optional[GameSnapshot] = demo.get_snapshot(now_local)
-                fetch_success = True  # Demo mode always succeeds
             else:
-                if multi_sport_aggregator is not None:
-                    # Multi-sport mode: use aggregator to get best game across sports
-                    try:
-                        # Build favorite teams dictionary for aggregator
-                        favorite_teams = {}
-                        if hasattr(multi_cfg, 'sports'):
-                            for sport_config in multi_cfg.sports:
-                                if sport_config.enabled:
-                                    team_identifiers = []
-                                    for team in sport_config.teams:
-                                        team_identifiers.extend([team.name, team.abbr])
-                                        if team.id:
-                                            team_identifiers.append(team.id)
-                                    favorite_teams[sport_config.sport] = team_identifiers
-                        
-                        enhanced_game = multi_sport_aggregator.get_featured_game(
-                            now_local.date(), 
-                            now_local, 
-                            favorite_teams
-                        )
-                        
-                        # Convert enhanced game back to legacy format for renderer
-                        if enhanced_game:
-                            snapshot = enhanced_game.to_legacy_game_snapshot()
-                            print(f"[info] Selected {enhanced_game.sport.value.upper()} game: {enhanced_game.away.abbr} @ {enhanced_game.home.abbr} ({enhanced_game.selection_reason})")
-                        else:
-                            snapshot = None
-                        
-                        refresh_manager.record_request_success()
-                        fetch_success = True
-                        
-                    except Exception as e:
-                        print(f"[warn] Multi-sport aggregation failed: {e}")
-                        refresh_manager.record_request_failure()
-                        snapshot = None
-                        fetch_success = False
-                else:
-                    # Legacy mode: use original WNBA-only logic
-                    try:
-                        scoreboard = fetch_scoreboard(now_local.date())
-                        refresh_manager.record_request_success()
-                        fetch_success = True
-                    except Exception as e:
-                        print(f"[warn] fetch_scoreboard failed: {e}")
-                        refresh_manager.record_request_failure()
-                        scoreboard = []
-                        fetch_success = False
+                # Multi-sport mode: use aggregator to get best game across sports
+                try:
+                    # Build favorite teams dictionary for aggregator
+                    favorite_teams = {}
+                    for sport_config in getattr(multi_cfg, 'sports', []):
+                        if sport_config.enabled:
+                            team_identifiers = []
+                            for team in sport_config.teams:
+                                team_identifiers.extend([team.name, team.abbr])
+                                if team.id:
+                                    team_identifiers.append(team.id)
+                            favorite_teams[sport_config.sport] = team_identifiers
 
-                    snapshot = choose_featured_game(cfg, scoreboard, now_local)
+                    enhanced_game = multi_sport_aggregator.get_featured_game(
+                        now_local.date(),
+                        now_local,
+                        favorite_teams,
+                    )
+
+                    if enhanced_game:
+                        snapshot = enhanced_game.to_legacy_game_snapshot()
+                        print(
+                            f"[info] Selected {enhanced_game.sport.value.upper()} game: "
+                            f"{enhanced_game.away.abbr} @ {enhanced_game.home.abbr} "
+                            f"({enhanced_game.selection_reason})"
+                        )
+                    else:
+                        snapshot = None
+
+                    refresh_manager.record_request_success()
+
+                except Exception as e:
+                    print(f"[warn] Multi-sport aggregation failed: {e}")
+                    refresh_manager.record_request_failure()
+                    snapshot = None
 
             # Render appropriate scene
             if snapshot is None:
@@ -209,9 +147,28 @@ def main():
             if do_reload:
                 RELOAD_REQUESTED = False
                 try:
-                    new_cfg = load_config(args.config)
+                    multi_cfg = load_multi_sport_config(args.config)
+                    multi_cfg = apply_environment_overrides_to_multi_sport_config(multi_cfg)
+                    new_cfg = convert_multi_sport_to_legacy(multi_cfg)
+
+                    # Rebuild aggregator with updated priorities
+                    enabled_sports = multi_cfg.get_enabled_sports()
+                    sport_priorities = multi_cfg.get_sport_priorities()
+                    multi_sport_aggregator = MultiSportAggregator(sport_priorities, enabled_sports)
+                    priority_config = multi_cfg.sport_priority
+                    multi_sport_aggregator.configure_priority_rules(
+                        live_game_boost=priority_config.live_game_boost,
+                        favorite_team_boost=priority_config.favorite_team_boost,
+                        close_game_boost=priority_config.close_game_boost,
+                        playoff_boost=priority_config.playoff_boost,
+                        conflict_resolution=priority_config.conflict_resolution,
+                    )
+
                     # If matrix size changed, recreate renderer
-                    resized = (new_cfg.matrix.width != cfg.matrix.width) or (new_cfg.matrix.height != cfg.matrix.height)
+                    resized = (
+                        new_cfg.matrix.width != cfg.matrix.width
+                        or new_cfg.matrix.height != cfg.matrix.height
+                    )
                     cfg = new_cfg
                     if resized:
                         try:
@@ -220,12 +177,13 @@ def main():
                             pass
                         renderer = Renderer(cfg, force_sim=args.sim)
                     else:
-                        # For same size, update renderer config reference
                         renderer.cfg = cfg
-                    
-                    # Update refresh manager with new config
+
                     refresh_manager = AdaptiveRefreshManager(cfg.refresh)
-                    print("[info] Configuration reloaded")
+                    print(
+                        f"[info] Configuration reloaded; enabled sports: "
+                        f"{[s.value.upper() for s in enabled_sports]}"
+                    )
                 except Exception as e:
                     print(f"[warn] reload failed: {e}")
 

@@ -12,7 +12,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 ASSETS_DIR = BASE_DIR / "assets"
 LOGOS_DIR = ASSETS_DIR / "logos"
 VARIANTS_DIR = LOGOS_DIR / "variants"
-TEAMS_JSON = ASSETS_DIR / "teams.json"
+WNBA_TEAMS_FILE = ASSETS_DIR / "wnba_teams.json"
 
 ESPN_TEAMS_URL = "http://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams"
 
@@ -107,9 +107,9 @@ def main():
         })
 
     ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-    with open(TEAMS_JSON, "w", encoding="utf-8") as f:
+    with open(WNBA_TEAMS_FILE, "w", encoding="utf-8") as f:
         json.dump({"teams": entries}, f, indent=2)
-    print(f"Wrote {TEAMS_JSON} and logos in {LOGOS_DIR}")
+    print(f"Wrote {WNBA_TEAMS_FILE} and logos in {LOGOS_DIR}")
 
 
 if __name__ == "__main__":

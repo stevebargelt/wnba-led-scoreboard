@@ -1,12 +1,10 @@
-"""
-Multi-sport configuration types and structures.
-"""
+"""Multi-sport configuration types and structures."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from zoneinfo import ZoneInfo
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional
 
 from src.sports.base import SportType
 from src.config.types import MatrixConfig, RefreshConfig, RenderConfig, FavoriteTeam
@@ -88,9 +86,9 @@ class MultiSportAppConfig:
         return 999  # Lowest priority for unknown sports
 
 
-@dataclass  
+@dataclass
 class LegacyAppConfig:
-    """Legacy single-sport configuration for backward compatibility."""
+    """Renderer compatibility configuration (legacy scoreboard shape)."""
     favorites: List[FavoriteTeam]
     timezone: str
     matrix: MatrixConfig
@@ -99,38 +97,11 @@ class LegacyAppConfig:
     tz: Optional[ZoneInfo] = None
 
 
-def migrate_legacy_config_to_multi_sport(legacy_config: LegacyAppConfig) -> MultiSportAppConfig:
-    """
-    Migrate legacy single-sport configuration to multi-sport format.
-    
-    This ensures backward compatibility for existing WNBA-only setups.
-    """
-    # Create WNBA sport configuration from legacy favorites
-    wnba_sport_config = SportFavorites(
-        sport=SportType.WNBA,
-        enabled=True,
-        priority=1,  # Highest priority
-        teams=legacy_config.favorites
-    )
-    
-    return MultiSportAppConfig(
-        sports=[wnba_sport_config],
-        sport_priority=SportPriorityConfig(),
-        timezone=legacy_config.timezone,
-        matrix=legacy_config.matrix,
-        refresh=legacy_config.refresh,
-        render=legacy_config.render,
-        tz=legacy_config.tz,
-        enabled_sports=[SportType.WNBA],
-        default_sport=SportType.WNBA,
-    )
-
-
 def convert_multi_sport_to_legacy(multi_config: MultiSportAppConfig) -> LegacyAppConfig:
     """
     Convert multi-sport config back to legacy format.
     
-    Uses the highest priority enabled sport (typically WNBA for backward compatibility).
+    Uses the highest priority enabled sport to populate renderer fields.
     """
     # Find the highest priority enabled sport
     enabled_sports = [s for s in multi_config.sports if s.enabled]
@@ -150,21 +121,6 @@ def convert_multi_sport_to_legacy(multi_config: MultiSportAppConfig) -> LegacyAp
         render=multi_config.render,
         tz=multi_config.tz,
     )
-
-
-def detect_config_format(config_data: Dict[str, Any]) -> str:
-    """
-    Detect whether configuration is legacy or multi-sport format.
-    
-    Returns:
-        "legacy" or "multi_sport"
-    """
-    if "sports" in config_data:
-        return "multi_sport"
-    elif "favorites" in config_data:
-        return "legacy" 
-    else:
-        return "unknown"
 
 
 def create_default_multi_sport_config(timezone: str = "America/Los_Angeles") -> MultiSportAppConfig:

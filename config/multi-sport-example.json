@@ -77,17 +77,5 @@
     "ingame_sec": 5,
     "pregame_sec": 30
   },
-  "timezone": "America/Los_Angeles",
-  "favorites": [
-    {
-      "id": "14",
-      "abbr": "SEA",
-      "name": "Seattle Storm"
-    },
-    {
-      "id": "8",
-      "abbr": "MIN",
-      "name": "Minnesota Lynx"
-    }
-  ]
+  "timezone": "America/Los_Angeles"
 }
