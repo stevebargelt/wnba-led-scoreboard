@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useId, useRef } from 'react'
 import { clsx } from 'clsx'
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
@@ -19,7 +19,13 @@ export function Input({
   id,
   ...props
 }: InputProps) {
-  const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`
+  // Generate a stable id across SSR/CSR and re-renders to avoid focus loss
+  const generatedId = useId()
+  const stableIdRef = useRef<string | null>(null)
+  if (!stableIdRef.current) {
+    stableIdRef.current = `input-${generatedId}`
+  }
+  const inputId = id || stableIdRef.current
   const hasError = Boolean(error)
 
   return (

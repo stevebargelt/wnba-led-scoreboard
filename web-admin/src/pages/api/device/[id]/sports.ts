@@ -1,148 +1,158 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import { supabase } from '@/lib/supabaseClient'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id: deviceId } = req.query
-
   if (!deviceId || typeof deviceId !== 'string') {
     return res.status(400).json({ error: 'Device ID is required' })
   }
 
+  const authHeader = req.headers.authorization || ''
+  const tokenMatch = authHeader.match(/^Bearer\s+(.*)$/i)
+  if (!tokenMatch) {
+    return res.status(401).json({ error: 'Missing or invalid Authorization header' })
+  }
+  const accessToken = tokenMatch[1]
+
+  const userScoped = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+
+  const { data: userData, error: authError } = await userScoped.auth.getUser(accessToken)
+  if (authError || !userData?.user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
+  // Ensure the authenticated user can access this device (leverages RLS)
+  const { data: deviceRow, error: deviceErr } = await userScoped
+    .from('devices')
+    .select('id')
+    .eq('id', deviceId)
+    .maybeSingle()
+
+  if (deviceErr && deviceErr.code !== 'PGRST116') {
+    return res.status(500).json({ error: deviceErr.message })
+  }
+  if (!deviceRow) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+
   if (req.method === 'GET') {
     try {
-      // Get sport configuration for this device
-      const { data: sportConfigs, error } = await supabase
+      // Load sport configs for this device
+      const { data: configs, error } = await userScoped
         .from('device_sport_config')
-        .select('*')
+        .select('sport, enabled, priority, favorite_teams')
         .eq('device_id', deviceId)
-        .order('priority')
+        .order('priority', { ascending: true })
 
-      if (error) {
-        console.error('Error fetching device sport config:', error)
-        return res.status(500).json({ error: 'Failed to fetch sport configuration' })
+      if (error) return res.status(500).json({ error: error.message })
+
+      // Load active override, if any
+      const nowIso = new Date().toISOString()
+      const { data: override, error: ovErr } = await userScoped
+        .from('game_overrides')
+        .select('sport, game_event_id, reason, expires_at')
+        .eq('device_id', deviceId)
+        .gt('expires_at', nowIso)
+        .order('overridden_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (ovErr && ovErr.code !== 'PGRST116') {
+        // Ignore no rows error; otherwise surface
+        return res.status(500).json({ error: ovErr.message })
       }
 
-      // Get active game override if any
-      const { data: activeOverride, error: overrideError } = await supabase.rpc(
-        'get_active_game_override',
-        { target_device_id: deviceId }
-      )
-
-      if (overrideError) {
-        console.error('Error fetching active override:', overrideError)
-        // Don't fail the request, just log the error
-      }
-
-      res.status(200).json({
-        sportConfigs: sportConfigs || [],
-        activeOverride: activeOverride?.[0] || null,
-      })
-    } catch (error) {
-      console.error('API error:', error)
-      res.status(500).json({ error: 'Internal server error' })
+      return res.status(200).json({ sportConfigs: configs ?? [], activeOverride: override ?? null })
+    } catch (e: any) {
+      console.error('GET /device/[id]/sports error:', e)
+      return res.status(500).json({ error: 'Internal server error' })
     }
-  } else if (req.method === 'PUT') {
-    try {
-      const { sportConfigs, prioritySettings } = req.body
+  }
 
+  if (req.method === 'PUT') {
+    try {
+      const { sportConfigs, prioritySettings } = req.body || {}
       if (!Array.isArray(sportConfigs)) {
         return res.status(400).json({ error: 'sportConfigs must be an array' })
       }
 
-      // Update sport configurations
-      for (const config of sportConfigs) {
-        const { sport, enabled, priority, favoriteTeams } = config
+      // Normalize and upsert rows (unique on device_id+sport)
+      const rows = sportConfigs.map((c: any) => ({
+        device_id: deviceId,
+        sport: String(c.sport),
+        enabled: Boolean(c.enabled),
+        priority: Number(c.priority),
+        favorite_teams: Array.isArray(c.favoriteTeams)
+          ? c.favoriteTeams
+          : Array.isArray(c.favorite_teams)
+            ? c.favorite_teams
+            : [],
+      }))
 
-        // Upsert sport configuration
-        const { error: upsertError } = await supabase.from('device_sport_config').upsert(
-          {
-            device_id: deviceId,
-            sport,
-            enabled: enabled ?? false,
-            priority: priority ?? 1,
-            favorite_teams: favoriteTeams || [],
-          },
-          {
-            onConflict: 'device_id,sport',
-          }
-        )
+      const { error } = await userScoped
+        .from('device_sport_config')
+        .upsert(rows, { onConflict: 'device_id,sport' })
 
-        if (upsertError) {
-          console.error('Error upserting sport config:', upsertError)
-          return res.status(500).json({ error: `Failed to update ${sport} configuration` })
-        }
-      }
+      if (error) return res.status(500).json({ error: error.message })
 
-      // If priority settings provided, update the main config
-      if (prioritySettings) {
-        const configContent = {
-          sport_priority: prioritySettings,
-          updated_at: new Date().toISOString(),
-        }
-
-        const { error: configError } = await supabase.from('configs').insert({
-          device_id: deviceId,
-          content: configContent,
-          source: 'cloud',
-        })
-
-        if (configError) {
-          console.error('Error saving priority config:', configError)
-          return res.status(500).json({ error: 'Failed to save priority configuration' })
-        }
-      }
-
-      res.status(200).json({ success: true })
-    } catch (error) {
-      console.error('API error:', error)
-      res.status(500).json({ error: 'Internal server error' })
+      // Optionally: persist global priority settings in a future table
+      return res.status(200).json({ success: true })
+    } catch (e: any) {
+      console.error('PUT /device/[id]/sports error:', e)
+      return res.status(500).json({ error: 'Internal server error' })
     }
-  } else if (req.method === 'POST') {
+  }
+
+  if (req.method === 'POST') {
     try {
-      const { action, sport, gameEventId, reason, durationMinutes } = req.body
+      const { action, sport, gameEventId, reason, durationMinutes } = req.body || {}
+      if (!action) return res.status(400).json({ error: 'action is required' })
 
       if (action === 'override_game') {
-        // Create game override
-        const expiresAt = new Date()
-        expiresAt.setMinutes(expiresAt.getMinutes() + (durationMinutes || 60))
+        if (!sport || !gameEventId) {
+          return res.status(400).json({ error: 'sport and gameEventId required' })
+        }
 
-        const { error: overrideError } = await supabase.from('game_overrides').insert({
+        const expires = new Date()
+        expires.setMinutes(expires.getMinutes() + Number(durationMinutes || 60))
+
+        const { error } = await userScoped.from('game_overrides').insert({
           device_id: deviceId,
-          sport,
-          game_event_id: gameEventId,
-          expires_at: expiresAt.toISOString(),
-          reason: reason || 'Manual override from web admin',
+          sport: String(sport),
+          game_event_id: String(gameEventId),
+          reason: reason ? String(reason) : null,
+          expires_at: expires.toISOString(),
+          overridden_by_user_id: userData.user.id,
         })
 
-        if (overrideError) {
-          console.error('Error creating game override:', overrideError)
-          return res.status(500).json({ error: 'Failed to create game override' })
-        }
-
-        res.status(200).json({ success: true, expiresAt: expiresAt.toISOString() })
-      } else if (action === 'clear_override') {
-        // Clear any active overrides
-        const { error: clearError } = await supabase
-          .from('game_overrides')
-          .update({ expires_at: new Date().toISOString() })
-          .eq('device_id', deviceId)
-          .gt('expires_at', new Date().toISOString())
-
-        if (clearError) {
-          console.error('Error clearing overrides:', clearError)
-          return res.status(500).json({ error: 'Failed to clear override' })
-        }
-
-        res.status(200).json({ success: true })
-      } else {
-        res.status(400).json({ error: 'Invalid action' })
+        if (error) return res.status(500).json({ error: error.message })
+        return res.status(200).json({ success: true, expiresAt: expires.toISOString() })
       }
-    } catch (error) {
-      console.error('API error:', error)
-      res.status(500).json({ error: 'Internal server error' })
+
+      if (action === 'clear_override') {
+        const nowIso = new Date().toISOString()
+        const { error } = await userScoped
+          .from('game_overrides')
+          .delete()
+          .eq('device_id', deviceId)
+          .gt('expires_at', nowIso)
+        if (error) return res.status(500).json({ error: error.message })
+        return res.status(200).json({ success: true })
+      }
+
+      return res.status(400).json({ error: 'Invalid action' })
+    } catch (e: any) {
+      console.error('POST /device/[id]/sports error:', e)
+      return res.status(500).json({ error: 'Internal server error' })
     }
-  } else {
-    res.setHeader('Allow', ['GET', 'PUT', 'POST'])
-    res.status(405).json({ error: `Method ${req.method} not allowed` })
   }
+
+  res.setHeader('Allow', ['GET', 'PUT', 'POST'])
+  return res.status(405).json({ error: `Method ${req.method} not allowed` })
 }

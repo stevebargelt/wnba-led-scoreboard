@@ -6,8 +6,8 @@ module.exports = {
     '!src/**/*.d.ts',
     '!src/pages/_app.tsx',
     '!src/pages/_document.tsx',
-    '!src/components/sports/**/*',     // Exclude multi-sport components temporarily
-    '!src/pages/api/sports/**/*',      // Exclude multi-sport API endpoints
+    '!src/components/sports/**/*', // Exclude multi-sport components temporarily
+    '!src/pages/api/sports/**/*', // Exclude multi-sport API endpoints
     '!src/pages/api/device/*/sports.ts', // Exclude multi-sport device API
   ],
   coverageThreshold: {

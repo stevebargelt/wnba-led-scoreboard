@@ -14,3 +14,14 @@ web-admin/tsconfig.tsbuildinfo
 
 node_modules/
 CLAUDE.local.md
+
+# Test coverage and reports (don’t track generated artifacts)
+coverage/
+**/coverage/
+**/lcov-report/
+web-admin/coverage/
+
+# Supabase CLI temp files
+supabase/**/.temp/
+web-admin/supabase/.temp/
+supabase/supabase/.temp/

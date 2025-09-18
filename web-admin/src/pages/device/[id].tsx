@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
-import { WNBATEAMS } from '@/lib/wnbaTeams'
+import { MultiSportTeamSelector } from '../../components/config/MultiSportTeamSelector'
+import { MultiSportFavoritesEditor } from '../../components/config/MultiSportFavoritesEditor'
 import { makeValidator } from '@/lib/schema'
 import { Layout } from '../../components/layout'
 import {
@@ -22,6 +23,7 @@ import { LiveGameMonitor } from '../../components/sports/LiveGameMonitor'
 const FN_CONFIG = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE!
 const FN_ACTION = process.env.NEXT_PUBLIC_FUNCTION_ON_ACTION!
 const FN_MINT = process.env.NEXT_PUBLIC_FUNCTION_MINT_DEVICE_TOKEN!
+const FN_BUILD = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_BUILD
 
 export default function DevicePage() {
   const router = useRouter()
@@ -39,11 +41,17 @@ export default function DevicePage() {
   const [favorites, setFavorites] = useState<
     { name: string; id?: string | null; abbr?: string | null }[]
   >([])
-  const [newFav, setNewFav] = useState<{ name: string; abbr?: string }>({ name: '', abbr: '' })
-  const [teamList, setTeamList] =
-    useState<{ name: string; abbr?: string; id?: string }[]>(WNBATEAMS)
+  const [newFav, setNewFav] = useState<{ name: string; abbr?: string; id?: string }>({
+    name: '',
+    abbr: '',
+  })
+  const [teamList, setTeamList] = useState<{ name: string; abbr?: string; id?: string }[]>([])
   const [schemaError, setSchemaError] = useState<string>('')
   const [schemaErrors, setSchemaErrors] = useState<any[]>([])
+  const [multiSportConfig, setMultiSportConfig] = useState<any>(null)
+  const handleMultiSportConfigChange = useCallback((config: any) => {
+    setMultiSportConfig(config)
+  }, [])
   // Inline editable settings (with reasonable defaults)
   const DEFAULTS = {
     timezone: 'America/Los_Angeles',
@@ -101,6 +109,80 @@ export default function DevicePage() {
         .order('created_at', { ascending: false })
         .limit(20)
       if (ev) setEvents(ev)
+
+      // Load device sport configuration for Multi-Sport Favorites editor
+      try {
+        const { data: sess } = await supabase.auth.getSession()
+        const jwt = sess.session?.access_token
+        // Fetch available sports/teams to resolve identifiers to canonical names/abbrs
+        let sportDirectory: Record<string, any[]> = {}
+        try {
+          const sRes = await fetch('/api/sports', {
+            headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+          })
+          if (sRes.ok) {
+            const sJson = await sRes.json()
+            sportDirectory = sJson.sports || {}
+          }
+        } catch {}
+
+        const resp = await fetch(`/api/device/${id}/sports`, {
+          headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
+        })
+        if (resp.ok) {
+          const body = await resp.json()
+          const sportConfigs: any[] = body.sportConfigs || []
+          // Helper to resolve identifier to {id,name,abbr}
+          const resolveFav = (sport: string, identifier: any) => {
+            const list = (sportDirectory[sport] || []) as any[]
+            const idStr = String(identifier)
+            const byId = list.find(t => String(t.id) === idStr)
+            if (byId) return { id: String(byId.id), name: byId.name, abbr: byId.abbreviation }
+            const byAbbr = list.find(
+              t => String(t.abbreviation).toUpperCase() === idStr.toUpperCase()
+            )
+            if (byAbbr)
+              return { id: String(byAbbr.id), name: byAbbr.name, abbr: byAbbr.abbreviation }
+            const byName = list.find(t => String(t.name).toLowerCase() === idStr.toLowerCase())
+            if (byName)
+              return { id: String(byName.id), name: byName.name, abbr: byName.abbreviation }
+            return { id: idStr, name: idStr, abbr: idStr }
+          }
+
+          // Map DB rows to editor format with enrichment using directory if available
+          const wnba = sportConfigs.find(c => String(c.sport) === 'wnba') || {
+            sport: 'wnba',
+            enabled: true,
+            favorite_teams: [],
+            priority: 1,
+          }
+          const nhl = sportConfigs.find(c => String(c.sport) === 'nhl') || {
+            sport: 'nhl',
+            enabled: false,
+            favorite_teams: [],
+            priority: 2,
+          }
+          const mapFavs = (arr: any[], sport: string) =>
+            (Array.isArray(arr) ? arr : []).map(v => resolveFav(sport, v))
+          setMultiSportConfig({
+            sports: [
+              {
+                sport: 'wnba',
+                enabled: !!wnba.enabled,
+                favorites: mapFavs(wnba.favorite_teams, 'wnba'),
+              },
+              {
+                sport: 'nhl',
+                enabled: !!nhl.enabled,
+                favorites: mapFavs(nhl.favorite_teams, 'nhl'),
+              },
+            ],
+          })
+        }
+      } catch (e) {
+        // Non-fatal for the page
+        console.warn('Failed to load device sport configs for favorites editor', e)
+      }
     })()
   }, [id])
 
@@ -204,6 +286,116 @@ export default function DevicePage() {
     })
     setMessage(resp.ok ? `${type} sent` : `Failed: ${await resp.text()}`)
     setLoading(false)
+  }
+
+  const buildApplyFromDb = async () => {
+    if (!id || !FN_BUILD) {
+      setMessage('Build function not configured')
+      return
+    }
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setMessage('Not signed in')
+        setLoading(false)
+        return
+      }
+      const resp = await fetch(FN_BUILD, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ device_id: id, apply: true }),
+      })
+      const body = await resp.json()
+      if (resp.ok) {
+        setMessage('Built and applied config from DB favorites')
+        if (body?.content) setConfigText(JSON.stringify(body.content, null, 2))
+      } else {
+        setMessage(`Build failed: ${body?.error || 'Unknown error'}`)
+      }
+    } catch (e: any) {
+      setMessage(`Build error: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const previewFromDb = async () => {
+    if (!id || !FN_BUILD) {
+      setMessage('Build function not configured')
+      return
+    }
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setMessage('Not signed in')
+        setLoading(false)
+        return
+      }
+      const resp = await fetch(FN_BUILD, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ device_id: id, apply: false }),
+      })
+      const body = await resp.json()
+      if (resp.ok) {
+        setConfigText(JSON.stringify(body.content, null, 2))
+        setMessage('Previewed effective config (no apply)')
+      } else {
+        setMessage(`Preview failed: ${body?.error || 'Unknown error'}`)
+      }
+    } catch (e: any) {
+      setMessage(`Preview error: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const seedTeams = async () => {
+    try {
+      setLoading(true)
+      setMessage('')
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setMessage('Not signed in')
+        setLoading(false)
+        return
+      }
+      const resp = await fetch('/api/admin/seed-teams', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`,
+        },
+      })
+      const body = await resp.json()
+      if (resp.ok) {
+        const parts = Object.entries(body.results || {})
+          .map(([sport, r]: any) => `${sport}: ${r.upserted}`)
+          .join(', ')
+        setMessage(`Seeded teams (${parts || 'no files found'})`)
+      } else {
+        setMessage(`Seed failed: ${body?.error || 'Unknown error'}`)
+      }
+    } catch (e: any) {
+      setMessage(`Seed error: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const mintDeviceToken = async () => {
@@ -403,12 +595,13 @@ export default function DevicePage() {
         </div>
 
         {/* Tabbed Interface */}
-        <Tabs defaultValue="actions" className="w-full">
-          <TabsList className="grid grid-cols-5 w-full">
-            <TabsTrigger value="sports">Multi-Sport</TabsTrigger>
+        <Tabs defaultValue="sports" className="w-full">
+          <TabsList className="grid grid-cols-6 w-full">
+            <TabsTrigger value="sports">Sports</TabsTrigger>
+            <TabsTrigger value="favorites">Favorite Teams</TabsTrigger>
+            <TabsTrigger value="config">Config</TabsTrigger>
             <TabsTrigger value="actions">Device Actions</TabsTrigger>
             <TabsTrigger value="token">Device Token</TabsTrigger>
-            <TabsTrigger value="config">Config/Favorites Editor</TabsTrigger>
             <TabsTrigger value="events">Recent Events</TabsTrigger>
           </TabsList>
 
@@ -423,6 +616,14 @@ export default function DevicePage() {
                 }}
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="favorites">
+            <MultiSportFavoritesEditor
+              deviceId={id as string}
+              onConfigChange={handleMultiSportConfigChange}
+              initialConfig={multiSportConfig}
+            />
           </TabsContent>
 
           <TabsContent value="actions">
@@ -581,136 +782,52 @@ export default function DevicePage() {
                 </div>
               </Card>
 
-              {/* Favorites Editor */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Favorites Editor</CardTitle>
-                </CardHeader>
-                <div className="space-y-4">
-                  <ul className="space-y-2">
-                    {favorites.map((f, i) => (
-                      <li
-                        key={i}
-                        draggable
-                        onDragStart={e => onDragStart(e, i)}
-                        onDrop={e => onDrop(e, i)}
-                        onDragOver={onDragOver}
-                        className="flex items-center gap-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
-                      >
-                        <span className="cursor-grab text-gray-400">⋮⋮</span>
-                        <select
-                          className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
-                          value={f.name}
-                          onChange={e => {
-                            const name = e.target.value
-                            const found = teamList.find(t => t.name === name)
-                            const next = favorites.slice()
-                            next[i] = {
-                              name,
-                              abbr: (next[i].abbr || found?.abbr || '').toUpperCase() || undefined,
-                              id: found?.id || next[i].id,
-                            }
-                            setFavorites(next)
-                          }}
-                        >
-                          <option value="">Select team…</option>
-                          {teamList.map(t => (
-                            <option key={`${t.name}-${t.abbr}`} value={t.name}>
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
-                        <Input
-                          placeholder="abbr"
-                          value={f.abbr || ''}
-                          onChange={e => {
-                            const next = favorites.slice()
-                            next[i] = { ...next[i], abbr: e.target.value }
-                            setFavorites(next)
-                          }}
-                          className="w-20"
-                        />
-                        <Input
-                          placeholder="id"
-                          value={f.id || ''}
-                          onChange={e => {
-                            const next = favorites.slice()
-                            next[i] = { ...next[i], id: e.target.value || undefined }
-                            setFavorites(next)
-                          }}
-                          className="w-40"
-                        />
-                        <Button
-                          onClick={() => moveUp(i)}
-                          variant="ghost"
-                          size="sm"
-                          aria-label="move up"
-                        >
-                          ↑
-                        </Button>
-                        <Button
-                          onClick={() => moveDown(i)}
-                          variant="ghost"
-                          size="sm"
-                          aria-label="move down"
-                        >
-                          ↓
-                        </Button>
-                        <Button onClick={() => removeFav(i)} variant="ghost" size="sm">
-                          Remove
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="flex items-center gap-2">
-                    <input
-                      className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
-                      list="teams"
-                      placeholder="Team name"
-                      value={newFav.name}
-                      onChange={e => setNewFav({ ...newFav, name: e.target.value })}
-                    />
-                    <datalist id="teams">
-                      {WNBATEAMS.map(t => (
-                        <option key={t.abbr} value={t.name}>
-                          {t.abbr}
-                        </option>
-                      ))}
-                    </datalist>
-                    <Input
-                      placeholder="abbr"
-                      value={newFav.abbr || ''}
-                      onChange={e => setNewFav({ ...newFav, abbr: e.target.value })}
-                      className="w-20"
-                    />
-                    <Button onClick={addFav} size="sm">
-                      Add
-                    </Button>
-                  </div>
-                  <div className="flex gap-3">
-                    <Button onClick={syncToJson} variant="secondary" size="sm">
-                      Sync Favorites into JSON
-                    </Button>
-                    <Button onClick={enrichFavorites} variant="secondary" size="sm">
-                      Auto-fill Team IDs (from assets)
-                    </Button>
-                  </div>
-                </div>
-              </Card>
+              {/* Favorites Editor removed: sport favorites are managed in the Sport Favorites tab and DB */}
 
               {/* Configuration JSON */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle>Configuration JSON</CardTitle>
-                    <Button
-                      onClick={loadLatestConfig}
-                      disabled={loading}
-                      variant="secondary"
-                      size="sm"
-                    >
-                      Load Latest Config
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        onClick={loadLatestConfig}
+                        disabled={loading}
+                        variant="secondary"
+                        size="sm"
+                      >
+                        Load Latest Config
+                      </Button>
+                      {FN_BUILD && (
+                        <Button
+                          onClick={previewFromDb}
+                          disabled={loading}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          Preview Effective Config
+                        </Button>
+                      )}
+                      <Button
+                        onClick={seedTeams}
+                        disabled={loading}
+                        variant="secondary"
+                        size="sm"
+                        title="Admin: upsert teams from local assets into DB"
+                      >
+                        Seed Teams
+                      </Button>
+                      {FN_BUILD && (
+                        <Button
+                          onClick={buildApplyFromDb}
+                          disabled={loading}
+                          variant="secondary"
+                          size="sm"
+                        >
+                          Build + Apply From DB Favorites
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <div className="space-y-4">

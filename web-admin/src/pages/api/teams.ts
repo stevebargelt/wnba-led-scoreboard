@@ -1,8 +1,31 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
+import { createClient } from '@supabase/supabase-js'
 import fs from 'fs/promises'
 import path from 'path'
 
-export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return res.status(500).json({ error: 'Server misconfigured: missing Supabase env' })
+  }
+
+  const authHeader = req.headers.authorization || ''
+  const tokenMatch = authHeader.match(/^Bearer\s+(.*)$/i)
+  if (!tokenMatch) {
+    return res.status(401).json({ error: 'Missing or invalid Authorization header' })
+  }
+  const accessToken = tokenMatch[1]
+
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
+  const { data: userData, error: authError } = await supabase.auth.getUser(accessToken)
+  if (authError || !userData?.user) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+
   try {
     const root = path.resolve(process.cwd(), '..')
     const file = path.join(root, 'assets', 'teams.json')

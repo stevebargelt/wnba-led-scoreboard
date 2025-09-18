@@ -1,53 +1,93 @@
 {
+  "matrix": {
+    "width": 64,
+    "height": 32,
+    "parallel": 1,
+    "pwm_bits": 11,
+    "brightness": 80,
+    "chain_length": 1,
+    "gpio_slowdown": 2,
+    "hardware_mapping": "adafruit-hat"
+  },
+  "render": {
+    "live_layout": "stacked",
+    "logo_variant": "mini"
+  },
   "sports": [
     {
       "sport": "wnba",
       "enabled": true,
       "priority": 1,
       "favorites": [
-        { "name": "Seattle Storm", "id": "18", "abbr": "SEA" },
-        { "name": "Las Vegas Aces", "id": "26", "abbr": "LVA" },
-        { "name": "Minnesota Lynx", "abbr": "MIN" }
+        {
+          "id": "14",
+          "abbr": "SEA",
+          "name": "Seattle Storm"
+        },
+        {
+          "id": "8",
+          "abbr": "MIN",
+          "name": "Minnesota Lynx"
+        }
       ]
     },
     {
-      "sport": "nhl", 
+      "sport": "nhl",
       "enabled": true,
       "priority": 2,
       "favorites": [
-        { "name": "Seattle Kraken", "id": "55", "abbr": "SEA" },
-        { "name": "Vegas Golden Knights", "id": "54", "abbr": "VGK" },
-        { "name": "Minnesota Wild", "id": "30", "abbr": "MIN" }
+        {
+          "id": "25",
+          "abbr": "SEA",
+          "name": "Seattle Kraken"
+        },
+        {
+          "id": "5",
+          "abbr": "PIT",
+          "name": "Pittsburgh Penguins"
+        },
+        {
+          "id": "1",
+          "abbr": "NJD",
+          "name": "New Jersey Devils"
+        }
       ]
+    },
+    {
+      "sport": "nba",
+      "enabled": false,
+      "priority": 3,
+      "favorites": []
+    },
+    {
+      "sport": "mlb",
+      "enabled": false,
+      "priority": 4,
+      "favorites": []
+    },
+    {
+      "sport": "nfl",
+      "enabled": false,
+      "priority": 5,
+      "favorites": []
     }
   ],
-  "sport_priority": {
-    "conflict_resolution": "priority",
-    "live_game_boost": true,
-    "favorite_team_boost": true,
-    "close_game_boost": true,
-    "playoff_boost": true,
-    "manual_override_duration_minutes": 60,
-    "auto_clear_override_on_game_end": true
+  "refresh": {
+    "final_sec": 60,
+    "ingame_sec": 5,
+    "pregame_sec": 30
   },
   "timezone": "America/Los_Angeles",
-  "matrix": {
-    "width": 64,
-    "height": 32,
-    "chain_length": 1,
-    "parallel": 1,
-    "gpio_slowdown": 2,
-    "hardware_mapping": "adafruit-hat",
-    "brightness": 80,
-    "pwm_bits": 11
-  },
-  "refresh": {
-    "pregame_sec": 30,
-    "ingame_sec": 5,
-    "final_sec": 60
-  },
-  "render": {
-    "live_layout": "stacked",
-    "logo_variant": "mini"
-  }
+  "favorites": [
+    {
+      "id": "14",
+      "abbr": "SEA",
+      "name": "Seattle Storm"
+    },
+    {
+      "id": "8",
+      "abbr": "MIN",
+      "name": "Minnesota Lynx"
+    }
+  ]
 }
