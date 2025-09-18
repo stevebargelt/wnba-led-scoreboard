@@ -31,7 +31,13 @@ describe('useMultiSportTeams', () => {
       json: async () => ({
         sports: {
           wnba: [
-            { id: '18', name: 'Seattle Storm', abbreviation: 'SEA', sport: 'wnba', conference: 'West' },
+            {
+              id: '18',
+              name: 'Seattle Storm',
+              abbreviation: 'SEA',
+              sport: 'wnba',
+              conference: 'West',
+            },
           ],
         },
       }),
