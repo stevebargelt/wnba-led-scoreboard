@@ -108,7 +108,7 @@ When both WNBA and NHL games are active, the system uses intelligent rules to de
 |------|---------|-------------|
 | **Default** | `python app.py` | Runs the multi-sport scoreboard with your configuration |
 | **Simulation** | `python app.py --sim` | Render frames to `out/frame.png` without hardware |
-| **Demo** | `python app.py --demo` | Loop a scripted demo game for testing |
+| **Demo** | `python app.py --demo` | Loop scripted demos; add `--demo-sport nhl --demo-rotation 90` to rotate |
 
 ### ⚙️ **Configuration Options**
 
@@ -152,6 +152,11 @@ When both WNBA and NHL games are active, the system uses intelligent rules to de
 # Sport enablement
 ENABLE_WNBA=true               # Enable/disable WNBA
 ENABLE_NHL=true                # Enable/disable NHL
+
+# Demo configuration
+DEMO_MODE=false                # Enable demo mode
+DEMO_SPORTS=wnba,nhl           # Comma-separated sports for demo rotation
+DEMO_ROTATION_SECONDS=120      # Seconds before rotating to next sport in demo
 
 # Priority configuration  
 SPORT_PRIORITIES=wnba,nhl      # Priority order (comma-separated)
@@ -647,6 +652,12 @@ ls -la out/frame.png
 
 # Test with demo data
 python app.py --sim --demo
+
+# Limit demo mode to NHL only
+python app.py --sim --demo --demo-sport nhl
+
+# Rotate between WNBA and NHL every two minutes
+python app.py --sim --demo --demo-sport wnba --demo-sport nhl --demo-rotation 120
 
 # Test on hardware (requires sudo for GPIO access)
 sudo -E $(pwd)/.venv/bin/python app.py --once

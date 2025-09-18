@@ -14,7 +14,7 @@ from src.model.sport_game import EnhancedGameSnapshot
 from typing import Optional
 from src.sports.aggregator import MultiSportAggregator
 from src.render.renderer import Renderer
-from src.demo.simulator import DemoSimulator
+from src.demo.simulator import DemoSimulator, parse_demo_options
 from src.runtime.reload import ConfigWatcher
 from src.runtime.adaptive_refresh import AdaptiveRefreshManager
 
@@ -33,6 +33,17 @@ def parse_args():
     parser.add_argument("--sim", action="store_true", help="Force simulate display (no matrix)")
     parser.add_argument("--once", action="store_true", help="Run one update cycle and exit")
     parser.add_argument("--demo", action="store_true", help="Run in demo mode with a simulated game")
+    parser.add_argument(
+        "--demo-sport",
+        action="append",
+        help="Limit demo mode to specific sports (can be provided multiple times)",
+    )
+    parser.add_argument(
+        "--demo-rotation",
+        type=int,
+        default=None,
+        help="Number of seconds to show each sport before rotating in demo mode",
+    )
     return parser.parse_args()
 
 
@@ -74,7 +85,26 @@ def main():
 
     demo_env = os.getenv("DEMO_MODE", "false").lower() == "true"
     use_demo = args.demo or demo_env
-    demo = DemoSimulator(cfg) if use_demo else None
+
+    demo_options = None
+    if use_demo:
+        env_demo_sports = os.getenv("DEMO_SPORTS")
+        forced_sports = args.demo_sport or (
+            env_demo_sports.split(",") if env_demo_sports else None
+        )
+        env_rotation = os.getenv("DEMO_ROTATION_SECONDS")
+        rotation_seconds = args.demo_rotation
+        if rotation_seconds is None and env_rotation is not None:
+            try:
+                rotation_seconds = int(env_rotation)
+            except ValueError:
+                rotation_seconds = None
+        demo_options = parse_demo_options(
+            rotation_seconds=rotation_seconds,
+            forced_sports=forced_sports,
+        )
+
+    demo = DemoSimulator(multi_cfg, cfg, options=demo_options) if use_demo else None
     
     # Setup adaptive refresh manager
     refresh_manager = AdaptiveRefreshManager(cfg.refresh)
