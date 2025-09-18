@@ -5,6 +5,7 @@ import { SimpleTabs } from '@/components/ui/SimpleTabs'
 import { SportHierarchyView } from '@/components/sports/SportHierarchyView'
 import { LeagueConfigEditor } from '@/components/sports/LeagueConfigEditor'
 import { SportConfigViewer } from '@/components/sports/SportConfigViewer'
+import { fetchSportsAndLeagues, updateLeague } from '@/lib/sportsLeagues'
 import type { SportConfig, LeagueConfig, SportHierarchy } from '@/types/sports'
 
 export default function SportsLeaguesPage() {
@@ -16,17 +17,14 @@ export default function SportsLeaguesPage() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    fetchSportsAndLeagues()
+    loadSportsAndLeagues()
   }, [])
 
-  const fetchSportsAndLeagues = async () => {
+  const loadSportsAndLeagues = async () => {
     try {
-      const response = await fetch('/api/admin/sports-leagues')
-      if (response.ok) {
-        const data = await response.json()
-        setSports(data.sports || [])
-        setLeagues(data.leagues || [])
-      }
+      const data = await fetchSportsAndLeagues()
+      setSports(data.sports || [])
+      setLeagues(data.leagues || [])
     } catch (error) {
       console.error('Failed to fetch sports and leagues:', error)
     } finally {
@@ -49,15 +47,8 @@ export default function SportsLeaguesPage() {
 
   const handleLeagueUpdate = async (league: LeagueConfig) => {
     try {
-      const response = await fetch(`/api/admin/sports-leagues/league/${league.code}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(league),
-      })
-
-      if (response.ok) {
-        await fetchSportsAndLeagues()
-      }
+      await updateLeague(league.code, league)
+      await loadSportsAndLeagues()
     } catch (error) {
       console.error('Failed to update league:', error)
     }
