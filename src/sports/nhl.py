@@ -7,6 +7,7 @@ import json
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
+from dateutil.parser import parse as parse_datetime
 
 from src.data.resilient_client import ResilientHTTPClient
 from src.model.sport_game import EnhancedGameSnapshot, SportTeam, GameTiming, SportSituation
@@ -273,8 +274,9 @@ class NHLClient(SportClient):
             return None
         
         try:
-            start_time_utc = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
-        except ValueError:
+            # Use dateutil for robust parsing of various ISO formats
+            start_time_utc = parse_datetime(start_time_str)
+        except (ValueError, TypeError):
             return None
         
         # Parse sport-specific situation
