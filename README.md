@@ -35,24 +35,36 @@ This project displays **live sports scoreboards** on RGB LED matrices with suppo
 ## 🚀 Quick Start
 
 
-### 🏒🏀 **Multi-Sport (WNBA + NHL)**
+### 🏒🏀 **Multi-Sport Quick Start**
 
 ```bash
-# 1. Use multi-sport configuration template
+# 1. Copy the template configuration
 cp config/multi-sport-example.json config/favorites.json
 
-# 2. Fetch assets for both sports
+# 2. Install Python dependencies
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Fetch team assets (logos + team metadata)
 python scripts/fetch_wnba_assets.py
 python scripts/fetch_nhl_assets.py
 
-# 3. Install RGB Matrix
+# 4. (Optional) Install RGB Matrix bindings on the Pi
 bash scripts/install_rgbmatrix.sh
 
-# 4. Test multi-sport mode
-python app.py --multi-sport --sim --once
+# 5. Run a simulation frame (renders to out/frame.png)
+python app.py --sim --once
+```
 
-# 5. Run with multi-sport priority resolution
-python app.py --multi-sport
+Next, open the web admin (`cd web-admin && npm install && npm run dev`) to:
+1. Sign in and select your device.
+2. Configure favorite teams per sport on the **Sports** tab (stored in `device_sport_config`).
+3. Use **Preview Effective Config** to inspect the merged JSON, then **Build + Apply From DB** to push it to the device.
+
+When you’re ready to drive the hardware:
+
+```bash
+sudo -E $(pwd)/.venv/bin/python app.py
 ```
 
 > 📖 **Need detailed setup?** See the [complete deployment guide](#-deployment-guide) below.
@@ -90,31 +102,15 @@ When both WNBA and NHL games are active, the system uses intelligent rules to de
 </tr>
 </table>
 
-### 🎮 **Multi-Sport Operation Modes**
+### 🎮 **Running the Scoreboard**
 
 | Mode | Command | Description |
 |------|---------|-------------|
-| **Legacy** | `python app.py --legacy` | WNBA-only mode (backward compatible) |
-| **Auto-detect** | `python app.py` | Detects config format automatically |
-| **Multi-sport** | `python app.py --multi-sport` | Explicit multi-sport mode |
-| **Environment** | `MULTI_SPORT_MODE=true python app.py` | Environment-controlled |
+| **Default** | `python app.py` | Runs the multi-sport scoreboard with your configuration |
+| **Simulation** | `python app.py --sim` | Render frames to `out/frame.png` without hardware |
+| **Demo** | `python app.py --demo` | Loop a scripted demo game for testing |
 
 ### ⚙️ **Configuration Options**
-
-<details>
-<summary><b>🏀 Single Sport Configuration (Legacy)</b></summary>
-
-```json
-{
-  "favorites": [
-    { "name": "Seattle Storm", "id": "18", "abbr": "SEA" },
-    { "name": "Las Vegas Aces", "id": "26", "abbr": "LVA" }
-  ],
-  "timezone": "America/Los_Angeles"
-}
-```
-*Automatically migrated to multi-sport format when NHL is enabled*
-</details>
 
 <details>
 <summary><b>🏒🏀 Multi-Sport Configuration</b></summary>
@@ -153,10 +149,6 @@ When both WNBA and NHL games are active, the system uses intelligent rules to de
 <summary><b>🌐 Environment Variable Control</b></summary>
 
 ```bash
-# Multi-sport mode control
-MULTI_SPORT_MODE=true           # Enable multi-sport mode
-LEGACY_MODE=false               # Force single-sport legacy mode
-
 # Sport enablement
 ENABLE_WNBA=true               # Enable/disable WNBA
 ENABLE_NHL=true                # Enable/disable NHL
@@ -290,31 +282,11 @@ ls -la assets/*teams.json assets/*/logos/ assets/*/logos/variants/
 
 | File | Purpose | Format |
 |------|---------|--------|
-| `config/favorites.json` | **Primary config** - Legacy single-sport format | Required |
+| `config/favorites.json` | **Primary config** – Device display defaults (timezone, matrix, refresh, render) | Required |
 | `config/multi-sport-example.json` | **Multi-sport template** - Example configuration | Template |
 | `.env` | **Environment overrides** - Runtime settings | Optional |
 
 ### 🔧 **Configuration Examples**
-
-<details>
-<summary><b>🏀 Legacy Format (Backward Compatible)</b></summary>
-
-```json
-{
-  "favorites": [
-    { "name": "Seattle Storm", "id": "18", "abbr": "SEA" },
-    { "name": "Minnesota Lynx", "abbr": "MIN" },
-    { "name": "Chicago Sky", "abbr": "CHI" }
-  ],
-  "timezone": "America/Los_Angeles",
-  "matrix": {
-    "width": 64,
-    "height": 32,
-    "brightness": 80
-  }
-}
-```
-</details>
 
 <details>
 <summary><b>🏒🏀 Multi-Sport Format (Recommended)</b></summary>
@@ -352,6 +324,9 @@ ls -la assets/*teams.json assets/*/logos/ assets/*/logos/variants/
 ```
 </details>
 
+> 📝 **Favorites live in the DB.**
+> Configure per-sport favorites in the web admin **Sports** tab. The `on-config-build` edge function synthesizes a merged JSON (including your latest DB favorites) and "Build + Apply" pushes it via `on-config-write`. The `sports[].favorites` section in your local JSON is optional and mainly used for previews/exports.
+
 ### 🌐 **Environment Variables**
 
 <details>
@@ -371,10 +346,6 @@ LOGO_VARIANT=mini          # or "banner"
 <summary><b>🏒🏀 Multi-Sport Settings</b></summary>
 
 ```bash
-# Mode control
-MULTI_SPORT_MODE=true       # Enable multi-sport support
-LEGACY_MODE=false           # Force legacy single-sport mode
-
 # Sport enablement
 ENABLE_WNBA=true           # Enable WNBA games
 ENABLE_NHL=false           # Enable NHL games
@@ -415,9 +386,9 @@ HTTP_TIMEOUT=10                       # Request timeout (seconds)
 wnba-led-scoreboard/
 ├── 🐍 app.py                    # Main multi-sport scoreboard application
 ├── 📁 src/                      # Python source code
-│   ├── config/                  # Configuration management (legacy + multi-sport)
-│   ├── data/                    # API clients with resilience (ESPN, enhanced)
-│   ├── model/                   # Data models (legacy + sport-agnostic)
+│   ├── config/                  # Multi-sport configuration management
+│   ├── data/                    # API clients with resilience (ESPN, NHL)
+│   ├── model/                   # Data models (sport-agnostic)
 │   ├── sports/                  # 🆕 Multi-sport architecture
 │   │   ├── base.py             # Sport abstraction layer
 │   │   ├── aggregator.py       # Multi-sport priority resolution
@@ -425,7 +396,7 @@ wnba-led-scoreboard/
 │   │   └── nhl.py              # NHL client implementation
 │   ├── render/                  # LED display rendering (sport-aware)
 │   ├── runtime/                 # Adaptive refresh, hot-reload  
-│   └── select/                  # Game selection logic
+│   └── render/                  # LED display rendering
 ├── 🌐 web-admin/                # Next.js admin interface
 │   ├── src/components/
 │   │   ├── sports/             # 🆕 Multi-sport UI components
@@ -436,13 +407,13 @@ wnba-led-scoreboard/
 │   │   └── device/[id].tsx     # 🆕 Device management with Multi-Sport tab
 │   └── src/lib/                # Utilities and Supabase client
 ├── ⚙️ config/                   # Configuration files
-│   ├── favorites.json          # Legacy single-sport config
-│   └── multi-sport-example.json # 🆕 Multi-sport template
+│   ├── favorites.json          # Device configuration (multi-sport)
+│   └── multi-sport-example.json # Multi-sport template
 ├── 🎨 assets/                   # Team assets (organized by sport)
-│   ├── teams.json              # WNBA teams (legacy location)
-│   ├── wnba_teams.json         # 🆕 WNBA teams (new location)
-│   ├── nhl_teams.json          # 🆕 NHL teams
-│   └── {sport}_logos/          # 🆕 Sport-specific logo directories
+│   ├── wnba_teams.json         # WNBA teams
+│   ├── nhl_teams.json          # NHL teams
+│   ├── logos/                  # WNBA logo assets + variants
+│   └── nhl_logos/              # NHL logo assets + variants
 ├── 🗄️ supabase/                 # Database schema and functions
 │   └── migrations/
 │       └── *_multi_sport_support.sql # 🆕 Multi-sport database schema
@@ -1207,17 +1178,18 @@ grep -n "=" .env | grep " "  # Should show no results
 #### Team Configuration Problems
 ```bash
 # Verify team assets exist
-ls -la assets/teams.json
+ls -la assets/wnba_teams.json assets/nhl_teams.json
 ls -la assets/logos/
 
 # Check team data
 python -c "
 import json
-with open('assets/teams.json') as f:
-    teams = json.load(f)
-    print(f'Found {len(teams)} teams')
+with open('assets/wnba_teams.json') as f:
+    payload = json.load(f)
+    teams = payload.get('teams', payload)
+    print(f'Found {len(teams)} WNBA teams')
     for team in teams[:3]:
-        print(f'  {team[\"id\"]}: {team[\"displayName\"]} ({team[\"abbreviation\"]})')
+        print(f"  {team['id']}: {team['name']} ({team['abbr']})")
 "
 
 # Re-fetch team assets if needed

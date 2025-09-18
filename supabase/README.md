@@ -3,6 +3,7 @@ Supabase Setup
 Overview
 - This repo includes SQL migrations under `supabase/migrations` designed for Supabase CLI.
 - Filenames must start with a 14‑digit timestamp (`YYYYMMDDHHMMSS_*.sql`) to be picked up by `supabase db push`.
+- Sport favorites are stored in `public.device_sport_config`. Use the web admin (or direct API calls) to edit favorites, then invoke `on-config-build` to generate the device JSON.
 
 Prereqs
 - Install the Supabase CLI: https://supabase.com/docs/guides/cli
@@ -29,11 +30,16 @@ Deploy Edge Functions
 - Ensure your project is linked (see Prereqs), then deploy:
   - `supabase functions deploy on-action`
     - Uses built-in envs `SUPABASE_URL` and `SUPABASE_ANON_KEY`; derives Realtime URL automatically.
-  - `supabase functions deploy on-config-write`
-    - Set env variables in on-config-write Settings:
-      - `SERVICE_ROLE_KEY` = your service role key (keep secret)
-      - (Optional) `ANON_KEY` = your anon public key; falls back to built-in `SUPABASE_ANON_KEY`
+- `supabase functions deploy on-config-write`
+  - Set env variables in on-config-write Settings:
+    - `SERVICE_ROLE_KEY` = your service role key (keep secret)
+    - (Optional) `ANON_KEY` = your anon public key; falls back to built-in `SUPABASE_ANON_KEY`
     - No need to set a Realtime URL; it is derived from `SUPABASE_URL`.
+- `supabase functions deploy on-config-build`
+  - Set env variables in on-config-build Settings:
+    - `SERVICE_ROLE_KEY`
+    - `ANON_KEY` / `SUPABASE_ANON_KEY`
+  - This function merges DB favorites with the latest config row and (optionally) calls `on-config-write`.
 
 Invoke on-action via cURL
 - Replace `<project-ref>` and keys/placeholders accordingly.
@@ -44,20 +50,23 @@ Invoke on-action via cURL
     -H 'apikey: <ANON_KEY>' \
     -H 'Authorization: Bearer <ANON_KEY>' \
     -d '{"device_id":"<DEVICE_ID>","type":"RESTART","payload":{"service":"wnba-led.service"}}'`
-- APPLY_CONFIG example (send an entire favorites/config JSON):
+- Build + Apply from DB favorites (`on-config-build` → `on-config-write`):
   - `curl -sS -X POST \
-    https://<project-ref>.functions.supabase.co/on-action \
+    https://<project-ref>.functions.supabase.co/on-config-build \
     -H 'Content-Type: application/json' \
     -H 'apikey: <ANON_KEY>' \
-    -H 'Authorization: Bearer <ANON_KEY>' \
-    -d @<(echo '{"device_id":"<DEVICE_ID>","type":"APPLY_CONFIG","payload":'; cat config/favorites.json; echo '}')`
-- Invoke on-config-write via cURL (stores config then publishes APPLY_CONFIG)
+    -H 'Authorization: Bearer <USER_JWT>' \
+    -d '{"device_id":"<DEVICE_ID>","apply":true}'`
+  - Returns the merged JSON (`content`) and, when `apply=true`, persists it to `public.configs` and broadcasts `APPLY_CONFIG`.
+- Preview without applying:
+  - Same request with `"apply": false` to fetch the synthesized config for inspection.
+- Direct apply (custom payload):
   - `curl -sS -X POST \
     https://<project-ref>.functions.supabase.co/on-config-write \
     -H 'Content-Type: application/json' \
     -H 'apikey: <ANON_KEY>' \
-    -H 'Authorization: Bearer <ANON_KEY>' \
-    -d @<(echo '{"device_id":"<DEVICE_ID>","content":'; cat config/favorites.json; echo '}')`
+    -H 'Authorization: Bearer <USER_JWT>' \
+    -d '{"device_id":"<DEVICE_ID>","content":{"sports":[{"sport":"wnba","enabled":true,"priority":1,"favorites":["SEA","MIN"]}]}}'`
 - Mint device tokens
 - Deploy the mint function:
   - `supabase functions deploy mint-device-token`
