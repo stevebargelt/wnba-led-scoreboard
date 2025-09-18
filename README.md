@@ -45,10 +45,13 @@ cp config/multi-sport-example.json config/favorites.json
 python scripts/fetch_wnba_assets.py
 python scripts/fetch_nhl_assets.py
 
-# 3. Test multi-sport mode
+# 3. Install RGB Matrix
+bash scripts/install_rgbmatrix.sh
+
+# 4. Test multi-sport mode
 python app.py --multi-sport --sim --once
 
-# 4. Run with multi-sport priority resolution
+# 5. Run with multi-sport priority resolution
 python app.py --multi-sport
 ```
 
