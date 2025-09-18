@@ -15,6 +15,11 @@ web-admin/tsconfig.tsbuildinfo
 node_modules/
 CLAUDE.local.md
 
+# Generated assets (logos, team data)
+# These are fetched via scripts to avoid trademark issues
+assets/
+!assets/.gitkeep
+
 # Test coverage and reports (don’t track generated artifacts)
 coverage/
 **/coverage/

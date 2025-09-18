@@ -25,9 +25,9 @@ NHL_LOGO_BASE_URLS: Iterable[str] = (
     "https://assets.nhle.com/logos/nhl/svg",
     "https://assets.nhle.com/logos/nhl",
 )
-NHL_TEAMS_CACHE_FILE = "assets/nhl_teams.json"
-NHL_LOGOS_DIR = "assets/nhl_logos"
-NHL_VARIANTS_DIR = "assets/nhl_logos/variants"
+NHL_TEAMS_CACHE_FILE = Path("assets/nhl_teams.json")
+NHL_LOGOS_DIR = Path("assets/nhl_logos")
+NHL_VARIANTS_DIR = Path("assets/nhl_logos/variants")
 
 
 def fetch_nhl_teams_data() -> tuple[List[Dict], bool]:
@@ -189,15 +189,24 @@ def create_logo_variants(original_path: Path, team_key: str) -> None:
         print(f"  ❌ Failed to create variants for {team_key}: {e}")
 
 
+# Current NHL teams (32 active franchises as of 2024-25 season)
+CURRENT_NHL_TEAMS = {
+    "ANA", "ARI", "BOS", "BUF", "CAR", "CBJ", "CGY", "CHI", "COL", "DAL",
+    "DET", "EDM", "FLA", "LAK", "MIN", "MTL", "NJD", "NSH", "NYI", "NYR",
+    "OTT", "PHI", "PIT", "SEA", "SJS", "STL", "TBL", "TOR", "VAN", "VGK",
+    "WPG", "WSH", "UTA"  # Utah Hockey Club (replaced Arizona Coyotes)
+}
+
+
 def main():
     """Main function to fetch NHL assets."""
     print("🏒 Fetching NHL Teams, Logos, and Colors")
     print("=" * 50)
-    
+
     # Create output directories
     assets_dir = Path("assets")
-    nhl_logos_dir = Path(NHL_LOGOS_DIR)
-    nhl_variants_dir = Path(NHL_VARIANTS_DIR)
+    nhl_logos_dir = NHL_LOGOS_DIR
+    nhl_variants_dir = NHL_VARIANTS_DIR
     
     assets_dir.mkdir(exist_ok=True)
     nhl_logos_dir.mkdir(exist_ok=True)
@@ -209,17 +218,24 @@ def main():
         print("❌ Could not fetch NHL teams data")
         return 1
     
-    # Save teams data
+    # Filter to current teams only for logo downloads
+    current_teams = [t for t in teams_data if t.get("abbreviation", "").upper() in CURRENT_NHL_TEAMS]
+    historical_teams = [t for t in teams_data if t.get("abbreviation", "").upper() not in CURRENT_NHL_TEAMS]
+
+    if historical_teams:
+        print(f"ℹ️  Found {len(historical_teams)} historical teams, will skip logo downloads for these")
+
+    # Save all teams data (including historical)
     with open(NHL_TEAMS_CACHE_FILE, 'w') as f:
         json.dump(teams_data, f, indent=2, ensure_ascii=False)
-    print(f"✅ Saved teams data to {NHL_TEAMS_CACHE_FILE}")
+    print(f"✅ Saved all {len(teams_data)} teams data to {NHL_TEAMS_CACHE_FILE}")
     
     success_count = 0
     if offline_mode:
         print("\n⚠️ Offline fallback in use – skipping logo downloads")
     else:
-        print("\nDownloading NHL team logos...")
-        for team in teams_data:
+        print(f"\nDownloading logos for {len(current_teams)} current NHL teams...")
+        for team in current_teams:
             team_abbr = str(team.get("abbreviation", "")).upper()
             team_name = team.get("name", team_abbr)
 
@@ -236,12 +252,15 @@ def main():
                 success_count += 1
 
     print(f"\n🎯 Summary:")
-    print(f"   Teams processed: {len(teams_data)}")
+    print(f"   Total teams in database: {len(teams_data)}")
+    print(f"   Current NHL teams: {len(current_teams)}")
+    print(f"   Historical teams: {len(historical_teams)}")
     if offline_mode:
         print("   Logos downloaded: 0 (offline fallback)")
     else:
-        print(f"   Logos downloaded: {success_count}")
-        print(f"   Success rate: {success_count/len(teams_data)*100:.1f}%")
+        print(f"   Logos downloaded: {success_count}/{len(current_teams)}")
+        if current_teams:
+            print(f"   Success rate: {success_count/len(current_teams)*100:.1f}%")
     
     # Save updated teams data with logo paths (if any)
     with open(NHL_TEAMS_CACHE_FILE, 'w') as f:
