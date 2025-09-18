@@ -24,7 +24,7 @@ NHL_LOGOS_DIR = "assets/nhl_logos"
 NHL_VARIANTS_DIR = "assets/nhl_logos/variants"
 
 
-def fetch_nhl_teams_data() -> List[Dict]:
+def fetch_nhl_teams_data() -> tuple[List[Dict], bool]:
     """Fetch NHL teams data using the NHL client."""
     print("Fetching NHL teams data...")
     
@@ -33,10 +33,12 @@ def fetch_nhl_teams_data() -> List[Dict]:
     
     if not teams_data:
         print("❌ Failed to fetch NHL teams data")
-        return []
+        return [], True
     
     print(f"✅ Fetched {len(teams_data)} NHL teams")
-    return teams_data
+    if client.used_static_fallback:
+        print("⚠️ Using bundled fallback data (network unavailable)")
+    return teams_data, client.used_static_fallback
 
 
 def download_nhl_logo(team_id: str, team_abbr: str, output_path: Path) -> bool:
@@ -133,7 +135,7 @@ def main():
     nhl_variants_dir.mkdir(exist_ok=True)
     
     # Fetch teams data
-    teams_data = fetch_nhl_teams_data()
+    teams_data, offline_mode = fetch_nhl_teams_data()
     if not teams_data:
         print("❌ Could not fetch NHL teams data")
         return 1
@@ -143,48 +145,57 @@ def main():
         json.dump(teams_data, f, indent=2, ensure_ascii=False)
     print(f"✅ Saved teams data to {NHL_TEAMS_CACHE_FILE}")
     
-    # Download logos
-    print("\nDownloading NHL team logos...")
     success_count = 0
-    
-    for team in teams_data:
-        team_id = team.get("id", "")
-        team_abbr = team.get("abbreviation", "")
-        team_name = team.get("name", "")
-        
-        if not team_id or not team_abbr:
-            print(f"⚠️  Skipping team with missing ID/abbreviation: {team_name}")
-            continue
-        
-        print(f"📥 Downloading logo for {team_name} ({team_abbr})...")
-        
-        logo_path = nhl_logos_dir / f"{team_id}.png"
-        if download_nhl_logo(team_id, team_abbr, logo_path):
-            create_logo_variants(logo_path, team_id)
-            success_count += 1
-    
+    if offline_mode:
+        print("\n⚠️ Offline fallback in use – skipping logo downloads")
+    else:
+        print("\nDownloading NHL team logos...")
+        for team in teams_data:
+            team_id = team.get("id", "")
+            team_abbr = team.get("abbreviation", "")
+            team_name = team.get("name", "")
+
+            if not team_id or not team_abbr:
+                print(f"⚠️  Skipping team with missing ID/abbreviation: {team_name}")
+                continue
+
+            print(f"📥 Downloading logo for {team_name} ({team_abbr})...")
+
+            logo_path = nhl_logos_dir / f"{team_id}.png"
+            if download_nhl_logo(team_id, team_abbr, logo_path):
+                create_logo_variants(logo_path, team_id)
+                success_count += 1
+
     print(f"\n🎯 Summary:")
     print(f"   Teams processed: {len(teams_data)}")
-    print(f"   Logos downloaded: {success_count}")
-    print(f"   Success rate: {success_count/len(teams_data)*100:.1f}%")
+    if offline_mode:
+        print("   Logos downloaded: 0 (offline fallback)")
+    else:
+        print(f"   Logos downloaded: {success_count}")
+        print(f"   Success rate: {success_count/len(teams_data)*100:.1f}%")
     
     # Update teams data with local logo paths
-    for team in teams_data:
-        team_id = team.get("id", "")
-        if team_id:
-            logo_file = nhl_logos_dir / f"{team_id}.png"
-            svg_file = nhl_logos_dir / f"{team_id}.svg" 
-            
-            if logo_file.exists():
-                team["logo"] = str(logo_file)
-            elif svg_file.exists():
-                team["logo"] = str(svg_file)
-    
-    # Save updated teams data with logo paths
+    if not offline_mode:
+        for team in teams_data:
+            team_id = team.get("id", "")
+            if team_id:
+                logo_file = nhl_logos_dir / f"{team_id}.png"
+                svg_file = nhl_logos_dir / f"{team_id}.svg" 
+
+                if logo_file.exists():
+                    team["logo"] = str(logo_file)
+                elif svg_file.exists():
+                    team["logo"] = str(svg_file)
+
+    # Save updated teams data with logo paths (if any)
     with open(NHL_TEAMS_CACHE_FILE, 'w') as f:
         json.dump(teams_data, f, indent=2, ensure_ascii=False)
-    
-    print(f"✅ Updated teams data with logo paths")
+
+    if offline_mode:
+        print(f"⚠️ Saved fallback team list to {NHL_TEAMS_CACHE_FILE} (no logos downloaded)")
+    else:
+        print(f"✅ Updated teams data with logo paths")
+
     print(f"\n🏒 NHL assets ready! Teams data: {NHL_TEAMS_CACHE_FILE}")
     
     return 0

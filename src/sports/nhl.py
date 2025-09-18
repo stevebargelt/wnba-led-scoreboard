@@ -12,6 +12,42 @@ from src.model.game import GameState
 from src.sports.base import SportClient, SportClientInfo, SportType
 
 
+STATIC_NHL_TEAMS: List[Dict[str, Any]] = [
+    {"id": "NJD", "name": "New Jersey Devils", "displayName": "New Jersey Devils", "abbreviation": "NJD", "conference": "Eastern", "division": "Metropolitan"},
+    {"id": "NYI", "name": "New York Islanders", "displayName": "New York Islanders", "abbreviation": "NYI", "conference": "Eastern", "division": "Metropolitan"},
+    {"id": "NYR", "name": "New York Rangers", "displayName": "New York Rangers", "abbreviation": "NYR", "conference": "Eastern", "division": "Metropolitan"},
+    {"id": "PHI", "name": "Philadelphia Flyers", "displayName": "Philadelphia Flyers", "abbreviation": "PHI", "conference": "Eastern", "division": "Metropolitan"},
+    {"id": "PIT", "name": "Pittsburgh Penguins", "displayName": "Pittsburgh Penguins", "abbreviation": "PIT", "conference": "Eastern", "division": "Metropolitan"},
+    {"id": "CAR", "name": "Carolina Hurricanes", "displayName": "Carolina Hurricanes", "abbreviation": "CAR", "conference": "Eastern", "division": "Metropolitan"},
+    {"id": "CBJ", "name": "Columbus Blue Jackets", "displayName": "Columbus Blue Jackets", "abbreviation": "CBJ", "conference": "Eastern", "division": "Metropolitan"},
+    {"id": "WSH", "name": "Washington Capitals", "displayName": "Washington Capitals", "abbreviation": "WSH", "conference": "Eastern", "division": "Metropolitan"},
+    {"id": "BOS", "name": "Boston Bruins", "displayName": "Boston Bruins", "abbreviation": "BOS", "conference": "Eastern", "division": "Atlantic"},
+    {"id": "BUF", "name": "Buffalo Sabres", "displayName": "Buffalo Sabres", "abbreviation": "BUF", "conference": "Eastern", "division": "Atlantic"},
+    {"id": "DET", "name": "Detroit Red Wings", "displayName": "Detroit Red Wings", "abbreviation": "DET", "conference": "Eastern", "division": "Atlantic"},
+    {"id": "FLA", "name": "Florida Panthers", "displayName": "Florida Panthers", "abbreviation": "FLA", "conference": "Eastern", "division": "Atlantic"},
+    {"id": "MTL", "name": "Montréal Canadiens", "displayName": "Montréal Canadiens", "abbreviation": "MTL", "conference": "Eastern", "division": "Atlantic"},
+    {"id": "OTT", "name": "Ottawa Senators", "displayName": "Ottawa Senators", "abbreviation": "OTT", "conference": "Eastern", "division": "Atlantic"},
+    {"id": "TBL", "name": "Tampa Bay Lightning", "displayName": "Tampa Bay Lightning", "abbreviation": "TBL", "conference": "Eastern", "division": "Atlantic"},
+    {"id": "TOR", "name": "Toronto Maple Leafs", "displayName": "Toronto Maple Leafs", "abbreviation": "TOR", "conference": "Eastern", "division": "Atlantic"},
+    {"id": "ARI", "name": "Arizona Coyotes", "displayName": "Arizona Coyotes", "abbreviation": "ARI", "conference": "Western", "division": "Central"},
+    {"id": "CHI", "name": "Chicago Blackhawks", "displayName": "Chicago Blackhawks", "abbreviation": "CHI", "conference": "Western", "division": "Central"},
+    {"id": "COL", "name": "Colorado Avalanche", "displayName": "Colorado Avalanche", "abbreviation": "COL", "conference": "Western", "division": "Central"},
+    {"id": "DAL", "name": "Dallas Stars", "displayName": "Dallas Stars", "abbreviation": "DAL", "conference": "Western", "division": "Central"},
+    {"id": "MIN", "name": "Minnesota Wild", "displayName": "Minnesota Wild", "abbreviation": "MIN", "conference": "Western", "division": "Central"},
+    {"id": "NSH", "name": "Nashville Predators", "displayName": "Nashville Predators", "abbreviation": "NSH", "conference": "Western", "division": "Central"},
+    {"id": "STL", "name": "St. Louis Blues", "displayName": "St. Louis Blues", "abbreviation": "STL", "conference": "Western", "division": "Central"},
+    {"id": "WPG", "name": "Winnipeg Jets", "displayName": "Winnipeg Jets", "abbreviation": "WPG", "conference": "Western", "division": "Central"},
+    {"id": "ANA", "name": "Anaheim Ducks", "displayName": "Anaheim Ducks", "abbreviation": "ANA", "conference": "Western", "division": "Pacific"},
+    {"id": "CGY", "name": "Calgary Flames", "displayName": "Calgary Flames", "abbreviation": "CGY", "conference": "Western", "division": "Pacific"},
+    {"id": "EDM", "name": "Edmonton Oilers", "displayName": "Edmonton Oilers", "abbreviation": "EDM", "conference": "Western", "division": "Pacific"},
+    {"id": "LAK", "name": "Los Angeles Kings", "displayName": "Los Angeles Kings", "abbreviation": "LAK", "conference": "Western", "division": "Pacific"},
+    {"id": "SJS", "name": "San Jose Sharks", "displayName": "San Jose Sharks", "abbreviation": "SJS", "conference": "Western", "division": "Pacific"},
+    {"id": "SEA", "name": "Seattle Kraken", "displayName": "Seattle Kraken", "abbreviation": "SEA", "conference": "Western", "division": "Pacific"},
+    {"id": "VAN", "name": "Vancouver Canucks", "displayName": "Vancouver Canucks", "abbreviation": "VAN", "conference": "Western", "division": "Pacific"},
+    {"id": "VGK", "name": "Vegas Golden Knights", "displayName": "Vegas Golden Knights", "abbreviation": "VGK", "conference": "Western", "division": "Pacific"}
+]
+
+
 class NHLClient(SportClient):
     """NHL API client with resilience, caching, and NHL-specific parsing."""
     
@@ -37,6 +73,7 @@ class NHLClient(SportClient):
         # Track last successful data for emergency fallback
         self._last_known_games: List[EnhancedGameSnapshot] = []
         self._last_successful_fetch: Optional[datetime] = None
+        self.used_static_fallback: bool = False
     
     def get_sport_info(self) -> SportClientInfo:
         """Get NHL client information."""
@@ -96,44 +133,63 @@ class NHLClient(SportClient):
     def fetch_team_info(self) -> List[Dict[str, Any]]:
         """
         Fetch NHL team information.
-        
+
         Returns:
             List of team dictionaries with NHL team data
         """
-        # Try to fetch current teams data
+        self.used_static_fallback = False
+
+        teams: List[Dict[str, Any]] = []
+
+        # Preferred source: NHL stats REST API (more stable)
         data = self.client.get(
-            endpoint="teams",
-            cache_ttl=86400,  # Cache teams for 24 hours
+            endpoint="https://api.nhle.com/stats/rest/en/team",
+            cache_ttl=86400,
             use_cache=True,
             fallback_to_stale=True,
         )
-        
-        if data is None:
-            print("[warn] Could not fetch NHL team data")
-            return []
-        
-        teams = []
-        for team_data in data.get("teams", []):
-            team_info = {
-                "id": str(team_data.get("id", "")),
-                "name": team_data.get("fullName", ""),
-                "displayName": team_data.get("teamName", ""),
-                "abbreviation": team_data.get("triCode", ""),
-                "conference": team_data.get("conference", {}).get("name", ""),
-                "division": team_data.get("division", {}).get("name", ""),
-                "colors": {
-                    "primary": team_data.get("primaryColor", "#000000"),
-                    "secondary": team_data.get("secondaryColor", "#FFFFFF"),
-                },
-                "venue": {
-                    "name": team_data.get("venue", {}).get("default", ""),
-                    "city": team_data.get("venue", {}).get("city", ""),
-                    "timezone": team_data.get("venue", {}).get("timeZone", {}).get("id", ""),
+
+        if isinstance(data, dict):
+            for row in data.get("data", []):
+                team_info = {
+                    "id": str(row.get("teamId") or row.get("teamAbbrev") or ""),
+                    "name": row.get("teamFullName") or row.get("teamName") or "",
+                    "displayName": row.get("teamCommonName") or row.get("teamShortName") or "",
+                    "abbreviation": (row.get("teamAbbrev") or "").upper(),
+                    "conference": row.get("conferenceName") or "",
+                    "division": row.get("divisionName") or "",
                 }
-            }
-            teams.append(team_info)
-        
-        return teams
+                if team_info["id"] and team_info["abbreviation"]:
+                    teams.append(team_info)
+
+        if not teams:
+            # Secondary fallback: legacy public stats API
+            stats_data = self.client.get(
+                endpoint="https://statsapi.web.nhl.com/api/v1/teams",
+                cache_ttl=86400,
+                use_cache=True,
+                fallback_to_stale=True,
+            )
+            if isinstance(stats_data, dict):
+                for team in stats_data.get("teams", []):
+                    team_info = {
+                        "id": str(team.get("id") or team.get("abbreviation") or ""),
+                        "name": team.get("name", ""),
+                        "displayName": team.get("teamName", ""),
+                        "abbreviation": (team.get("abbreviation") or "").upper(),
+                        "conference": (team.get("conference") or {}).get("name", ""),
+                        "division": (team.get("division") or {}).get("name", ""),
+                    }
+                    if team_info["id"] and team_info["abbreviation"]:
+                        teams.append(team_info)
+
+        if teams:
+            return teams
+
+        # Offline fallback: bundled team list
+        self.used_static_fallback = True
+        print("[info] Using bundled NHL team list fallback")
+        return [dict(team) for team in STATIC_NHL_TEAMS]
     
     def _parse_nhl_response(self, data: Dict[str, Any], target_date: date) -> List[EnhancedGameSnapshot]:
         """Parse NHL API response into EnhancedGameSnapshot objects."""

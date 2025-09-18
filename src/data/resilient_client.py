@@ -161,7 +161,10 @@ class ResilientHTTPClient:
         Returns:
             Response data or None if all attempts fail
         """
-        url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+        if endpoint.startswith("http://") or endpoint.startswith("https://"):
+            url = endpoint
+        else:
+            url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
         cache_key = self._get_cache_key(url, params) if use_cache else None
         
         # Try to get fresh cached data first
