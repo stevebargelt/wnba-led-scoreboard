@@ -3,49 +3,16 @@ NHL API client implementation with resilience features.
 """
 
 import os
+import json
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional, Any
+from dateutil.parser import parse as parse_datetime
 
 from src.data.resilient_client import ResilientHTTPClient
 from src.model.sport_game import EnhancedGameSnapshot, SportTeam, GameTiming, SportSituation
 from src.model.game import GameState
 from src.sports.base import SportClient, SportClientInfo, SportType
-
-
-STATIC_NHL_TEAMS: List[Dict[str, Any]] = [
-    {"id": "NJD", "name": "New Jersey Devils", "displayName": "New Jersey Devils", "abbreviation": "NJD", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "NYI", "name": "New York Islanders", "displayName": "New York Islanders", "abbreviation": "NYI", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "NYR", "name": "New York Rangers", "displayName": "New York Rangers", "abbreviation": "NYR", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "PHI", "name": "Philadelphia Flyers", "displayName": "Philadelphia Flyers", "abbreviation": "PHI", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "PIT", "name": "Pittsburgh Penguins", "displayName": "Pittsburgh Penguins", "abbreviation": "PIT", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "CAR", "name": "Carolina Hurricanes", "displayName": "Carolina Hurricanes", "abbreviation": "CAR", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "CBJ", "name": "Columbus Blue Jackets", "displayName": "Columbus Blue Jackets", "abbreviation": "CBJ", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "WSH", "name": "Washington Capitals", "displayName": "Washington Capitals", "abbreviation": "WSH", "conference": "Eastern", "division": "Metropolitan"},
-    {"id": "BOS", "name": "Boston Bruins", "displayName": "Boston Bruins", "abbreviation": "BOS", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "BUF", "name": "Buffalo Sabres", "displayName": "Buffalo Sabres", "abbreviation": "BUF", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "DET", "name": "Detroit Red Wings", "displayName": "Detroit Red Wings", "abbreviation": "DET", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "FLA", "name": "Florida Panthers", "displayName": "Florida Panthers", "abbreviation": "FLA", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "MTL", "name": "Montréal Canadiens", "displayName": "Montréal Canadiens", "abbreviation": "MTL", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "OTT", "name": "Ottawa Senators", "displayName": "Ottawa Senators", "abbreviation": "OTT", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "TBL", "name": "Tampa Bay Lightning", "displayName": "Tampa Bay Lightning", "abbreviation": "TBL", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "TOR", "name": "Toronto Maple Leafs", "displayName": "Toronto Maple Leafs", "abbreviation": "TOR", "conference": "Eastern", "division": "Atlantic"},
-    {"id": "ARI", "name": "Arizona Coyotes", "displayName": "Arizona Coyotes", "abbreviation": "ARI", "conference": "Western", "division": "Central"},
-    {"id": "CHI", "name": "Chicago Blackhawks", "displayName": "Chicago Blackhawks", "abbreviation": "CHI", "conference": "Western", "division": "Central"},
-    {"id": "COL", "name": "Colorado Avalanche", "displayName": "Colorado Avalanche", "abbreviation": "COL", "conference": "Western", "division": "Central"},
-    {"id": "DAL", "name": "Dallas Stars", "displayName": "Dallas Stars", "abbreviation": "DAL", "conference": "Western", "division": "Central"},
-    {"id": "MIN", "name": "Minnesota Wild", "displayName": "Minnesota Wild", "abbreviation": "MIN", "conference": "Western", "division": "Central"},
-    {"id": "NSH", "name": "Nashville Predators", "displayName": "Nashville Predators", "abbreviation": "NSH", "conference": "Western", "division": "Central"},
-    {"id": "STL", "name": "St. Louis Blues", "displayName": "St. Louis Blues", "abbreviation": "STL", "conference": "Western", "division": "Central"},
-    {"id": "WPG", "name": "Winnipeg Jets", "displayName": "Winnipeg Jets", "abbreviation": "WPG", "conference": "Western", "division": "Central"},
-    {"id": "ANA", "name": "Anaheim Ducks", "displayName": "Anaheim Ducks", "abbreviation": "ANA", "conference": "Western", "division": "Pacific"},
-    {"id": "CGY", "name": "Calgary Flames", "displayName": "Calgary Flames", "abbreviation": "CGY", "conference": "Western", "division": "Pacific"},
-    {"id": "EDM", "name": "Edmonton Oilers", "displayName": "Edmonton Oilers", "abbreviation": "EDM", "conference": "Western", "division": "Pacific"},
-    {"id": "LAK", "name": "Los Angeles Kings", "displayName": "Los Angeles Kings", "abbreviation": "LAK", "conference": "Western", "division": "Pacific"},
-    {"id": "SJS", "name": "San Jose Sharks", "displayName": "San Jose Sharks", "abbreviation": "SJS", "conference": "Western", "division": "Pacific"},
-    {"id": "SEA", "name": "Seattle Kraken", "displayName": "Seattle Kraken", "abbreviation": "SEA", "conference": "Western", "division": "Pacific"},
-    {"id": "VAN", "name": "Vancouver Canucks", "displayName": "Vancouver Canucks", "abbreviation": "VAN", "conference": "Western", "division": "Pacific"},
-    {"id": "VGK", "name": "Vegas Golden Knights", "displayName": "Vegas Golden Knights", "abbreviation": "VGK", "conference": "Western", "division": "Pacific"}
-]
 
 
 class NHLClient(SportClient):
@@ -103,13 +70,24 @@ class NHLClient(SportClient):
         # Determine cache TTL based on how recent the date is
         cache_ttl = self._get_adaptive_cache_ttl(target_date)
         
-        # Fetch data with resilience features
+        params = {"site": os.getenv("NHL_SCOREBOARD_SITE", "en_nhl")}
+
         data = self.client.get(
-            endpoint=f"score/{date_str}",
+            endpoint=f"scoreboard/{date_str}",
+            params=params,
             cache_ttl=cache_ttl,
             use_cache=True,
             fallback_to_stale=True,
         )
+
+        # Backward compatibility with older endpoint if the new one fails
+        if not isinstance(data, dict) or "games" not in data:
+            data = self.client.get(
+                endpoint=f"score/{date_str}",
+                cache_ttl=cache_ttl,
+                use_cache=True,
+                fallback_to_stale=True,
+            )
         
         if data is None:
             # Emergency fallback: return last known data if recent enough
@@ -141,55 +119,114 @@ class NHLClient(SportClient):
 
         teams: List[Dict[str, Any]] = []
 
-        # Preferred source: NHL stats REST API (more stable)
-        data = self.client.get(
-            endpoint="https://api.nhle.com/stats/rest/en/team",
-            cache_ttl=86400,
-            use_cache=True,
-            fallback_to_stale=True,
-        )
+        primary_sources = [
+            ("teams", None),
+            ("teams/summary", None),
+            ("https://api.nhle.com/stats/rest/en/team", None),
+        ]
 
-        if isinstance(data, dict):
-            for row in data.get("data", []):
-                team_info = {
-                    "id": str(row.get("teamId") or row.get("teamAbbrev") or ""),
-                    "name": row.get("teamFullName") or row.get("teamName") or "",
-                    "displayName": row.get("teamCommonName") or row.get("teamShortName") or "",
-                    "abbreviation": (row.get("teamAbbrev") or "").upper(),
-                    "conference": row.get("conferenceName") or "",
-                    "division": row.get("divisionName") or "",
-                }
-                if team_info["id"] and team_info["abbreviation"]:
-                    teams.append(team_info)
-
-        if not teams:
-            # Secondary fallback: legacy public stats API
-            stats_data = self.client.get(
-                endpoint="https://statsapi.web.nhl.com/api/v1/teams",
+        for endpoint, params in primary_sources:
+            data = self.client.get(
+                endpoint=endpoint,
+                params=params,
                 cache_ttl=86400,
                 use_cache=True,
                 fallback_to_stale=True,
             )
-            if isinstance(stats_data, dict):
-                for team in stats_data.get("teams", []):
+
+            if not data:
+                continue
+
+            records: List[Dict[str, Any]] = []
+            if isinstance(data, dict):
+                if "teams" in data and isinstance(data["teams"], list):
+                    records = data["teams"]
+                elif "data" in data and isinstance(data["data"], list):
+                    records = data["data"]
+            elif isinstance(data, list):
+                records = data
+
+            for row in records:
+                team_id = row.get("id") or row.get("teamId") or row.get("teamID") or row.get("franchiseId")
+                abbr = row.get("abbrev") or row.get("triCode") or row.get("teamAbbrev") or row.get("abbreviation")
+                if not team_id and abbr:
+                    team_id = abbr
+                if not abbr and team_id:
+                    abbr = str(team_id)
+
+                name = None
+                if isinstance(row.get("name"), dict):
+                    name = row["name"].get("default")
+                elif isinstance(row.get("teamName"), dict):
+                    name = row["teamName"].get("default")
+                elif isinstance(row.get("teamName"), str):
+                    name = row["teamName"]
+                elif isinstance(row.get("fullName"), str):
+                    name = row["fullName"]
+                elif isinstance(row.get("name"), str):
+                    name = row["name"]
+
+                display = None
+                place = row.get("placeName") or {}
+                if isinstance(place, dict):
+                    place_default = place.get("default")
+                else:
+                    place_default = None
+                if place_default and name and place_default not in name:
+                    display = f"{place_default} {name}".strip()
+                else:
+                    display = name or place_default or ""
+
+                conference = ""
+                division = ""
+                conf = row.get("conference")
+                if isinstance(conf, dict):
+                    conference = conf.get("name") or conf.get("nameShort") or ""
+                elif isinstance(row.get("conferenceName"), str):
+                    conference = row.get("conferenceName")
+
+                div = row.get("division")
+                if isinstance(div, dict):
+                    division = div.get("name") or div.get("nameShort") or ""
+                elif isinstance(row.get("divisionName"), str):
+                    division = row.get("divisionName")
+
+                if team_id and abbr:
                     team_info = {
-                        "id": str(team.get("id") or team.get("abbreviation") or ""),
-                        "name": team.get("name", ""),
-                        "displayName": team.get("teamName", ""),
-                        "abbreviation": (team.get("abbreviation") or "").upper(),
-                        "conference": (team.get("conference") or {}).get("name", ""),
-                        "division": (team.get("division") or {}).get("name", ""),
+                        "id": str(team_id),
+                        "name": name or display or str(abbr),
+                        "displayName": display or name or str(abbr),
+                        "abbreviation": str(abbr).upper(),
+                        "conference": conference,
+                        "division": division,
                     }
-                    if team_info["id"] and team_info["abbreviation"]:
-                        teams.append(team_info)
+                    teams.append(team_info)
+
+            if teams:
+                break
 
         if teams:
-            return teams
+            dedup: Dict[str, Dict[str, Any]] = {}
+            for team in teams:
+                key = team["abbreviation"].upper()
+                dedup[key] = team
+            return list(dedup.values())
 
-        # Offline fallback: bundled team list
+        # Offline fallback: use fetched teams from assets
+        nhl_teams_file = Path(__file__).parent.parent.parent / "assets" / "nhl_teams.json"
+        if nhl_teams_file.exists():
+            try:
+                with open(nhl_teams_file, "r") as f:
+                    teams_data = json.load(f)
+                    self.used_static_fallback = True
+                    print("[info] Using cached NHL team list from assets/nhl_teams.json")
+                    return teams_data
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"[warn] Failed to load NHL teams from {nhl_teams_file}: {e}")
+
+        print("[warn] No NHL team data available (run scripts/fetch_nhl_assets.py to populate)")
         self.used_static_fallback = True
-        print("[info] Using bundled NHL team list fallback")
-        return [dict(team) for team in STATIC_NHL_TEAMS]
+        return []
     
     def _parse_nhl_response(self, data: Dict[str, Any], target_date: date) -> List[EnhancedGameSnapshot]:
         """Parse NHL API response into EnhancedGameSnapshot objects."""
@@ -215,8 +252,8 @@ class NHLClient(SportClient):
             return None
         
         # Parse team information
-        home_team = self._parse_nhl_team(game_data.get("homeTeam", {}), "home")
-        away_team = self._parse_nhl_team(game_data.get("awayTeam", {}), "away") 
+        home_team = self._parse_nhl_team(game_data.get("homeTeam", {}) or game_data.get("home", {}), "home")
+        away_team = self._parse_nhl_team(game_data.get("awayTeam", {}) or game_data.get("away", {}), "away") 
         
         if not home_team or not away_team:
             return None
@@ -228,13 +265,18 @@ class NHLClient(SportClient):
         timing = self._parse_nhl_timing(game_data)
         
         # Parse start time
-        start_time_str = game_data.get("startTimeUTC")
+        start_time_str = (
+            game_data.get("startTimeUTC")
+            or game_data.get("gameDate")
+            or game_data.get("startTime")
+        )
         if not start_time_str:
             return None
         
         try:
-            start_time_utc = datetime.fromisoformat(start_time_str.replace("Z", "+00:00"))
-        except ValueError:
+            # Use dateutil for robust parsing of various ISO formats
+            start_time_utc = parse_datetime(start_time_str)
+        except (ValueError, TypeError):
             return None
         
         # Parse sport-specific situation
@@ -247,6 +289,20 @@ class NHLClient(SportClient):
             delta = start_time_utc - now_utc
             seconds_to_start = max(0, int(delta.total_seconds()))
         
+        status_detail = (
+            game_data.get("gameStatusText")
+            or (game_data.get("gameStatus") or {}).get("detailedState")
+            or (game_data.get("gameStatus") or {}).get("description")
+            or game_data.get("gameState", "")
+        )
+
+        venue = ""
+        venue_info = game_data.get("venue") or {}
+        if isinstance(venue_info, dict):
+            venue = venue_info.get("default") or venue_info.get("name") or ""
+        if not venue:
+            venue = game_data.get("venueName", "")
+
         return EnhancedGameSnapshot(
             sport=SportType.NHL,
             event_id=str(game_id),
@@ -257,8 +313,8 @@ class NHLClient(SportClient):
             timing=timing,
             situation=situation,
             seconds_to_start=seconds_to_start,
-            status_detail=game_data.get("gameStatusText", ""),
-            venue=game_data.get("venue", {}).get("default", ""),
+            status_detail=status_detail,
+            venue=venue,
             raw_api_data=game_data,
         )
     
@@ -267,25 +323,64 @@ class NHLClient(SportClient):
         if not team_data:
             return None
         
-        team_id = team_data.get("id")
+        team_id = (
+            team_data.get("id")
+            or team_data.get("teamId")
+            or team_data.get("teamID")
+            or team_data.get("clubId")
+        )
         if team_id is None:
             return None
-        
+
         # Get team colors (if available)
         colors = {}
         if "primaryColor" in team_data:
             colors["primary"] = team_data["primaryColor"]
         if "secondaryColor" in team_data:
             colors["secondary"] = team_data["secondaryColor"]
-        
+
+        name = None
+        if isinstance(team_data.get("name"), dict):
+            name = team_data["name"].get("default")
+        elif isinstance(team_data.get("teamName"), dict):
+            name = team_data["teamName"].get("default")
+        elif isinstance(team_data.get("teamName"), str):
+            name = team_data["teamName"]
+        elif isinstance(team_data.get("name"), str):
+            name = team_data.get("name")
+        elif isinstance(team_data.get("placeName"), dict):
+            place = team_data.get("placeName", {}).get("default")
+            nickname = team_data.get("clubName", {}).get("default") if isinstance(team_data.get("clubName"), dict) else None
+            if place and nickname:
+                name = f"{place} {nickname}".strip()
+            elif place:
+                name = place
+
+        if not name:
+            name = team_data.get("shortName") or team_data.get("market") or "Unknown Team"
+
+        abbr = (
+            team_data.get("abbrev")
+            or team_data.get("triCode")
+            or team_data.get("teamAbbrev")
+            or team_data.get("teamCode")
+            or "UNK"
+        )
+
+        logo = (
+            team_data.get("logo")
+            or team_data.get("lightLogo")
+            or team_data.get("darkLogo")
+        )
+
         return SportTeam(
             id=str(team_id),
-            name=team_data.get("name", {}).get("default", "Unknown Team"),
-            abbr=team_data.get("triCode", "UNK"),
+            name=name,
+            abbr=abbr,
             score=int(team_data.get("score", 0)),
             sport=SportType.NHL,
             colors=colors,
-            logo_url=team_data.get("logo", ""),
+            logo_url=logo or "",
         )
     
     def _parse_nhl_game_state(self, game_data: Dict[str, Any]) -> GameState:
@@ -305,28 +400,46 @@ class NHLClient(SportClient):
     
     def _parse_nhl_timing(self, game_data: Dict[str, Any]) -> GameTiming:
         """Parse NHL timing information."""
-        period = int(game_data.get("period", 1))
-        clock = game_data.get("clock", {}).get("timeRemaining", "20:00")
-        
+        period_info = game_data.get("periodDescriptor") or {}
+        period = int(period_info.get("number") or game_data.get("period", 1) or 0)
+        clock_info = game_data.get("clock", {}) or {}
+        clock = (
+            clock_info.get("timeRemaining")
+            or clock_info.get("displayValue")
+            or clock_info.get("defaultValue")
+            or "20:00"
+        )
+
         # Determine if overtime/shootout
-        is_overtime = period > 3
-        is_shootout = game_data.get("gameState") == "SO" or "shootout" in game_data.get("gameStatusText", "").lower()
-        
+        period_type = (period_info.get("periodType") or "").upper()
+        is_overtime = period > 3 or period_type in {"OT", "OVERTIME", "SO"}
+        is_shootout = (
+            game_data.get("gameState") == "SO"
+            or period_type == "SO"
+            or "shootout" in str(game_data.get("gameStatusText", "")).lower()
+        )
+
         # NHL period naming
-        if period <= 3:
-            period_name = f"P{period}"
-        elif is_shootout:
-            period_name = "SO"
-        else:
-            period_name = "OT"
-        
+        period_name = (
+            period_info.get("periodOrdinal")
+            or ("SO" if is_shootout else "OT" if is_overtime and period > 3 else None)
+        )
+        if not period_name:
+            period_name = f"P{period if period else 1}"
+
         return GameTiming(
             current_period=period,
             period_name=period_name,
             period_max=3,  # NHL regulation periods
             display_clock=clock,
-            clock_running=game_data.get("clock", {}).get("running", False),
-            is_intermission=game_data.get("gameState") == "INT",
+            clock_running=bool(
+                clock_info.get("running")
+                or clock_info.get("clockRunning")
+            ),
+            is_intermission=(
+                game_data.get("gameState") == "INT"
+                or bool(clock_info.get("inIntermission"))
+            ),
             is_overtime=is_overtime,
             is_shootout=is_shootout,
         )
@@ -342,6 +455,12 @@ class NHLClient(SportClient):
             if "PP" in str(situation_code):
                 situation.power_play_active = True
                 # Determine which team has power play (requires more detailed parsing)
+
+        home_pp = bool((game_data.get("homeTeam") or {}).get("powerPlay"))
+        away_pp = bool((game_data.get("awayTeam") or {}).get("powerPlay"))
+        if home_pp != away_pp:
+            situation.power_play_active = True
+            situation.power_play_team = "home" if home_pp else "away"
         
         return situation
     

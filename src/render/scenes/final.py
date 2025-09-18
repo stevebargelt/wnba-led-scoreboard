@@ -5,6 +5,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from src.model.game import GameSnapshot
 from src.assets.logos import get_logo
+from ._helpers import infer_team_sport
 
 
 def draw_final(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, now_local: datetime,
@@ -21,7 +22,8 @@ def draw_final(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, 
     abbr_x = 13
     score_right_x = w - 1
 
-    alogo = get_logo(snap.away.id, snap.away.abbr, variant=logo_variant or "mini")
+    away_sport = infer_team_sport(snap, snap.away)
+    alogo = get_logo(snap.away.id, snap.away.abbr, sport=away_sport, variant=logo_variant or "mini")
     if alogo:
         img.paste(alogo, (logo_x, top_y), alogo)
     else:
@@ -31,7 +33,8 @@ def draw_final(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, 
     atw, _ = draw.textbbox((0, 0), ascore, font=font_large)[2:]
     draw.text((score_right_x - atw, top_y), ascore, fill=(255, 255, 255), font=font_large)
 
-    hlogo = get_logo(snap.home.id, snap.home.abbr, variant=logo_variant or "mini")
+    home_sport = infer_team_sport(snap, snap.home)
+    hlogo = get_logo(snap.home.id, snap.home.abbr, sport=home_sport, variant=logo_variant or "mini")
     if hlogo:
         img.paste(hlogo, (logo_x, bot_y), hlogo)
     else:
