@@ -1,0 +1,34 @@
+[Unit]
+Description=WNBA LED Scoreboard - Direct Supabase Integration
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/wnba-led-scoreboard
+
+# Environment configuration
+EnvironmentFile=/etc/wnba-led.env
+
+# Python virtual environment
+Environment="PATH=/home/pi/wnba-led-scoreboard/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# Main scoreboard command
+ExecStart=/home/pi/wnba-led-scoreboard/.venv/bin/python app.py
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+# Hardware access for GPIO/LED matrix
+SupplementaryGroups=gpio
+PrivateDevices=no
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target
