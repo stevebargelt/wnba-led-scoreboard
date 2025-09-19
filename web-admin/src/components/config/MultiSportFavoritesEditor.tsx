@@ -691,40 +691,6 @@ export function MultiSportFavoritesEditor({
           </div>
         </div>
       </Card>
-
-      {/* JSON Export */}
-      <Card>
-        <div className="p-4">
-          <h4 className="font-medium mb-2 text-gray-900 dark:text-gray-100">
-            Export Configuration
-          </h4>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
-            Use this JSON in your multi-sport configuration file:
-          </p>
-          <pre className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-600 p-3 rounded text-xs overflow-x-auto">
-            {JSON.stringify(
-              {
-                sports: [
-                  {
-                    sport: 'wnba',
-                    enabled: wnbaConfig.enabled,
-                    priority: 1,
-                    favorites: wnbaConfig.favorites,
-                  },
-                  {
-                    sport: 'nhl',
-                    enabled: nhlConfig.enabled,
-                    priority: 2,
-                    favorites: nhlConfig.favorites,
-                  },
-                ],
-              },
-              null,
-              2
-            )}
-          </pre>
-        </div>
-      </Card>
     </div>
   )
 }

@@ -26,11 +26,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (authError || !userData?.user) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
+  console.log('Authenticated user ID:', userData.user.id)
 
   // Ensure the authenticated user can access this device (leverages RLS)
   const { data: deviceRow, error: deviceErr } = await userScoped
     .from('devices')
-    .select('id')
+    .select('id, user_id')
     .eq('id', deviceId)
     .maybeSingle()
 
@@ -40,17 +41,57 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!deviceRow) {
     return res.status(403).json({ error: 'Forbidden' })
   }
+  console.log('Device check:', {
+    deviceId,
+    deviceUserId: deviceRow.user_id,
+    currentUserId: userData.user.id,
+  })
 
   if (req.method === 'GET') {
     try {
-      // Load sport configs for this device
-      const { data: configs, error } = await userScoped
-        .from('device_sport_config')
-        .select('sport, enabled, priority, favorite_teams')
+      // Load enabled leagues for this device with league details
+      const { data: leagues, error: leaguesError } = await userScoped
+        .from('device_leagues')
+        .select('enabled, priority, league:leagues(code)')
         .eq('device_id', deviceId)
         .order('priority', { ascending: true })
 
-      if (error) return res.status(500).json({ error: error.message })
+      if (leaguesError && leaguesError.code !== 'PGRST116') {
+        return res.status(500).json({ error: leaguesError.message })
+      }
+
+      // Load favorite teams for this device with league details
+      const { data: favorites, error: favError } = await userScoped
+        .from('device_favorite_teams')
+        .select('team_id, league:leagues(code)')
+        .eq('device_id', deviceId)
+
+      if (favError && favError.code !== 'PGRST116') {
+        return res.status(500).json({ error: favError.message })
+      }
+
+      // Convert to the format expected by the frontend
+      const favoritesByLeague = (favorites || []).reduce((acc: any, fav: any) => {
+        const leagueCode = fav.league?.code
+        if (leagueCode) {
+          if (!acc[leagueCode]) acc[leagueCode] = []
+          acc[leagueCode].push(fav.team_id)
+        }
+        return acc
+      }, {})
+
+      // Build sport configs from leagues data
+      const existingConfigs = (leagues || [])
+        .filter((league: any) => league.league?.code)
+        .map((league: any) => ({
+          sport: league.league.code,
+          enabled: league.enabled,
+          priority: league.priority,
+          favorite_teams: favoritesByLeague[league.league.code] || [],
+        }))
+
+      // If no configs exist, return empty array (frontend will show defaults)
+      const configs = existingConfigs
 
       // Load active override, if any
       const nowIso = new Date().toISOString()
@@ -78,28 +119,109 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'PUT') {
     try {
       const { sportConfigs, prioritySettings } = req.body || {}
+      console.log('PUT /api/device/[id]/sports - received:', { deviceId, sportConfigs })
+
       if (!Array.isArray(sportConfigs)) {
         return res.status(400).json({ error: 'sportConfigs must be an array' })
       }
 
-      // Normalize and upsert rows (unique on device_id+sport)
-      const rows = sportConfigs.map((c: any) => ({
-        device_id: deviceId,
-        sport: String(c.sport),
-        enabled: Boolean(c.enabled),
-        priority: Number(c.priority),
-        favorite_teams: Array.isArray(c.favoriteTeams)
-          ? c.favoriteTeams
-          : Array.isArray(c.favorite_teams)
-            ? c.favorite_teams
-            : [],
-      }))
+      // First, get ALL league IDs (not just the ones in sportConfigs)
+      const { data: allLeagues, error: leagueLookupError } = await userScoped
+        .from('leagues')
+        .select('id, code')
 
-      const { error } = await userScoped
-        .from('device_sport_config')
-        .upsert(rows, { onConflict: 'device_id,sport' })
+      if (leagueLookupError) return res.status(500).json({ error: leagueLookupError.message })
 
-      if (error) return res.status(500).json({ error: error.message })
+      console.log('Found leagues in database:', allLeagues)
+      const leagueMap = new Map((allLeagues || []).map((l: any) => [l.code, l.id]))
+
+      // Prepare upsert data for ALL leagues (to ensure we update disabled ones too)
+      const configMap = new Map(sportConfigs.map((c: any) => [String(c.sport), c]))
+
+      const leagueRows: any[] = []
+      leagueMap.forEach((leagueId, code) => {
+        const config = configMap.get(code)
+        leagueRows.push({
+          device_id: deviceId,
+          league_id: leagueId,
+          enabled: config ? Boolean(config.enabled) : false,
+          priority: config ? Number(config.priority) : 999,
+        })
+      })
+
+      // Upsert leagues configuration
+      if (leagueRows.length > 0) {
+        console.log('Upserting league rows:', leagueRows)
+        const { error: leaguesError } = await userScoped.from('device_leagues').upsert(leagueRows, {
+          onConflict: 'device_id,league_id',
+        })
+
+        if (leaguesError) {
+          console.error('Error upserting leagues:', leaguesError)
+          return res.status(500).json({ error: leaguesError.message })
+        }
+        console.log('Successfully upserted league configurations')
+      }
+
+      // Update favorite teams
+      // First delete existing favorites
+      const { error: deleteError } = await userScoped
+        .from('device_favorite_teams')
+        .delete()
+        .eq('device_id', deviceId)
+
+      if (deleteError) return res.status(500).json({ error: deleteError.message })
+
+      // Then insert new favorites
+      const favoriteRows: any[] = []
+      for (const config of sportConfigs) {
+        const leagueId = leagueMap.get(String(config.sport))
+        if (!leagueId) continue
+
+        const teams = Array.isArray(config.favoriteTeams)
+          ? config.favoriteTeams
+          : Array.isArray(config.favorite_teams)
+            ? config.favorite_teams
+            : []
+
+        for (const teamId of teams) {
+          favoriteRows.push({
+            device_id: deviceId,
+            league_id: leagueId,
+            team_id: String(teamId),
+            priority: 999,
+          })
+        }
+      }
+
+      if (favoriteRows.length > 0) {
+        const { error: favError } = await userScoped
+          .from('device_favorite_teams')
+          .insert(favoriteRows)
+
+        if (favError) return res.status(500).json({ error: favError.message })
+      }
+
+      // Update priority settings in device_config if provided
+      if (prioritySettings) {
+        const { error: configError } = await userScoped.from('device_config').upsert({
+          device_id: deviceId,
+          priority_config: {
+            sport_order: sportConfigs
+              .filter((c: any) => c.enabled)
+              .sort((a: any, b: any) => a.priority - b.priority)
+              .map((c: any) => c.sport),
+            live_game_boost: prioritySettings.liveGameBoost,
+            favorite_team_boost: prioritySettings.favoriteTeamBoost,
+            close_game_boost: prioritySettings.closeGameBoost,
+            playoff_boost: prioritySettings.playoffBoost,
+            conflict_resolution: prioritySettings.conflictResolution,
+          },
+          updated_at: new Date().toISOString(),
+        })
+
+        if (configError) return res.status(500).json({ error: configError.message })
+      }
 
       // Optionally: persist global priority settings in a future table
       return res.status(200).json({ success: true })

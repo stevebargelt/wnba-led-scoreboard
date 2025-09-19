@@ -20,26 +20,19 @@ import {
 import { SportManagement } from '../../components/sports/SportManagement'
 import { LiveGameMonitor } from '../../components/sports/LiveGameMonitor'
 
-const FN_CONFIG = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_WRITE!
-const FN_ACTION = process.env.NEXT_PUBLIC_FUNCTION_ON_ACTION!
-const FN_MINT = process.env.NEXT_PUBLIC_FUNCTION_MINT_DEVICE_TOKEN!
-const FN_BUILD = process.env.NEXT_PUBLIC_FUNCTION_ON_CONFIG_BUILD
+// Removed edge function endpoints - now using direct database writes
 
 export default function DevicePage() {
   const router = useRouter()
   const { id } = router.query
-  const [configText, setConfigText] = useState('')
   const [device, setDevice] = useState<{
     id: string
     name?: string
     last_seen_ts?: string | null
   } | null>(null)
-  const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [mintedToken, setMintedToken] = useState('')
-  const [schemaError, setSchemaError] = useState<string>('')
-  const [schemaErrors, setSchemaErrors] = useState<any[]>([])
+  // Removed: mintedToken, configText, schemaErrors - no longer needed with direct UI
   const [multiSportConfig, setMultiSportConfig] = useState<any>(null)
   const handleMultiSportConfigChange = useCallback((config: any) => {
     setMultiSportConfig(config)
@@ -68,15 +61,18 @@ export default function DevicePage() {
   useEffect(() => {
     if (!id) return
     ;(async () => {
-      // load latest config for convenience
+      // Load device config from new simplified table
       const { data } = await supabase
-        .from('configs')
-        .select('content')
+        .from('device_config')
+        .select('*')
         .eq('device_id', id)
-        .order('version_ts', { ascending: false })
-        .limit(1)
         .maybeSingle()
-      if (data?.content) setConfigText(JSON.stringify(data.content, null, 2))
+      if (data) {
+        setTimezone(data.timezone || DEFAULTS.timezone)
+        setMatrix(data.matrix_config || DEFAULTS.matrix)
+        setRefreshCfg(data.refresh_config || DEFAULTS.refresh)
+        setRenderCfg(data.render_config || DEFAULTS.render)
+      }
       if ((data?.content as any)?.timezone) setTimezone((data!.content as any).timezone)
       if ((data?.content as any)?.matrix) setMatrix((data!.content as any).matrix)
       if ((data?.content as any)?.refresh) setRefreshCfg((data!.content as any).refresh)
@@ -87,13 +83,7 @@ export default function DevicePage() {
         .eq('id', id)
         .maybeSingle()
       if (dev) setDevice(dev)
-      const { data: ev } = await supabase
-        .from('events')
-        .select('id,type,created_at,payload')
-        .eq('device_id', id)
-        .order('created_at', { ascending: false })
-        .limit(20)
-      if (ev) setEvents(ev)
+      // Events removed - no longer tracking device events
 
       // Load device sport configuration for Multi-Sport Favorites editor
       try {
@@ -171,199 +161,79 @@ export default function DevicePage() {
     })()
   }, [id])
 
-  // realtime subscriptions
+  // Poll for device updates periodically (removed realtime subscriptions)
   useEffect(() => {
     if (!id) return
-    const channel = supabase
-      .channel(`device-${id}`)
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'devices', filter: `id=eq.${id}` },
-        payload => {
-          setDevice(payload.new as any)
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'events', filter: `device_id=eq.${id}` },
-        payload => {
-          setEvents(prev =>
-            [
-              {
-                id: (payload.new as any).id,
-                type: (payload.new as any).type,
-                created_at: (payload.new as any).created_at,
-                payload: (payload.new as any).payload,
-              },
-              ...prev,
-            ].slice(0, 50)
-          )
-        }
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
+
+    // Load initial device data
+    const loadDevice = async () => {
+      const { data } = await supabase.from('devices').select('*').eq('id', id).single()
+
+      if (data) {
+        setDevice(data)
+      }
     }
+
+    loadDevice()
+
+    // Optionally poll for updates every 30 seconds
+    const interval = setInterval(loadDevice, 30000)
+
+    return () => clearInterval(interval)
   }, [id])
 
-  const applyConfig = async () => {
+  const saveConfig = async () => {
     if (!id) return
+    setLoading(true)
+    setMessage('')
+
     try {
-      const base = configText?.trim() ? JSON.parse(configText) : {}
-      const content: any = {
-        ...base,
-        timezone,
-        matrix,
-        refresh: refreshCfg,
-        render: renderCfg,
+      // Build priority config from multiSportConfig if available
+      const priorityConfig: any = {
+        sport_order: ['wnba', 'nhl', 'nba'],
+        live_game_boost: true,
+        favorite_team_boost: true,
+        close_game_boost: true,
+        close_game_threshold: 5,
+        playoff_boost: true,
+        conflict_resolution: 'priority',
       }
 
       if (multiSportConfig?.sports) {
-        content.sports = multiSportConfig.sports
-      }
-      const validate = makeValidator()
-      const ok = validate(content)
-      if (!ok) {
-        const err = validate.errors?.[0]
-        const path = err?.instancePath || err?.schemaPath || ''
-        const msg = err?.message || 'invalid config'
-        setSchemaError(`${path} ${msg}`)
-        setSchemaErrors(validate.errors || [])
-        setMessage('Validation failed')
-        return
-      }
-      setSchemaError('')
-      setSchemaErrors([])
-      setLoading(true)
-      // Use the signed-in user's access token to authorize on-config-write (ownership enforced server-side)
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      if (!jwt) {
-        setMessage('Not signed in')
-        setLoading(false)
-        return
-      }
-      const resp = await fetch(FN_CONFIG, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ device_id: id, content }),
-      })
-      setMessage(resp.ok ? 'Applied config' : `Failed: ${await resp.text()}`)
-    } catch (e: any) {
-      setMessage(`Invalid JSON: ${e.message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const sendAction = async (type: string, payload?: any) => {
-    if (!id) return
-    setLoading(true)
-    try {
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      if (!jwt) {
-        setMessage('Not signed in')
-        setLoading(false)
-        return
+        // Extract sport order from enabled sports
+        priorityConfig.sport_order = multiSportConfig.sports
+          .filter((s: any) => s.enabled)
+          .sort((a: any, b: any) => a.priority - b.priority)
+          .map((s: any) => s.sport)
       }
 
-      const resp = await fetch(FN_ACTION, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ device_id: id, type, payload: payload ?? {} }),
+      // Update device_config table directly
+      const { error } = await supabase.from('device_config').upsert({
+        device_id: id as string,
+        timezone,
+        matrix_config: matrix,
+        refresh_config: refreshCfg,
+        render_config: renderCfg,
+        priority_config: priorityConfig,
+        updated_at: new Date().toISOString(),
       })
-      setMessage(resp.ok ? `${type} sent` : `Failed: ${await resp.text()}`)
-    } catch (e: any) {
-      setMessage(`Action failed: ${e.message ?? e}`)
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  const buildApplyFromDb = async () => {
-    if (!id || !FN_BUILD) {
-      setMessage('Build function not configured')
-      return
-    }
-    setLoading(true)
-    setMessage('')
-    try {
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      if (!jwt) {
-        setMessage('Not signed in')
-        setLoading(false)
-        return
-      }
-      const resp = await fetch(FN_BUILD, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ device_id: id, apply: true }),
-      })
-      const body = await resp.json()
-      if (resp.ok) {
-        setMessage('Built and applied config from DB')
-        if (body?.content) setConfigText(JSON.stringify(body.content, null, 2))
+      if (error) {
+        setMessage(`Save failed: ${error.message}`)
       } else {
-        setMessage(`Build failed: ${body?.error || 'Unknown error'}`)
+        setMessage('Configuration saved successfully')
       }
     } catch (e: any) {
-      setMessage(`Build error: ${e.message}`)
+      setMessage(`Error: ${e.message}`)
     } finally {
       setLoading(false)
     }
   }
 
-  const previewFromDb = async () => {
-    if (!id || !FN_BUILD) {
-      setMessage('Build function not configured')
-      return
-    }
-    setLoading(true)
-    setMessage('')
-    try {
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      if (!jwt) {
-        setMessage('Not signed in')
-        setLoading(false)
-        return
-      }
-      const resp = await fetch(FN_BUILD, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ device_id: id, apply: false }),
-      })
-      const body = await resp.json()
-      if (resp.ok) {
-        setConfigText(JSON.stringify(body.content, null, 2))
-        setMessage('Previewed effective config (no apply)')
-      } else {
-        setMessage(`Preview failed: ${body?.error || 'Unknown error'}`)
-      }
-    } catch (e: any) {
-      setMessage(`Preview error: ${e.message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Removed sendAction - no longer needed with direct database updates
+  // Removed buildApplyFromDb - configuration is now saved directly to database
+
+  // Removed previewFromDb - configuration is now loaded directly from database
 
   const seedTeams = async () => {
     try {
@@ -399,71 +269,13 @@ export default function DevicePage() {
     }
   }
 
-  const mintDeviceToken = async () => {
-    if (!id) return
-    setLoading(true)
-    setMessage('')
-    try {
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
-      if (!jwt) {
-        setMessage('Not signed in')
-        setLoading(false)
-        return
-      }
-      const resp = await fetch(FN_MINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-          Authorization: `Bearer ${jwt}`,
-        },
-        body: JSON.stringify({ device_id: id, ttl_days: 30 }),
-      })
-      const body = await resp.json()
-      if (resp.ok && body.token) {
-        setMintedToken(body.token as string)
-        setMessage('Token minted. Copy it to the Pi as DEVICE_TOKEN and restart the agent.')
-      } else {
-        setMessage(`Mint failed: ${body.error || 'Unknown error'}`)
-      }
-    } catch (e: any) {
-      setMessage(`Mint failed: ${e.message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Removed mintDeviceToken - no longer needed with direct Supabase
 
   const isDeviceOnline = useMemo(() => {
     if (!device?.last_seen_ts) return false
     const last = new Date(device.last_seen_ts).getTime()
     return Date.now() - last < 90_000
   }, [device?.last_seen_ts])
-
-  const loadLatestConfig = async () => {
-    if (!id) return
-    setLoading(true)
-    setMessage('')
-    try {
-      const { data } = await supabase
-        .from('configs')
-        .select('content')
-        .eq('device_id', id)
-        .order('version_ts', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      if (data?.content) {
-        setConfigText(JSON.stringify(data.content, null, 2))
-        setMessage('Loaded latest saved config')
-      } else {
-        setMessage('No prior config found; using editor values')
-      }
-    } catch (e: any) {
-      setMessage('Failed to load latest config: ' + e.message)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   return (
     <Layout>
@@ -509,13 +321,11 @@ export default function DevicePage() {
 
         {/* Tabbed Interface */}
         <Tabs defaultValue="sports" className="w-full">
-          <TabsList className="grid grid-cols-6 w-full">
+          <TabsList className="grid grid-cols-3 w-full">
             <TabsTrigger value="sports">Sports</TabsTrigger>
             <TabsTrigger value="favorites">Favorite Teams</TabsTrigger>
             <TabsTrigger value="config">Config</TabsTrigger>
-            <TabsTrigger value="actions">Device Actions</TabsTrigger>
-            <TabsTrigger value="token">Device Token</TabsTrigger>
-            <TabsTrigger value="events">Recent Events</TabsTrigger>
+            {/* Removed Device Actions, Token, and Events tabs - no longer needed */}
           </TabsList>
 
           <TabsContent value="sports">
@@ -539,70 +349,7 @@ export default function DevicePage() {
             />
           </TabsContent>
 
-          <TabsContent value="actions">
-            <Card>
-              <CardHeader>
-                <CardTitle>Device Actions</CardTitle>
-              </CardHeader>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  onClick={() => sendAction('PING')}
-                  disabled={loading}
-                  variant="secondary"
-                  size="sm"
-                >
-                  PING
-                </Button>
-                <Button
-                  onClick={() => sendAction('RESTART', { service: 'wnba-led.service' })}
-                  disabled={loading}
-                  variant="warning"
-                  size="sm"
-                >
-                  Restart App
-                </Button>
-                <Button
-                  onClick={() => sendAction('FETCH_ASSETS')}
-                  disabled={loading}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Fetch Assets
-                </Button>
-                <Button
-                  onClick={() => sendAction('SELF_TEST')}
-                  disabled={loading}
-                  variant="secondary"
-                  size="sm"
-                >
-                  Self Test
-                </Button>
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="token">
-            <Card>
-              <CardHeader>
-                <CardTitle>Device Token Management</CardTitle>
-              </CardHeader>
-              <div className="space-y-4">
-                <Button onClick={mintDeviceToken} disabled={loading} loading={loading}>
-                  Mint Device Token
-                </Button>
-                {mintedToken && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                      DEVICE_TOKEN:
-                    </label>
-                    <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-md text-sm break-all whitespace-pre-wrap border border-gray-300 dark:border-gray-600">
-                      {mintedToken}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </TabsContent>
+          {/* Removed Device Actions and Token tabs content */}
 
           <TabsContent value="config">
             <div className="space-y-6">
@@ -697,114 +444,25 @@ export default function DevicePage() {
 
               {/* Favorites Editor removed: sport favorites are managed in the Sport Favorites tab and DB */}
 
-              {/* Configuration JSON */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Configuration JSON</CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        onClick={loadLatestConfig}
-                        disabled={loading}
-                        variant="secondary"
-                        size="sm"
-                      >
-                        Load Latest Config
-                      </Button>
-                      {FN_BUILD && (
-                        <Button
-                          onClick={previewFromDb}
-                          disabled={loading}
-                          variant="secondary"
-                          size="sm"
-                        >
-                          Preview Effective Config
-                        </Button>
-                      )}
-                      <Button
-                        onClick={seedTeams}
-                        disabled={loading}
-                        variant="secondary"
-                        size="sm"
-                        title="Admin: upsert teams from local assets into DB"
-                      >
-                        Seed Teams
-                      </Button>
-                      {FN_BUILD && (
-                        <Button
-                          onClick={buildApplyFromDb}
-                          disabled={loading}
-                          variant="secondary"
-                          size="sm"
-                        >
-                          Build + Apply From DB Favorites
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <div className="space-y-4">
-                  {schemaErrors.length > 0 && (
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3">
-                      <p className="text-red-800 dark:text-red-200 font-medium mb-2">
-                        Schema errors:
-                      </p>
-                      <ul className="text-red-700 dark:text-red-300 text-sm space-y-1">
-                        {schemaErrors.map((e, idx) => (
-                          <li key={idx}>
-                            <code className="bg-red-100 dark:bg-red-800 px-1 rounded text-xs">
-                              {e.instancePath || e.schemaPath}
-                            </code>{' '}
-                            — {e.message}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  <textarea
-                    className="w-full h-96 p-3 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm font-mono"
-                    value={configText}
-                    onChange={e => setConfigText(e.target.value)}
-                    placeholder="Configuration JSON..."
-                  />
-                  <div className="flex justify-between items-center">
-                    <Button onClick={applyConfig} disabled={loading} loading={loading}>
-                      Apply Config
-                    </Button>
-                    {message && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="events">
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Events</CardTitle>
-              </CardHeader>
-              <div className="space-y-2">
-                {events.length > 0 ? (
-                  events.map(ev => (
-                    <div
-                      key={ev.id}
-                      className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded"
-                    >
-                      <code className="text-sm bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded">
-                        {ev.type}
-                      </code>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(ev.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">No recent events</p>
-                )}
+              {/* Save button */}
+              <div className="flex justify-end gap-4">
+                <Button
+                  onClick={seedTeams}
+                  disabled={loading}
+                  variant="secondary"
+                  size="sm"
+                  title="Admin: Import team data from local assets into database"
+                >
+                  Import Team Data
+                </Button>
+                <Button onClick={saveConfig} disabled={loading} loading={loading}>
+                  Save Configuration
+                </Button>
               </div>
-            </Card>
+              {message && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{message}</p>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
