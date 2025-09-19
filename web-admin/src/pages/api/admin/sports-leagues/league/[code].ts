@@ -95,11 +95,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse, user: Authenti
           'Current season sample:',
           JSON.stringify(updatedLeague.currentSeason).substring(0, 500)
         )
-        return res
-          .status(400)
-          .json({
-            error: `Payload too large (${bodySize} bytes). This usually indicates a data serialization issue.`,
-          })
+        return res.status(400).json({
+          error: `Payload too large (${bodySize} bytes). This usually indicates a data serialization issue.`,
+        })
       }
 
       // Validate the league configuration

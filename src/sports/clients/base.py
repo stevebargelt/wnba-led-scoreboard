@@ -1,13 +1,16 @@
 """Base classes for league-specific API clients."""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from datetime import date, datetime
 from typing import List, Optional, Dict, Any
+import logging
 
 from ..models.league_config import LeagueConfig
 from ..models.sport_config import SportConfig, TimingConfig, ScoringConfig, TerminologyConfig
 from src.model.game import GameState, TeamSide
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -151,19 +154,75 @@ class CachedLeagueClient(LeagueClient):
         try:
             with cache_file.open('r') as f:
                 data = json.load(f)
-                # TODO: Deserialize to LeagueGameSnapshot objects
-                return None  # Placeholder
-        except Exception:
+                games = []
+                for game_data in data:
+                    # Reconstruct complex objects
+                    sport = SportConfig(**game_data['sport']) if 'sport' in game_data else self.sport
+                    league = LeagueConfig(**game_data['league']) if 'league' in game_data else self.league
+
+                    # Parse datetime
+                    start_time = datetime.fromisoformat(game_data['start_time_local'])
+
+                    # Reconstruct team sides
+                    home = TeamSide(**game_data['home'])
+                    away = TeamSide(**game_data['away'])
+
+                    # Reconstruct game state
+                    state = GameState(game_data['state']) if isinstance(game_data['state'], str) else GameState(**game_data['state'])
+
+                    game = LeagueGameSnapshot(
+                        sport=sport,
+                        league=league,
+                        event_id=game_data['event_id'],
+                        start_time_local=start_time,
+                        state=state,
+                        home=home,
+                        away=away,
+                        current_period=game_data['current_period'],
+                        period_name=game_data['period_name'],
+                        display_clock=game_data['display_clock'],
+                        seconds_to_start=game_data.get('seconds_to_start', -1),
+                        status_detail=game_data.get('status_detail', ''),
+                        sport_specific_data=game_data.get('sport_specific_data', {})
+                    )
+                    games.append(game)
+                logger.debug(f"Loaded {len(games)} games from cache")
+                return games
+        except Exception as e:
+            logger.warning(f"Failed to load cache: {e}")
             return None
 
     def _save_to_cache(self, cache_key: str, games: List[LeagueGameSnapshot]):
         """Save games to cache."""
         import json
         cache_file = self.cache_path / f"{cache_key}.json"
+
+        # Ensure cache directory exists
+        self.cache_path.mkdir(parents=True, exist_ok=True)
+
         try:
-            # TODO: Serialize LeagueGameSnapshot objects
-            data = []  # Placeholder
+            data = []
+            for game in games:
+                game_dict = {
+                    'sport': asdict(game.sport),
+                    'league': asdict(game.league),
+                    'event_id': game.event_id,
+                    'start_time_local': game.start_time_local.isoformat(),
+                    'state': game.state.value if hasattr(game.state, 'value') else str(game.state),
+                    'home': asdict(game.home),
+                    'away': asdict(game.away),
+                    'current_period': game.current_period,
+                    'period_name': game.period_name,
+                    'display_clock': game.display_clock,
+                    'seconds_to_start': game.seconds_to_start,
+                    'status_detail': game.status_detail,
+                    'sport_specific_data': game.sport_specific_data
+                }
+                data.append(game_dict)
+
             with cache_file.open('w') as f:
-                json.dump(data, f)
-        except Exception:
-            pass  # Fail silently on cache write errors
+                json.dump(data, f, indent=2, default=str)
+
+            logger.debug(f"Saved {len(games)} games to cache")
+        except Exception as e:
+            logger.warning(f"Failed to save cache: {e}")
