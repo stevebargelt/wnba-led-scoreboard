@@ -127,7 +127,7 @@ def create_default_multi_sport_config(timezone: str = "America/Los_Angeles") -> 
     """Create a default multi-sport configuration."""
     # Default WNBA configuration
     wnba_config = SportFavorites(
-        sport=SportType.WNBA,
+        sport="wnba",
         enabled=True,
         priority=1,
         teams=[
@@ -137,7 +137,7 @@ def create_default_multi_sport_config(timezone: str = "America/Los_Angeles") -> 
     
     # Default NHL configuration (disabled by default)
     nhl_config = SportFavorites(
-        sport=SportType.NHL,
+        sport="nhl",
         enabled=False,
         priority=2,
         teams=[
@@ -152,6 +152,6 @@ def create_default_multi_sport_config(timezone: str = "America/Los_Angeles") -> 
         matrix=MatrixConfig(width=64, height=32),
         refresh=RefreshConfig(),
         render=RenderConfig(),
-        enabled_sports=[SportType.WNBA],
-        default_sport=SportType.WNBA,
+        enabled_sports=["wnba"],
+        default_sport="wnba",
     )
