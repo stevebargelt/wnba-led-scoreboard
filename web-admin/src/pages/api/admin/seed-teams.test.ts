@@ -141,14 +141,14 @@ describe('POST /api/admin/seed-teams', () => {
     expect(res.body).toEqual({ error: 'Method not allowed' })
   })
 
-  it('returns 500 when service key is missing', async () => {
+  it('returns 401 when service key is missing', async () => {
     const handler = await loadHandler({ SUPABASE_SERVICE_ROLE_KEY: undefined })
     const req = createRequest()
     const res = createResponse()
 
     await handler(req, res)
 
-    expect(res.statusCode).toBe(500)
+    expect(res.statusCode).toBe(401)
     expect(res.body).toEqual({ error: 'Server misconfigured: missing SUPABASE_SERVICE_ROLE_KEY' })
     expect(createClientMock).not.toHaveBeenCalled()
   })
@@ -161,7 +161,7 @@ describe('POST /api/admin/seed-teams', () => {
     await handler(req, res)
 
     expect(res.statusCode).toBe(401)
-    expect(res.body).toEqual({ error: 'Missing Authorization token' })
+    expect(res.body).toEqual({ error: 'Missing or invalid Authorization header' })
     expect(createClientMock).not.toHaveBeenCalled()
   })
 
@@ -191,7 +191,7 @@ describe('POST /api/admin/seed-teams', () => {
     await handler(req, res)
 
     expect(res.statusCode).toBe(403)
-    expect(res.body).toEqual({ error: 'Not authorized' })
+    expect(res.body).toEqual({ error: 'Admin access required' })
     expect(readdirMock).not.toHaveBeenCalled()
   })
 
