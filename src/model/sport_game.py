@@ -118,7 +118,17 @@ class EnhancedGameSnapshot:
     
     # Raw data for debugging
     raw_api_data: Dict[str, Any] = field(default_factory=dict)
-    
+
+    @property
+    def display_clock(self) -> Optional[str]:
+        """Compatibility property for accessing timing.display_clock."""
+        return self.timing.display_clock if self.timing else None
+
+    @property
+    def period(self) -> int:
+        """Compatibility property for accessing timing.current_period."""
+        return self.timing.current_period if self.timing else 0
+
     def to_legacy_game_snapshot(self):
         """Convert to legacy GameSnapshot for backward compatibility."""
         from src.model.game import GameSnapshot
