@@ -6,14 +6,14 @@ from dataclasses import dataclass, field
 from zoneinfo import ZoneInfo
 from typing import List, Optional
 
-from src.sports.base import SportType
+# SportType removed - using league codes now
 from src.config.types import MatrixConfig, RefreshConfig, RenderConfig, FavoriteTeam
 
 
 @dataclass
 class SportFavorites:
-    """Favorite teams configuration for a specific sport."""
-    sport: SportType
+    """Favorite teams configuration for a specific sport/league."""
+    sport: str  # League code like "wnba", "nhl", etc.
     enabled: bool = True
     priority: int = 1                    # Lower number = higher priority
     teams: List[FavoriteTeam] = field(default_factory=list)
@@ -47,10 +47,10 @@ class MultiSportAppConfig:
     sport_priority: SportPriorityConfig = field(default_factory=SportPriorityConfig)
     render: RenderConfig = field(default_factory=RenderConfig)
     tz: Optional[ZoneInfo] = None
-    enabled_sports: List[SportType] = field(default_factory=list)
-    default_sport: Optional[SportType] = None
+    enabled_sports: List[str] = field(default_factory=list)  # List of league codes
+    default_sport: Optional[str] = None  # Default league code
     
-    def get_enabled_sports(self) -> List[SportType]:
+    def get_enabled_sports(self) -> List[str]:
         """Get list of currently enabled sports."""
         if self.enabled_sports:
             return self.enabled_sports
@@ -58,20 +58,20 @@ class MultiSportAppConfig:
         # Fallback: get enabled sports from sports configuration
         return [sport_config.sport for sport_config in self.sports if sport_config.enabled]
     
-    def get_sport_priorities(self) -> List[SportType]:
+    def get_sport_priorities(self) -> List[str]:
         """Get sport priority order (highest to lowest priority)."""
         enabled_sports = [s for s in self.sports if s.enabled]
         enabled_sports.sort(key=lambda s: s.priority)
         return [s.sport for s in enabled_sports]
     
-    def get_favorites_for_sport(self, sport: SportType) -> List[FavoriteTeam]:
+    def get_favorites_for_sport(self, sport: str) -> List[FavoriteTeam]:
         """Get favorite teams for a specific sport."""
         for sport_config in self.sports:
             if sport_config.sport == sport:
                 return sport_config.teams
         return []
     
-    def is_sport_enabled(self, sport: SportType) -> bool:
+    def is_sport_enabled(self, sport: str) -> bool:
         """Check if a sport is enabled."""
         for sport_config in self.sports:
             if sport_config.sport == sport:
@@ -127,7 +127,7 @@ def create_default_multi_sport_config(timezone: str = "America/Los_Angeles") -> 
     """Create a default multi-sport configuration."""
     # Default WNBA configuration
     wnba_config = SportFavorites(
-        sport=SportType.WNBA,
+        sport="wnba",
         enabled=True,
         priority=1,
         teams=[
@@ -137,7 +137,7 @@ def create_default_multi_sport_config(timezone: str = "America/Los_Angeles") -> 
     
     # Default NHL configuration (disabled by default)
     nhl_config = SportFavorites(
-        sport=SportType.NHL,
+        sport="nhl",
         enabled=False,
         priority=2,
         teams=[
@@ -152,6 +152,6 @@ def create_default_multi_sport_config(timezone: str = "America/Los_Angeles") -> 
         matrix=MatrixConfig(width=64, height=32),
         refresh=RefreshConfig(),
         render=RenderConfig(),
-        enabled_sports=[SportType.WNBA],
-        default_sport=SportType.WNBA,
+        enabled_sports=["wnba"],
+        default_sport="wnba",
     )

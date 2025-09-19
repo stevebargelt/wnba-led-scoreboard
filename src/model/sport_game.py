@@ -10,7 +10,6 @@ from enum import Enum
 from typing import Dict, List, Optional, Any, Union
 
 from src.model.game import TeamSide, GameState
-from src.sports.base import SportType
 
 
 @dataclass
@@ -20,7 +19,7 @@ class SportTeam:
     name: str
     abbr: str
     score: int = 0
-    sport: Optional[SportType] = None
+    league_code: Optional[str] = None
     
     # Extended team information
     colors: Dict[str, str] = field(default_factory=dict)  # {"primary": "#hex", "secondary": "#hex"}
@@ -91,7 +90,7 @@ class EnhancedGameSnapshot:
     """Enhanced game snapshot with multi-sport support."""
     
     # Core identification
-    sport: SportType
+    league_code: str  # League code like "nhl", "wnba", etc.
     event_id: str
     start_time_local: datetime
     state: GameState
@@ -119,7 +118,17 @@ class EnhancedGameSnapshot:
     
     # Raw data for debugging
     raw_api_data: Dict[str, Any] = field(default_factory=dict)
-    
+
+    @property
+    def display_clock(self) -> Optional[str]:
+        """Compatibility property for accessing timing.display_clock."""
+        return self.timing.display_clock if self.timing else None
+
+    @property
+    def period(self) -> int:
+        """Compatibility property for accessing timing.current_period."""
+        return self.timing.current_period if self.timing else 0
+
     def to_legacy_game_snapshot(self):
         """Convert to legacy GameSnapshot for backward compatibility."""
         from src.model.game import GameSnapshot

@@ -11,7 +11,6 @@ from zoneinfo import ZoneInfo
 
 from src.config.types import FavoriteTeam, MatrixConfig, RefreshConfig, RenderConfig
 from src.config.multi_sport_types import MultiSportAppConfig, SportFavorites, SportPriorityConfig
-from src.sports.base import SportType
 
 
 def env_bool(key: str, default: bool) -> bool:
@@ -42,7 +41,7 @@ def _parse_multi_sport_config(raw: Dict[str, Any]) -> MultiSportAppConfig:
     # Parse sports configurations
     sports = []
     for sport_data in raw.get("sports", []):
-        sport_type = SportType(sport_data.get("sport"))
+        sport_type = sport_data.get("sport")  # League code as string
         
         # Parse favorite teams for this sport
         teams = [FavoriteTeam(**team) for team in sport_data.get("favorites", [])]
@@ -97,7 +96,7 @@ def _parse_multi_sport_config(raw: Dict[str, Any]) -> MultiSportAppConfig:
     
     # Determine enabled sports
     enabled_sports = [sport_config.sport for sport_config in sports if sport_config.enabled]
-    default_sport = enabled_sports[0] if enabled_sports else SportType.WNBA
+    default_sport = enabled_sports[0] if enabled_sports else "wnba"
     
     config = MultiSportAppConfig(
         sports=sports,
@@ -118,7 +117,7 @@ def save_multi_sport_config(config: MultiSportAppConfig, path: str) -> None:
     config_data = {
         "sports": [
             {
-                "sport": sport_config.sport.value,
+                "sport": sport_config.sport,
                 "enabled": sport_config.enabled,
                 "priority": sport_config.priority,
                 "favorites": [
@@ -173,17 +172,17 @@ def apply_environment_overrides_to_multi_sport_config(config: MultiSportAppConfi
     
     # Enable/disable sports via environment
     if os.getenv("ENABLE_WNBA"):
-        _update_sport_enabled_status(config, SportType.WNBA, env_bool("ENABLE_WNBA", True))
+        _update_sport_enabled_status(config, "wnba", env_bool("ENABLE_WNBA", True))
     
     if os.getenv("ENABLE_NHL"):
-        _update_sport_enabled_status(config, SportType.NHL, env_bool("ENABLE_NHL", False))
+        _update_sport_enabled_status(config, "nhl", env_bool("ENABLE_NHL", False))
     
     # Sport priority overrides
     if os.getenv("SPORT_PRIORITIES"):
         try:
             # Format: "wnba,nhl,nba" - comma-separated in priority order
             priority_list = os.getenv("SPORT_PRIORITIES", "").split(",")
-            sport_priorities = [SportType(sport.strip()) for sport in priority_list if sport.strip()]
+            sport_priorities = [sport.strip() for sport in priority_list if sport.strip()]
             
             # Update sport priorities
             for i, sport in enumerate(sport_priorities):
@@ -208,7 +207,7 @@ def apply_environment_overrides_to_multi_sport_config(config: MultiSportAppConfi
     return config
 
 
-def _update_sport_enabled_status(config: MultiSportAppConfig, sport: SportType, enabled: bool) -> None:
+def _update_sport_enabled_status(config: MultiSportAppConfig, sport: str, enabled: bool) -> None:
     """Update enabled status for a specific sport."""
     for sport_config in config.sports:
         if sport_config.sport == sport:
@@ -228,7 +227,7 @@ def _update_sport_enabled_status(config: MultiSportAppConfig, sport: SportType, 
     config.enabled_sports = config.get_enabled_sports()
 
 
-def _update_sport_priority(config: MultiSportAppConfig, sport: SportType, priority: int) -> None:
+def _update_sport_priority(config: MultiSportAppConfig, sport: str, priority: int) -> None:
     """Update priority for a specific sport."""
     for sport_config in config.sports:
         if sport_config.sport == sport:

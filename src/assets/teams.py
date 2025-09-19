@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import DefaultDict, Dict, Iterable, Optional, Tuple
 
-from src.sports.base import SportType
+# SportType removed - using league codes now
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -24,15 +24,15 @@ class TeamMeta:
     primary: Optional[str] = None
     secondary: Optional[str] = None
     logo: Optional[str] = None  # path to original
-    sport: Optional[SportType] = None
+    sport: Optional[str] = None  # League code
 
 
 class TeamRegistry:
     def __init__(self):
         self.by_id: Dict[str, TeamMeta] = {}
         self.by_abbr: Dict[str, TeamMeta] = {}
-        self.by_sport_abbr: DefaultDict[SportType, Dict[str, TeamMeta]] = defaultdict(dict)
-        self.by_sport_id: DefaultDict[SportType, Dict[str, TeamMeta]] = defaultdict(dict)
+        self.by_sport_abbr: DefaultDict[str, Dict[str, TeamMeta]] = defaultdict(dict)
+        self.by_sport_id: DefaultDict[str, Dict[str, TeamMeta]] = defaultdict(dict)
         self._loaded = False
 
     def load(self):
@@ -58,7 +58,7 @@ class TeamRegistry:
                     if meta.sport:
                         self.by_sport_abbr[meta.sport].setdefault(meta.abbr, meta)
 
-    def _enumerate_team_files(self) -> Iterable[Tuple[Optional[SportType], Path]]:
+    def _enumerate_team_files(self) -> Iterable[Tuple[Optional[str], Path]]:
         # Prefer sport-specific files, but keep legacy support for assets/teams.json.
         if LEGACY_TEAMS_JSON.exists():
             yield None, LEGACY_TEAMS_JSON
@@ -69,7 +69,7 @@ class TeamRegistry:
             sport_name = path.stem.replace("_teams", "")
             sport_type = None
             try:
-                sport_type = SportType(sport_name)
+                sport_type = sport_name.lower()  # Use league code directly
             except ValueError:
                 sport_type = None
             yield sport_type, path
@@ -94,7 +94,7 @@ class TeamRegistry:
             return data
         return []
 
-    def _build_team_meta(self, record: dict, sport_hint: Optional[SportType] = None) -> Optional[TeamMeta]:
+    def _build_team_meta(self, record: dict, sport_hint: Optional[str] = None) -> Optional[TeamMeta]:
         if not isinstance(record, dict):
             return None
 
@@ -123,14 +123,9 @@ class TeamRegistry:
                 logo = logos[0]
 
         sport_value = record.get("sport")
-        sport: Optional[SportType] = None
+        sport: Optional[str] = None  # League code
         if isinstance(sport_value, str):
-            try:
-                sport = SportType(sport_value.lower())
-            except ValueError:
-                sport = None
-        elif isinstance(sport_value, SportType):
-            sport = sport_value
+            sport = sport_value.lower()  # Use league code directly
         if not sport:
             sport = sport_hint
 
@@ -152,7 +147,7 @@ class TeamRegistry:
         self,
         team_id: Optional[str] = None,
         abbr: Optional[str] = None,
-        sport: Optional[SportType] = None,
+        sport: Optional[str] = None  # League code,
     ) -> Optional[TeamMeta]:
         self.load()
         if sport:

@@ -1,17 +1,17 @@
+"""Demo simulator for league-based scoreboard system."""
+
 from __future__ import annotations
 
 import random
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence
 from zoneinfo import ZoneInfo
-import threading
 
 from src.config.multi_sport_types import MultiSportAppConfig
 from src.config.types import AppConfig, FavoriteTeam
 from src.model.game import GameSnapshot, GameState, TeamSide
 from src.model.sport_game import EnhancedGameSnapshot, GameTiming, SportTeam
-from src.sports.base import SportType
 
 DEFAULT_ROTATION_SECONDS = 120
 DEFAULT_PREGAME_SECONDS = 10
@@ -20,9 +20,19 @@ DEFAULT_PREGAME_SECONDS = 10
 @dataclass
 class DemoOptions:
     """Runtime options for demo mode selection."""
-
     rotation_seconds: int = DEFAULT_ROTATION_SECONDS
-    forced_sports: Optional[List[SportType]] = None
+    forced_leagues: Optional[List[str]] = None  # Changed from forced_sports
+
+
+def parse_demo_options(
+    forced_leagues: Optional[List[str]] = None,
+    rotation_seconds: int = DEFAULT_ROTATION_SECONDS,
+) -> DemoOptions:
+    """Parse demo options from command line arguments."""
+    return DemoOptions(
+        rotation_seconds=rotation_seconds,
+        forced_leagues=forced_leagues,
+    )
 
 
 def _fallback_identifier(name: str, default: str) -> str:
@@ -33,7 +43,7 @@ def _fallback_identifier(name: str, default: str) -> str:
 
 
 def _favorite_to_team(
-    sport: SportType,
+    league_code: str,
     favorite: Optional[FavoriteTeam],
     default_name: str,
     default_id: str,
@@ -45,7 +55,7 @@ def _favorite_to_team(
             name=default_name,
             abbr=default_abbr,
             score=0,
-            sport=sport,
+            league_code=league_code,  # Updated from sport
         )
 
     name = favorite.name or default_name
@@ -56,24 +66,24 @@ def _favorite_to_team(
         name=name,
         abbr=abbr,
         score=0,
-        sport=sport,
+        league_code=league_code,  # Updated from sport
     )
 
 
-class BaseSportDemo:
-    """Abstract base class encapsulating common demo behaviour."""
+class LeagueDemoSimulator:
+    """Base class for league-specific demo simulators."""
 
     pregame_seconds = DEFAULT_PREGAME_SECONDS
 
     def __init__(
         self,
-        sport: SportType,
+        league_code: str,
         tz: ZoneInfo,
         favorites: Sequence[FavoriteTeam],
         *,
         rng: Optional[random.Random] = None,
     ) -> None:
-        self.sport = sport
+        self.league_code = league_code
         self.tz = tz
         self._favorites = list(favorites)
         self.rng = rng or random.Random()
@@ -87,8 +97,8 @@ class BaseSportDemo:
     def reset(self, now_local: datetime) -> None:
         away_fav = self._favorites[0] if self._favorites else None
         home_fav = self._favorites[1] if len(self._favorites) > 1 else None
-        self._away = _favorite_to_team(self.sport, away_fav, "Away", "demo-away", "AWY")
-        self._home = _favorite_to_team(self.sport, home_fav, "Home", "demo-home", "HOM")
+        self._away = _favorite_to_team(self.league_code, away_fav, "Away", "demo-away", "AWY")
+        self._home = _favorite_to_team(self.league_code, home_fav, "Home", "demo-home", "HOM")
         self._home.score = 0
         self._away.score = 0
         self._start_time = now_local + timedelta(seconds=self.pregame_seconds)
@@ -96,37 +106,46 @@ class BaseSportDemo:
         self._final_label = "Final"
         self._reset_internal(now_local)
 
+    def _reset_internal(self, now_local: datetime) -> None:
+        """Override in subclasses for league-specific initialization."""
+        pass
+
+    def _schedule_next_score(self, base_time: datetime, minimum: int = 30, maximum: int = 90) -> None:
+        """Schedule the next scoring event."""
+        delay = self.rng.randint(minimum, maximum)
+        self._next_score_time = base_time + timedelta(seconds=delay)
+
+    def _maybe_award_points(self, now_local: datetime, choices: List[int]) -> None:
+        """Award points if it's time."""
+        if now_local < self._next_score_time:
+            return
+        points = self.rng.choice(choices)
+        team = self.rng.choice([self._home, self._away])
+        team.score += points
+        self._schedule_next_score(now_local)
+
     def get_snapshot(self, now_local: datetime) -> Optional[GameSnapshot]:
-        enhanced = self._build_snapshot(now_local)
-        if enhanced is None:
-            return None
-        return enhanced.to_legacy_game_snapshot()
-
-    def _schedule_next_score(self, now_local: datetime, *, minimum: int, maximum: int) -> None:
-        delta = self.rng.randint(minimum, maximum)
-        self._next_score_time = now_local + timedelta(seconds=delta)
-
-    def _maybe_award_points(self, now_local: datetime, choices: Sequence[int]) -> None:
-        if now_local >= self._next_score_time:
-            pts = self.rng.choice(list(choices))
-            target = self._home if self.rng.random() < 0.5 else self._away
-            target.score += pts
-            self._schedule_next_score(now_local, minimum=10, maximum=30)
-
-    # --- hooks for subclasses -------------------------------------------------
-
-    def _reset_internal(self, now_local: datetime) -> None:  # pragma: no cover - optional override
-        """Allow subclasses to seed additional state on reset."""
+        """Get current game snapshot."""
+        return self._build_snapshot(now_local)
 
     def _build_snapshot(self, now_local: datetime) -> Optional[EnhancedGameSnapshot]:
+        """Build snapshot - override in subclasses."""
         raise NotImplementedError
 
+    def _format_clock(self, seconds: int) -> str:
+        seconds = max(0, seconds)
+        minutes, secs = divmod(seconds, 60)
+        return f"{minutes:02d}:{secs:02d}"
 
-class WNBADemoSimulator(BaseSportDemo):
-    """WNBA-style demo (legacy behaviour)."""
 
-    period_seconds = 10 * 60
+class WNBADemoSimulator(LeagueDemoSimulator):
+    """WNBA-specific demo with 4 quarters."""
+
+    period_seconds = 10 * 60  # 10-minute quarters
     period_count = 4
+
+    def _reset_internal(self, now_local: datetime) -> None:
+        self._schedule_next_score(self._start_time)
 
     def _build_snapshot(self, now_local: datetime) -> Optional[EnhancedGameSnapshot]:
         if now_local < self._start_time:
@@ -136,14 +155,14 @@ class WNBADemoSimulator(BaseSportDemo):
                 period=0,
                 seconds_to_start=seconds_to_start,
                 display_clock="",
-                period_name="PRE",
+                period_name="Pre-game",
                 is_overtime=False,
             )
 
         elapsed = int((now_local - self._start_time).total_seconds())
-        period_index = min(elapsed // self.period_seconds, self.period_count)
+        total_game_seconds = self.period_count * self.period_seconds
 
-        if period_index >= self.period_count:
+        if elapsed >= total_game_seconds:
             return self._make_snapshot(
                 state=GameState.FINAL,
                 period=self.period_count,
@@ -155,9 +174,11 @@ class WNBADemoSimulator(BaseSportDemo):
 
         self._maybe_award_points(now_local, choices=[1, 2, 3])
 
+        period_index = elapsed // self.period_seconds
         remaining = self.period_seconds - (elapsed % self.period_seconds)
         clock = self._format_clock(remaining)
         period_number = period_index + 1
+
         return self._make_snapshot(
             state=GameState.LIVE,
             period=period_number,
@@ -166,11 +187,6 @@ class WNBADemoSimulator(BaseSportDemo):
             period_name=f"Q{period_number}",
             is_overtime=False,
         )
-
-    def _format_clock(self, seconds: int) -> str:
-        seconds = max(0, seconds)
-        minutes, secs = divmod(seconds, 60)
-        return f"{minutes:02d}:{secs:02d}"
 
     def _make_snapshot(
         self,
@@ -193,8 +209,8 @@ class WNBADemoSimulator(BaseSportDemo):
             is_shootout=False,
         )
         return EnhancedGameSnapshot(
-            sport=self.sport,
-            event_id=f"{self.sport.value}-demo",
+            league_code=self.league_code,  # Updated from sport
+            event_id=f"{self.league_code}-demo",
             start_time_local=self._start_time,
             state=state,
             home=self._home,
@@ -205,217 +221,56 @@ class WNBADemoSimulator(BaseSportDemo):
         )
 
 
-class NHLDemoSimulator(BaseSportDemo):
-    """NHL-style demo with regulation, overtime, and shootout."""
+class NHLDemoSimulator(LeagueDemoSimulator):
+    """NHL-specific demo with 3 periods."""
 
-    regulation_period_seconds = 20 * 60
-    regulation_periods = 3
-    overtime_seconds = 5 * 60
+    period_seconds = 20 * 60  # 20-minute periods
+    period_count = 3
 
     def _reset_internal(self, now_local: datetime) -> None:
-        self._overtime_start: Optional[datetime] = None
-        self._shootout_resolved = False
-        self._final_label = "Final"
-        # schedule first score with slower cadence for hockey
+        # Hockey scores less frequently
         self._schedule_next_score(self._start_time, minimum=45, maximum=120)
 
     def _build_snapshot(self, now_local: datetime) -> Optional[EnhancedGameSnapshot]:
         if now_local < self._start_time:
             seconds_to_start = int((self._start_time - now_local).total_seconds())
-            return self._snapshot(
+            return self._make_snapshot(
                 state=GameState.PRE,
                 period=0,
                 seconds_to_start=seconds_to_start,
                 display_clock="",
                 period_name="Pre-game",
                 is_overtime=False,
-                is_shootout=False,
             )
 
         elapsed = int((now_local - self._start_time).total_seconds())
-        regulation_total = self.regulation_periods * self.regulation_period_seconds
+        total_game_seconds = self.period_count * self.period_seconds
 
-        if elapsed < regulation_total:
-            self._maybe_award_points(now_local, choices=[1])
-            period_index = elapsed // self.regulation_period_seconds
-            period_number = period_index + 1
-            remaining = self.regulation_period_seconds - (elapsed % self.regulation_period_seconds)
-            timing = self._base_timing(
-                period=period_number,
-                display_clock=self._format_clock(remaining),
-                is_overtime=False,
-                is_shootout=False,
-            )
-            return EnhancedGameSnapshot(
-                sport=self.sport,
-                event_id=f"{self.sport.value}-demo",
-                start_time_local=self._start_time,
-                state=GameState.LIVE,
-                home=self._home,
-                away=self._away,
-                timing=timing,
-                seconds_to_start=-1,
-                status_detail=f"P{period_number}",
-            )
-
-        # Regulation finished – decide on overtime/shootout/final.
-        if self._home.score != self._away.score:
-            # Regulation winner
-            return self._final_snapshot("Final")
-
-        # Overtime setup
-        if self._overtime_start is None:
-            self._overtime_start = self._start_time + timedelta(seconds=regulation_total)
-            # faster scoring cadence in overtime
-            self._schedule_next_score(now_local, minimum=15, maximum=45)
-
-        if now_local < self._overtime_start + timedelta(seconds=self.overtime_seconds):
-            self._maybe_award_points(now_local, choices=[1])
-            if self._home.score != self._away.score:
-                self._final_label = "Final/OT"
-                return self._final_snapshot("Final/OT")
-
-            ot_remaining = int(
-                (self._overtime_start + timedelta(seconds=self.overtime_seconds) - now_local).total_seconds()
-            )
-            timing = self._base_timing(
-                period=self.regulation_periods + 1,
-                display_clock=self._format_clock(ot_remaining),
-                is_overtime=True,
-                is_shootout=False,
-            )
-            return EnhancedGameSnapshot(
-                sport=self.sport,
-                event_id=f"{self.sport.value}-demo",
-                start_time_local=self._start_time,
-                state=GameState.LIVE,
-                home=self._home,
-                away=self._away,
-                timing=timing,
-                seconds_to_start=-1,
-                status_detail="OT",
-            )
-
-        # Shootout resolution
-        if not self._shootout_resolved:
-            winner = self._home if self.rng.random() < 0.5 else self._away
-            winner.score += 1
-            self._shootout_resolved = True
-            self._final_label = "Final/SO"
-
-        return self._final_snapshot("Final/SO")
-
-    def _format_clock(self, seconds: int) -> str:
-        seconds = max(0, seconds)
-        minutes, secs = divmod(seconds, 60)
-        return f"{minutes:02d}:{secs:02d}"
-
-    def _base_timing(
-        self,
-        *,
-        period: int,
-        display_clock: str,
-        is_overtime: bool,
-        is_shootout: bool,
-    ) -> GameTiming:
-        return GameTiming(
-            current_period=period,
-            period_name="SO" if is_shootout else ("OT" if is_overtime and period > self.regulation_periods else f"P{period}"),
-            period_max=self.regulation_periods,
-            display_clock=display_clock,
-            clock_running=True,
-            is_intermission=False,
-            is_overtime=is_overtime,
-            is_shootout=is_shootout,
-        )
-
-    def _final_snapshot(self, label: str) -> EnhancedGameSnapshot:
-        return self._snapshot(
-            state=GameState.FINAL,
-            period=self.regulation_periods,
-            seconds_to_start=-1,
-            display_clock="00:00",
-            period_name=label,
-            is_overtime="OT" in label,
-            is_shootout="SO" in label,
-        )
-
-    def _snapshot(
-        self,
-        *,
-        state: GameState,
-        period: int,
-        seconds_to_start: int,
-        display_clock: str,
-        period_name: str,
-        is_overtime: bool,
-        is_shootout: bool,
-    ) -> EnhancedGameSnapshot:
-        timing = GameTiming(
-            current_period=period,
-            period_name=period_name,
-            period_max=self.regulation_periods,
-            display_clock=display_clock,
-            clock_running=state == GameState.LIVE,
-            is_intermission=False,
-            is_overtime=is_overtime,
-            is_shootout=is_shootout,
-        )
-        return EnhancedGameSnapshot(
-            sport=self.sport,
-            event_id=f"{self.sport.value}-demo",
-            start_time_local=self._start_time,
-            state=state,
-            home=self._home,
-            away=self._away,
-            timing=timing,
-            seconds_to_start=seconds_to_start,
-            status_detail=period_name,
-        )
-
-
-class GenericFallbackDemo(BaseSportDemo):
-    """Simple ticker used when no dedicated simulator exists."""
-
-    period_seconds = 8 * 60
-
-    def _build_snapshot(self, now_local: datetime) -> Optional[EnhancedGameSnapshot]:
-        if now_local < self._start_time:
-            seconds_to_start = int((self._start_time - now_local).total_seconds())
-            return self._make_snapshot(
-                state=GameState.PRE,
-                period=0,
-                seconds_to_start=seconds_to_start,
-                display_clock="",
-                status="Demo",
-            )
-
-        elapsed = int((now_local - self._start_time).total_seconds())
-        if elapsed >= 3 * self.period_seconds:
+        if elapsed >= total_game_seconds:
             return self._make_snapshot(
                 state=GameState.FINAL,
-                period=3,
+                period=self.period_count,
                 seconds_to_start=-1,
                 display_clock="00:00",
-                status="Final",
+                period_name=self._final_label,
+                is_overtime=False,
             )
 
-        self._maybe_award_points(now_local, choices=[1, 2])
+        self._maybe_award_points(now_local, choices=[1])  # Hockey only scores 1 goal at a time
+
+        period_index = elapsed // self.period_seconds
         remaining = self.period_seconds - (elapsed % self.period_seconds)
         clock = self._format_clock(remaining)
-        period_number = 1 + elapsed // self.period_seconds
+        period_number = period_index + 1
+
         return self._make_snapshot(
             state=GameState.LIVE,
             period=period_number,
             seconds_to_start=-1,
             display_clock=clock,
-            status=f"Period {period_number}",
+            period_name=f"P{period_number}",
+            is_overtime=False,
         )
-
-    def _format_clock(self, seconds: int) -> str:
-        seconds = max(0, seconds)
-        minutes, secs = divmod(seconds, 60)
-        return f"{minutes:02d}:{secs:02d}"
 
     def _make_snapshot(
         self,
@@ -424,118 +279,119 @@ class GenericFallbackDemo(BaseSportDemo):
         period: int,
         seconds_to_start: int,
         display_clock: str,
-        status: str,
+        period_name: str,
+        is_overtime: bool,
     ) -> EnhancedGameSnapshot:
         timing = GameTiming(
             current_period=period,
-            period_name=status,
-            period_max=3,
+            period_name=period_name,
+            period_max=self.period_count,
             display_clock=display_clock,
             clock_running=state == GameState.LIVE,
             is_intermission=False,
-            is_overtime=False,
+            is_overtime=is_overtime,
             is_shootout=False,
         )
         return EnhancedGameSnapshot(
-            sport=self.sport,
-            event_id=f"{self.sport.value}-demo",
+            league_code=self.league_code,  # Updated from sport
+            event_id=f"{self.league_code}-demo",
             start_time_local=self._start_time,
             state=state,
             home=self._home,
             away=self._away,
             timing=timing,
             seconds_to_start=seconds_to_start,
-            status_detail=status,
+            status_detail=period_name if state != GameState.FINAL else self._final_label,
         )
 
 
-SPORT_SIMULATOR_FACTORIES: Dict[SportType, type[BaseSportDemo]] = {
-    SportType.WNBA: WNBADemoSimulator,
-    SportType.NHL: NHLDemoSimulator,
-}
+class NBADemoSimulator(WNBADemoSimulator):
+    """NBA demo - same as WNBA but with different league code."""
+
+    def __init__(self, *args, **kwargs):
+        # Override to use NBA league code
+        super().__init__("nba", *args[1:], **kwargs)
 
 
 class DemoSimulator:
-    """Facade that coordinates sport-specific demo simulators."""
+    """Main demo simulator that rotates between leagues."""
 
     def __init__(
         self,
-        multi_cfg: MultiSportAppConfig,
-        legacy_cfg: AppConfig,
-        *,
+        multi_cfg: Optional[MultiSportAppConfig],
+        cfg: AppConfig,
         options: Optional[DemoOptions] = None,
     ) -> None:
         self.multi_cfg = multi_cfg
-        self.legacy_cfg = legacy_cfg
+        self.cfg = cfg
+        self.tz = cfg.tz or ZoneInfo(cfg.timezone)
         self.options = options or DemoOptions()
-        self.rng = random.Random()
-        self._lock = threading.Lock()
-        now = datetime.now(legacy_cfg.tz)
-        self.simulators: List[BaseSportDemo] = self._build_simulators(now)
-        if not self.simulators:
-            fallback = GenericFallbackDemo(
-                sport=SportType.WNBA,
-                tz=legacy_cfg.tz,
-                favorites=legacy_cfg.favorites,
-                rng=self.rng,
+
+        # Create simulators for each enabled league
+        self.simulators: Dict[str, LeagueDemoSimulator] = {}
+        self.enabled_leagues: List[str] = []
+
+        if multi_cfg:
+            # Use multi-sport configuration
+            for sport_config in multi_cfg.sports:
+                league_code = sport_config.sport
+
+                # If forced leagues specified, only use those
+                if self.options.forced_leagues:
+                    if league_code not in self.options.forced_leagues:
+                        continue
+                # Otherwise respect the enabled flag
+                elif not sport_config.enabled:
+                    continue
+
+                self.enabled_leagues.append(league_code)
+                favorites = sport_config.teams
+
+                if league_code == "wnba":
+                    self.simulators[league_code] = WNBADemoSimulator(
+                        league_code, self.tz, favorites
+                    )
+                elif league_code == "nhl":
+                    self.simulators[league_code] = NHLDemoSimulator(
+                        league_code, self.tz, favorites
+                    )
+                elif league_code == "nba":
+                    self.simulators[league_code] = NBADemoSimulator(
+                        league_code, self.tz, favorites
+                    )
+        else:
+            # Fallback to single sport mode (WNBA)
+            self.enabled_leagues = ["wnba"]
+            self.simulators["wnba"] = WNBADemoSimulator(
+                "wnba", self.tz, cfg.favorites if hasattr(cfg, 'favorites') else []
             )
-            self.simulators = [fallback]
-        if not self.simulators:
-            raise ValueError("No demo simulators could be created; check demo sport configuration")
-        self._current_index = 0
-        self._last_switch = now
 
-    def _build_simulators(self, now_local: datetime) -> List[BaseSportDemo]:
-        order = self._determine_order()
-        simulators: List[BaseSportDemo] = []
-        for sport in order:
-            favorites = self.multi_cfg.get_favorites_for_sport(sport)
-            factory = SPORT_SIMULATOR_FACTORIES.get(sport, GenericFallbackDemo)
-            simulator = factory(sport=sport, tz=self.multi_cfg.tz or self.legacy_cfg.tz, favorites=favorites, rng=self.rng)
-            simulator.reset(now_local)
-            simulators.append(simulator)
-        return simulators
+        self.current_league_index = 0
+        self.last_rotation = datetime.now(self.tz)
 
-    def _determine_order(self) -> List[SportType]:
-        if self.options.forced_sports:
-            return [sport for sport in self.options.forced_sports]
-        enabled = self.multi_cfg.get_enabled_sports()
-        return enabled or [SportType.WNBA]
+        if not self.enabled_leagues:
+            print("[warning] No leagues enabled for demo mode")
 
     def get_snapshot(self, now_local: datetime) -> Optional[GameSnapshot]:
-        with self._lock:
-            if not self.simulators:
-                return None
-            if self._should_rotate_unlocked(now_local):
-                self._advance_rotation_unlocked(now_local)
-            current = self.simulators[self._current_index]
-        return current.get_snapshot(now_local)
+        """Get current game snapshot, rotating between leagues."""
+        if not self.enabled_leagues:
+            return None
 
-    def _should_rotate_unlocked(self, now_local: datetime) -> bool:
-        if len(self.simulators) <= 1:
-            return False
-        if self.options.rotation_seconds <= 0:
-            return False
-        return (now_local - self._last_switch).total_seconds() >= self.options.rotation_seconds
+        # Check if it's time to rotate
+        if len(self.enabled_leagues) > 1:
+            elapsed = (now_local - self.last_rotation).total_seconds()
+            if elapsed >= self.options.rotation_seconds:
+                self.current_league_index = (self.current_league_index + 1) % len(self.enabled_leagues)
+                self.last_rotation = now_local
 
-    def _advance_rotation_unlocked(self, now_local: datetime) -> None:
-        self._current_index = (self._current_index + 1) % len(self.simulators)
-        self.simulators[self._current_index].reset(now_local)
-        self._last_switch = now_local
+                # Reset the new simulator
+                current_league = self.enabled_leagues[self.current_league_index]
+                if current_league in self.simulators:
+                    self.simulators[current_league].reset(now_local)
 
+        # Get snapshot from current league simulator
+        current_league = self.enabled_leagues[self.current_league_index]
+        if current_league in self.simulators:
+            return self.simulators[current_league].get_snapshot(now_local)
 
-def parse_demo_options(
-    *,
-    rotation_seconds: Optional[int],
-    forced_sports: Optional[Iterable[str]],
-) -> DemoOptions:
-    forced: Optional[List[SportType]] = None
-    if forced_sports:
-        forced = []
-        for value in forced_sports:
-            try:
-                forced.append(SportType(value.strip()))
-            except ValueError:
-                continue
-    seconds = rotation_seconds if rotation_seconds is not None else DEFAULT_ROTATION_SECONDS
-    return DemoOptions(rotation_seconds=max(0, seconds), forced_sports=forced)
+        return None

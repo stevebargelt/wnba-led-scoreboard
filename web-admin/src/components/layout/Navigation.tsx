@@ -1,13 +1,21 @@
 import React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { HomeIcon, CpuChipIcon, CogIcon, PlusIcon, ChartBarIcon } from '@heroicons/react/24/outline'
+import {
+  HomeIcon,
+  CpuChipIcon,
+  CogIcon,
+  PlusIcon,
+  ChartBarIcon,
+  TrophyIcon,
+} from '@heroicons/react/24/outline'
 import { clsx } from 'clsx'
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'Devices', href: '/devices', icon: CpuChipIcon },
   { name: 'Register Device', href: '/register', icon: PlusIcon },
+  { name: 'Sports & Leagues', href: '/admin/sports-leagues', icon: TrophyIcon },
   { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
   { name: 'Settings', href: '/settings', icon: CogIcon },
 ]

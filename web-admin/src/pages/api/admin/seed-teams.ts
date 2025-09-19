@@ -1,18 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createClient } from '@supabase/supabase-js'
 import fs from 'fs/promises'
 import path from 'path'
+import { withAuth, getAdminClient, type AuthenticatedUser } from '@/lib/auth'
 
 // Admin-only endpoint: seeds/upserts sport teams from local assets/*_teams.json
-// AuthN: requires Authorization: Bearer <userJWT> and service role key on server
-// AuthZ: optional ADMIN_EMAILS env (comma-separated) to restrict callers
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const adminEmails = (process.env.ADMIN_EMAILS || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean)
 
 type Sport = 'wnba' | 'nhl' | 'nba' | 'mlb' | 'nfl'
 
@@ -65,37 +56,14 @@ function normalizeTeams(
     .filter(Boolean) as any
 }
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest, res: NextApiResponse, user: AuthenticatedUser) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST'])
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
-  if (!supabaseUrl || !serviceKey) {
-    return res
-      .status(500)
-      .json({ error: 'Server misconfigured: missing SUPABASE_SERVICE_ROLE_KEY' })
-  }
-
   try {
-    // Verify caller is authenticated; restrict to ADMIN_EMAILS if provided
-    const token = (req.headers.authorization || '').split(' ')[1]
-    if (!token) return res.status(401).json({ error: 'Missing Authorization token' })
-
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
-
-    const {
-      data: { user },
-      error: userErr,
-    } = await admin.auth.getUser(token)
-    if (userErr || !user) {
-      return res.status(401).json({ error: 'Invalid auth token' })
-    }
-    if (adminEmails.length && !adminEmails.includes(user.email || '')) {
-      return res.status(403).json({ error: 'Not authorized' })
-    }
+    const admin = getAdminClient()
 
     // Scan assets for *_teams.json
     const root = path.resolve(process.cwd(), '..')
@@ -140,3 +108,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: e?.message || 'Internal error' })
   }
 }
+
+// Export handler wrapped with admin authentication
+export default withAuth(handler, true)

@@ -52,10 +52,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Core Components
 
 #### Scoreboard Application (`app.py`)
-- **Data Layer**: ESPN API client with resilience features (`src/data/`)
-- **Game Selection**: Favorite team prioritization (`src/select/`)
+- **Sports/Leagues**: Hierarchical configuration system (`src/sports/`)
+- **League Clients**: API integrations for each league (`src/sports/leagues/`)
+- **League Aggregator**: Multi-league game selection and prioritization (`src/sports/league_aggregator.py`)
+- **Supabase Integration**: Central configuration storage (`src/sports/supabase_loader.py`)
 - **Rendering**: LED matrix scenes (pregame/live/final) (`src/render/`)
-- **Config Management**: JSON + environment variable overrides (`src/config/`)
 - **Reliability**: Circuit breaker, caching, adaptive refresh (`src/runtime/`)
 
 #### Web Admin (`web-admin/`)

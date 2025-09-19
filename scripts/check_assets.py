@@ -44,7 +44,7 @@ def main():
         print("No sports configured in favorites.json")
 
     for sport_config in multi_cfg.sports:
-        sport_label = sport_config.sport.value.upper()
+        sport_label = sport_config.sport.upper()
         print(f"\n=== {sport_label} favorites ===")
         if not sport_config.teams:
             print(" (none configured)")

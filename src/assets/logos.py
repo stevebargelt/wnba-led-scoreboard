@@ -17,44 +17,40 @@ except ImportError:  # pragma: no cover
     URLError = HTTPError = Exception  # type: ignore
 
 from .teams import registry as team_registry
-try:
-    from src.sports.base import SportType
-except ImportError:  # pragma: no cover - fallback when running in minimal env
-    SportType = None  # type: ignore
+# SportType removed - using league codes now
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 ASSETS_DIR = BASE_DIR / "assets"
 LOGOS_DIR = ASSETS_DIR / "logos"
 VARIANTS_DIR = LOGOS_DIR / "variants"
-SPORT_LOGO_DIRS: Dict[SportType, Path] = {}
-if SportType is not None:
-    SPORT_LOGO_DIRS = {
-        SportType.WNBA: LOGOS_DIR,
-        SportType.NHL: ASSETS_DIR / "nhl_logos",
-    }
-    for _dir in SPORT_LOGO_DIRS.values():
-        try:
-            _dir.mkdir(parents=True, exist_ok=True)
-        except Exception:
-            pass
+SPORT_LOGO_DIRS: Dict[str, Path] = {}
+# Map league codes to logo directories
+SPORT_LOGO_DIRS = {
+    "wnba": LOGOS_DIR,
+    "nhl": ASSETS_DIR / "nhl_logos",
+}
+for _dir in SPORT_LOGO_DIRS.values():
+    try:
+        _dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
 
 NHL_TEAM_MAP_CACHE = ASSETS_DIR / "nhl_team_ids.json"
 NHL_ABBR_TO_NUMERIC: Dict[str, str] = {}
-if SportType is not None and hasattr(SportType, "NHL"):
-    # Load NHL team mappings from fetched data
-    nhl_teams_file = ASSETS_DIR / "nhl_teams.json"
-    if nhl_teams_file.exists():
-        try:
-            with open(nhl_teams_file, "r") as f:
-                teams_data = json.load(f)
-                NHL_ABBR_TO_NUMERIC = {
-                    team.get("abbreviation", "").upper(): str(team.get("id", ""))
-                    for team in teams_data
-                    if team.get("abbreviation") and team.get("id")
-                }
-        except Exception:
-            NHL_ABBR_TO_NUMERIC = {}
+# Load NHL team mappings from fetched data
+nhl_teams_file = ASSETS_DIR / "nhl_teams.json"
+if nhl_teams_file.exists():
+    try:
+        with open(nhl_teams_file, "r") as f:
+            teams_data = json.load(f)
+            NHL_ABBR_TO_NUMERIC = {
+                team.get("abbreviation", "").upper(): str(team.get("id", ""))
+                for team in teams_data
+                if team.get("abbreviation") and team.get("id")
+            }
+    except Exception:
+        NHL_ABBR_TO_NUMERIC = {}
 
 try:
     VARIANTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -95,10 +91,10 @@ def _load_image(path: Path) -> Optional[Image.Image]:
     return _safe_open(path)
 
 
-def _download_remote_logo(abbr: str, sport_type: Optional[SportType]) -> Optional[Image.Image]:
-    if SportType is None or sport_type != getattr(SportType, "NHL", None):
+def _download_remote_logo(abbr: str, sport_code: Optional[str]) -> Optional[Image.Image]:
+    if sport_code != "nhl":
         return None
-    sport_dir = SPORT_LOGO_DIRS.get(sport_type)
+    sport_dir = SPORT_LOGO_DIRS.get(sport_code)
     if sport_dir is None:
         return None
     try:
@@ -188,8 +184,7 @@ def _extract_team_mapping(records: Iterable[dict]) -> Dict[str, str]:
 
 
 def _ensure_nhl_mapping() -> None:
-    if SportType is None or not hasattr(SportType, "NHL"):
-        return
+    # NHL logo lookup
     if NHL_ABBR_TO_NUMERIC and all(_id.isdigit() for _id in NHL_ABBR_TO_NUMERIC.values()):
         return
     if NHL_TEAM_MAP_CACHE.exists():
@@ -265,16 +260,11 @@ def get_logo(
         return None
 
     # Prefer team_id
-    sport_type: Optional[SportType] = None
-    if isinstance(sport, SportType):
-        sport_type = sport
-    elif isinstance(sport, str):
-        try:
-            sport_type = SportType(sport.lower())
-        except ValueError:
-            sport_type = None
+    sport_code: Optional[str] = None
+    if isinstance(sport, str):
+        sport_code = sport.lower()
 
-    meta = team_registry.get(team_id=team_id, abbr=abbr, sport=sport_type)
+    meta = team_registry.get(team_id=team_id, abbr=abbr, sport=sport_code)
     # Prefer canonical meta.id if available, else provided team_id, else abbr
     key_id: Optional[str] = None
     if meta and meta.id:
@@ -287,15 +277,15 @@ def get_logo(
         return None
 
     # Try variant cache
-    cache_key = key_id if not sport_type else f"{sport_type.value}_{key_id}"
+    cache_key = key_id if not sport_code else f"{sport_code}_{key_id}"
     vpath = _variant_path(cache_key, variant)
     if _exists_safe(vpath):
         return _safe_open(vpath)
 
     # Gather candidate logo directories
     logo_dirs: List[Path] = []
-    if sport_type and SPORT_LOGO_DIRS:
-        sport_dir = SPORT_LOGO_DIRS.get(sport_type)
+    if sport_code and SPORT_LOGO_DIRS:
+        sport_dir = SPORT_LOGO_DIRS.get(sport_code)
         if sport_dir:
             logo_dirs.append(sport_dir)
     if not logo_dirs:
@@ -312,12 +302,12 @@ def get_logo(
             abbr_upper = abbr.upper()
             orig_paths.append(directory / f"{abbr_upper}.png")
             orig_paths.append(directory / f"{abbr_upper}.svg")
-            if sport_type == getattr(SportType, "NHL", None) and NHL_ABBR_TO_NUMERIC:
+            if sport_code == "nhl" and NHL_ABBR_TO_NUMERIC:
                 numeric_id = NHL_ABBR_TO_NUMERIC.get(abbr_upper)
                 if numeric_id:
                     orig_paths.append(directory / f"{numeric_id}.png")
                     orig_paths.append(directory / f"{numeric_id}.svg")
-        if sport_type == getattr(SportType, "NHL", None) and NHL_ABBR_TO_NUMERIC:
+        if sport_code == "nhl" and NHL_ABBR_TO_NUMERIC:
             numeric_id = NHL_ABBR_TO_NUMERIC.get(key_id.upper())
             if numeric_id:
                 orig_paths.append(directory / f"{numeric_id}.png")
@@ -331,7 +321,7 @@ def get_logo(
                 break
 
     if img is None and abbr:
-        remote = _download_remote_logo(abbr, sport_type)
+        remote = _download_remote_logo(abbr, sport_code)
         if remote is not None:
             img = remote
 
