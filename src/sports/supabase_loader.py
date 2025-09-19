@@ -39,7 +39,17 @@ class SupabaseSportsLoader:
 
     def load_sports(self) -> List[SportConfig]:
         """Load all sports from database."""
-        response = self.client.table("sports").select("*").execute()
+        try:
+            response = self.client.table("sports").select("*").execute()
+        except Exception as e:
+            error_msg = str(e)
+            if "not found" in error_msg.lower() or "NOT_FOUND" in error_msg:
+                raise ValueError(
+                    "Sports table not found in database. "
+                    "Please run the database migrations first. "
+                    "See supabase/SETUP.md for instructions."
+                )
+            raise
 
         sports = []
         for sport_data in response.data:
@@ -131,6 +141,11 @@ class SupabaseSportsLoader:
             # Parse season if present
             season = None
             if season_data:
+                # Handle both string (JSON) and dict formats
+                if isinstance(season_data, str):
+                    import json
+                    season_data = json.loads(season_data)
+
                 from datetime import date as date_cls
                 season = LeagueSeason(
                     start_date=date_cls.fromisoformat(season_data.get("startDate")),
@@ -217,10 +232,12 @@ class SupabaseSportsLoader:
         # Import here to avoid circular imports
         from .leagues.nhl import NHLClient
         from .leagues.wnba import WNBAClient
+        from .leagues.nba import NBAClient
 
         client_map = {
             "nhl": NHLClient,
             "wnba": WNBAClient,
+            "nba": NBAClient,
             # Add more as implemented
         }
 

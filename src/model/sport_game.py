@@ -10,7 +10,6 @@ from enum import Enum
 from typing import Dict, List, Optional, Any, Union
 
 from src.model.game import TeamSide, GameState
-from src.sports.base import SportType
 
 
 @dataclass
@@ -20,7 +19,7 @@ class SportTeam:
     name: str
     abbr: str
     score: int = 0
-    sport: Optional[SportType] = None
+    league_code: Optional[str] = None
     
     # Extended team information
     colors: Dict[str, str] = field(default_factory=dict)  # {"primary": "#hex", "secondary": "#hex"}
@@ -91,7 +90,7 @@ class EnhancedGameSnapshot:
     """Enhanced game snapshot with multi-sport support."""
     
     # Core identification
-    sport: SportType
+    league_code: str  # League code like "nhl", "wnba", etc.
     event_id: str
     start_time_local: datetime
     state: GameState

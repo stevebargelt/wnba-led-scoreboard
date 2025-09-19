@@ -6,7 +6,6 @@ from PIL import Image, ImageDraw, ImageFont
 from src.model.game import GameSnapshot
 from src.assets.logos import get_logo
 from ._helpers import infer_team_sport
-from src.sports.base import SportType
 
 
 def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, now_local: datetime,
@@ -46,7 +45,7 @@ def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot
     sport = infer_team_sport(snap, snap.home) or infer_team_sport(snap, snap.away)
 
     # Use "Drop" for NHL, "Tip" for basketball sports
-    if sport == SportType.NHL:
+    if sport == "nhl":
         start_term = "Drop"
     else:
         start_term = "Tip"

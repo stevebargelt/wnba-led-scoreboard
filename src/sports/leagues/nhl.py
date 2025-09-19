@@ -51,9 +51,9 @@ NHL_LEAGUE = LeagueConfig(
 class NHLClient(LeagueClient):
     """NHL-specific API client."""
 
-    def __init__(self, sport_config):
-        """Initialize NHL client with sport config."""
-        super().__init__(NHL_LEAGUE, sport_config)
+    def __init__(self, league_config, sport_config):
+        """Initialize NHL client with league and sport configs."""
+        super().__init__(league_config, sport_config)
 
     def fetch_games(self, target_date: date) -> List[LeagueGameSnapshot]:
         """Fetch NHL games for the target date."""

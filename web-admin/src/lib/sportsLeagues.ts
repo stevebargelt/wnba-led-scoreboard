@@ -9,10 +9,7 @@ import type { SportConfig, LeagueConfig } from '@/types/sports'
  * Fetch all sports from database
  */
 export async function fetchSports(): Promise<SportConfig[]> {
-  const { data, error } = await supabase
-    .from('sports')
-    .select('*')
-    .order('name')
+  const { data, error } = await supabase.from('sports').select('*').order('name')
 
   if (error) {
     console.error('Error fetching sports:', error)
@@ -34,10 +31,7 @@ export async function fetchSports(): Promise<SportConfig[]> {
  * Fetch all leagues from database
  */
 export async function fetchLeagues(): Promise<LeagueConfig[]> {
-  const { data, error } = await supabase
-    .from('leagues')
-    .select('*')
-    .order('name')
+  const { data, error } = await supabase.from('leagues').select('*').order('name')
 
   if (error) {
     console.error('Error fetching leagues:', error)
@@ -79,10 +73,12 @@ export async function fetchSportsAndLeagues() {
   // Fetch leagues with sport relationship
   const { data: leaguesData, error: leaguesError } = await supabase
     .from('leagues')
-    .select(`
+    .select(
+      `
       *,
       sport:sports(code)
-    `)
+    `
+    )
     .order('name')
 
   if (leaguesError) {
@@ -129,10 +125,13 @@ export async function updateLeague(leagueCode: string, updates: Partial<LeagueCo
   if (updates.api !== undefined) updateData.api_config = updates.api
   if (updates.currentSeason !== undefined) updateData.current_season = updates.currentSeason
   if (updates.timingOverrides !== undefined) updateData.timing_overrides = updates.timingOverrides
-  if (updates.scoringOverrides !== undefined) updateData.scoring_overrides = updates.scoringOverrides
-  if (updates.terminologyOverrides !== undefined) updateData.terminology_overrides = updates.terminologyOverrides
+  if (updates.scoringOverrides !== undefined)
+    updateData.scoring_overrides = updates.scoringOverrides
+  if (updates.terminologyOverrides !== undefined)
+    updateData.terminology_overrides = updates.terminologyOverrides
   if (updates.teamCount !== undefined) updateData.team_count = updates.teamCount
-  if (updates.conferenceStructure !== undefined) updateData.conference_structure = updates.conferenceStructure
+  if (updates.conferenceStructure !== undefined)
+    updateData.conference_structure = updates.conferenceStructure
 
   const { data, error } = await supabase
     .from('leagues')
@@ -154,10 +153,12 @@ export async function updateLeague(leagueCode: string, updates: Partial<LeagueCo
 export async function fetchLeagueTeams(leagueCode: string) {
   const { data, error } = await supabase
     .from('league_teams')
-    .select(`
+    .select(
+      `
       *,
       league:leagues!inner(code)
-    `)
+    `
+    )
     .eq('league.code', leagueCode)
     .order('name')
 
@@ -183,10 +184,12 @@ export async function fetchLeagueTeams(leagueCode: string) {
 export async function getDeviceLeagues(deviceId: string) {
   const { data, error } = await supabase
     .from('device_leagues')
-    .select(`
+    .select(
+      `
       *,
       league:leagues(*)
-    `)
+    `
+    )
     .eq('device_id', deviceId)
     .order('priority')
 
@@ -228,10 +231,7 @@ export async function updateDeviceLeagues(
  * Get device favorite teams
  */
 export async function getDeviceFavoriteTeams(deviceId: string, leagueId?: string) {
-  let query = supabase
-    .from('device_favorite_teams')
-    .select('*')
-    .eq('device_id', deviceId)
+  let query = supabase.from('device_favorite_teams').select('*').eq('device_id', deviceId)
 
   if (leagueId) {
     query = query.eq('league_id', leagueId)

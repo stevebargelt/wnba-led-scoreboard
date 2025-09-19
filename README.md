@@ -1,4 +1,4 @@
-# 🏀🏒 Multi-Sport LED Scoreboard
+# 🏀🏒 Multi-League LED Scoreboard
 
 <div align="center">
 
@@ -9,7 +9,7 @@
 ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
 ![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-Compatible-red?style=for-the-badge&logo=raspberry-pi)
 
-*Real-time WNBA & NHL scores with intelligent multi-sport priority system*
+*Real-time sports scores with intelligent multi-league priority system*
 
 [Quick Start](#-quick-start) • [Multi-Sport](#-multi-sport-features) • [Hardware](#%EF%B8%8F-hardware-setup) • [Web Admin](#-web-admin-interface) • [Deployment](#-deployment-guide) • [Troubleshooting](#-troubleshooting-guide)
 
@@ -17,9 +17,25 @@
 
 ---
 
+## 🏗️ Architecture
+
+The scoreboard uses a **hierarchical sports/leagues architecture** where:
+- **Sports** define core rules (timing, scoring, terminology)
+- **Leagues** inherit from sports with specific overrides (API endpoints, season info)
+- **Supabase** provides centralized configuration storage
+- **League Clients** fetch live game data from their respective APIs
+
+### Supported Leagues
+- **WNBA** - Women's National Basketball Association (ESPN API)
+- **NHL** - National Hockey League (NHL API)
+- **NBA** - National Basketball Association (ESPN API)
+- More leagues can be easily added!
+
+---
+
 ## 📋 Overview
 
-This project displays **live sports scoreboards** on RGB LED matrices with support for **WNBA and NHL games**. The system automatically discovers your favorite teams' games across multiple sports, intelligently resolves conflicts when games overlap, and provides a comprehensive web admin interface for remote management.
+This project displays **live sports scoreboards** on RGB LED matrices with support for **multiple professional leagues** including WNBA, NHL, NBA, and more. The system automatically discovers your favorite teams' games across multiple leagues, intelligently resolves conflicts when games overlap, and provides a comprehensive web admin interface for remote management.
 
 ### 🎯 **Core Features**
 - 🏀 **WNBA Support** - Live scores, schedules, team logos and colors from ESPN
@@ -35,11 +51,15 @@ This project displays **live sports scoreboards** on RGB LED matrices with suppo
 ## 🚀 Quick Start
 
 
-### 🏒🏀 **Multi-Sport Quick Start**
+### 🏒🏀 **Quick Start**
 
 ```bash
-# 1. Copy the template configuration
-cp config/multi-sport-example.json config/favorites.json
+# 1. Set up Supabase (see supabase/SETUP.md)
+export SUPABASE_URL=your-project-url
+export SUPABASE_ANON_KEY=your-anon-key
+
+# 2. Copy the template configuration
+cp config/leagues.json config/favorites.json
 
 # 2. Install Python dependencies
 python3 -m venv .venv && source .venv/bin/activate
@@ -113,29 +133,35 @@ When both WNBA and NHL games are active, the system uses intelligent rules to de
 ### ⚙️ **Configuration Options**
 
 <details>
-<summary><b>🏒🏀 Multi-Sport Configuration</b></summary>
+<summary><b>🏒🏀 League Configuration</b></summary>
 
 ```json
 {
-  "sports": [
+  "leagues": [
     {
-      "sport": "wnba",
+      "code": "wnba",
       "enabled": true,
       "priority": 1,
-      "favorites": [
-        { "name": "Seattle Storm", "id": "18", "abbr": "SEA" }
+      "favorite_teams": [
+        { "name": "Seattle Storm", "id": "14", "abbr": "SEA" }
       ]
     },
     {
-      "sport": "nhl", 
+      "code": "nhl",
       "enabled": true,
       "priority": 2,
-      "favorites": [
+      "favorite_teams": [
         { "name": "Seattle Kraken", "id": "55", "abbr": "SEA" }
       ]
+    },
+    {
+      "code": "nba",
+      "enabled": false,
+      "priority": 3,
+      "favorite_teams": []
     }
   ],
-  "sport_priority": {
+  "priority": {
     "conflict_resolution": "priority",
     "live_game_boost": true,
     "favorite_team_boost": true,

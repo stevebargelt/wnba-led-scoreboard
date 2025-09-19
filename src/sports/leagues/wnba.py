@@ -47,9 +47,9 @@ WNBA_LEAGUE = LeagueConfig(
 class WNBAClient(LeagueClient):
     """WNBA-specific API client using ESPN."""
 
-    def __init__(self, sport_config):
-        """Initialize WNBA client with sport config."""
-        super().__init__(WNBA_LEAGUE, sport_config)
+    def __init__(self, league_config, sport_config):
+        """Initialize WNBA client with league and sport configs."""
+        super().__init__(league_config, sport_config)
 
     def fetch_games(self, target_date: date) -> List[LeagueGameSnapshot]:
         """Fetch WNBA games for the target date."""
