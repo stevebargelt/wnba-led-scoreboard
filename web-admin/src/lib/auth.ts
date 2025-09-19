@@ -77,7 +77,16 @@ export async function verifyAuth(
     }
 
     // Check admin requirement if specified
-    if (requireAdmin && adminEmails.length > 0) {
+    if (requireAdmin) {
+      // If admin is required but no admin emails are configured, deny access
+      if (adminEmails.length === 0) {
+        return {
+          authenticated: false,
+          error: 'Admin access not configured - no admin emails specified',
+        }
+      }
+
+      // Check if user is in admin list
       if (!user.email || !adminEmails.includes(user.email)) {
         return {
           authenticated: false,
