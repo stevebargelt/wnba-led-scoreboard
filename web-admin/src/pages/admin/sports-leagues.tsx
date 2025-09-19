@@ -47,10 +47,28 @@ export default function SportsLeaguesPage() {
 
   const handleLeagueUpdate = async (league: LeagueConfig) => {
     try {
+      setIsLoading(true)
       await updateLeague(league.code, league)
-      await loadSportsAndLeagues()
+
+      // Reload all data
+      const data = await fetchSportsAndLeagues()
+      setSports(data.sports || [])
+      setLeagues(data.leagues || [])
+
+      // Update the selected league with fresh data
+      const updatedLeague = data.leagues?.find(l => l.code === league.code)
+      if (updatedLeague) {
+        setSelectedLeague(updatedLeague)
+      }
+
+      // Show success message
+      console.log('League updated successfully')
     } catch (error) {
       console.error('Failed to update league:', error)
+      // You could add a toast notification here
+      alert('Failed to update league. Please try again.')
+    } finally {
+      setIsLoading(false)
     }
   }
 

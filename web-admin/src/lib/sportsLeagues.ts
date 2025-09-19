@@ -56,95 +56,63 @@ export async function fetchLeagues(): Promise<LeagueConfig[]> {
 }
 
 /**
- * Fetch sports and leagues with proper relationships
+ * Fetch sports and leagues via API endpoint
  */
 export async function fetchSportsAndLeagues() {
-  // Fetch sports
-  const { data: sportsData, error: sportsError } = await supabase
-    .from('sports')
-    .select('*')
-    .order('name')
+  try {
+    // Get auth token for API call
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
 
-  if (sportsError) {
-    console.error('Error fetching sports:', sportsError)
+    const response = await fetch('/api/admin/sports-leagues', {
+      headers: {
+        Authorization: session?.access_token ? `Bearer ${session.access_token}` : '',
+      },
+    })
+
+    if (!response.ok) {
+      console.error('Error fetching sports and leagues:', response.statusText)
+      return { sports: [], leagues: [] }
+    }
+
+    const data = await response.json()
+    return {
+      sports: data.sports || [],
+      leagues: data.leagues || [],
+    }
+  } catch (error) {
+    console.error('Error fetching sports and leagues:', error)
     return { sports: [], leagues: [] }
   }
-
-  // Fetch leagues with sport relationship
-  const { data: leaguesData, error: leaguesError } = await supabase
-    .from('leagues')
-    .select(
-      `
-      *,
-      sport:sports(code)
-    `
-    )
-    .order('name')
-
-  if (leaguesError) {
-    console.error('Error fetching leagues:', leaguesError)
-    return { sports: [], leagues: [] }
-  }
-
-  // Map to TypeScript types
-  const sports: SportConfig[] = sportsData.map(sport => ({
-    name: sport.name,
-    code: sport.code,
-    timing: sport.timing,
-    scoring: sport.scoring,
-    terminology: sport.terminology,
-    extensions: sport.extensions || {},
-  }))
-
-  const leagues: LeagueConfig[] = leaguesData.map(league => ({
-    name: league.name,
-    code: league.code,
-    sportCode: league.sport?.code || '',
-    api: league.api_config,
-    currentSeason: league.current_season,
-    timingOverrides: league.timing_overrides,
-    scoringOverrides: league.scoring_overrides,
-    terminologyOverrides: league.terminology_overrides,
-    teamCount: league.team_count,
-    conferenceStructure: league.conference_structure,
-    teamAssetsUrl: league.team_assets_url,
-    logoUrlTemplate: league.logo_url_template,
-  }))
-
-  return { sports, leagues }
 }
 
 /**
- * Update a league configuration
+ * Update a league configuration via API endpoint
  */
 export async function updateLeague(leagueCode: string, updates: Partial<LeagueConfig>) {
-  const updateData: any = {}
+  // Get auth token for API call
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
 
-  // Map TypeScript types to database columns
-  if (updates.name !== undefined) updateData.name = updates.name
-  if (updates.api !== undefined) updateData.api_config = updates.api
-  if (updates.currentSeason !== undefined) updateData.current_season = updates.currentSeason
-  if (updates.timingOverrides !== undefined) updateData.timing_overrides = updates.timingOverrides
-  if (updates.scoringOverrides !== undefined)
-    updateData.scoring_overrides = updates.scoringOverrides
-  if (updates.terminologyOverrides !== undefined)
-    updateData.terminology_overrides = updates.terminologyOverrides
-  if (updates.teamCount !== undefined) updateData.team_count = updates.teamCount
-  if (updates.conferenceStructure !== undefined)
-    updateData.conference_structure = updates.conferenceStructure
+  const response = await fetch(`/api/admin/sports-leagues/league/${leagueCode}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: session?.access_token ? `Bearer ${session.access_token}` : '',
+    },
+    body: JSON.stringify(updates),
+  })
 
-  const { data, error } = await supabase
-    .from('leagues')
-    .update(updateData)
-    .eq('code', leagueCode)
-    .select()
-
-  if (error) {
+  if (!response.ok) {
+    const error = await response.json()
     console.error('Error updating league:', error)
-    throw error
+    throw new Error(error.error || 'Failed to update league')
   }
 
-  return data
+  const result = await response.json()
+  return result.league
 }
 
 /**

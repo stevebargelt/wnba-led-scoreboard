@@ -1,150 +1,266 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { PeriodType, ClockDirection, type SportConfig, type LeagueConfig } from '@/types/sports'
+import { withAuth, getAdminClient, type AuthenticatedUser } from '@/lib/auth'
 
-// Mock data for now - in production, this would come from Python backend
-const SPORTS_DATA: SportConfig[] = [
-  {
-    name: 'Hockey',
-    code: 'hockey',
-    timing: {
-      periodType: PeriodType.PERIOD,
-      regulationPeriods: 3,
-      periodDurationMinutes: 20,
-      clockDirection: ClockDirection.COUNT_DOWN,
-      hasOvertime: true,
-      overtimeDurationMinutes: 5,
-      hasShootout: true,
-      hasSuddenDeath: true,
-      intermissionDurationMinutes: 18,
-      periodNameFormat: 'P{number}',
-      overtimeName: 'OT',
-    },
-    scoring: {
-      scoringTypes: {
-        goal: 1,
-        empty_net: 1,
-        penalty_shot: 1,
-        shootout_goal: 1,
-      },
-      defaultScoreValue: 1,
-    },
-    terminology: {
-      gameStartTerm: 'Puck Drop',
-      periodEndTerm: 'End of Period',
-      gameEndTerm: 'Final',
-      overtimeTerm: 'Overtime',
-    },
-    extensions: {
-      has_penalty_box: true,
-      has_power_play: true,
-      max_players_on_ice: 6,
-      goalie_pulled_situations: true,
-    },
-  },
-  {
-    name: 'Basketball',
-    code: 'basketball',
-    timing: {
-      periodType: PeriodType.QUARTER,
-      regulationPeriods: 4,
-      periodDurationMinutes: 12,
-      clockDirection: ClockDirection.COUNT_DOWN,
-      hasOvertime: true,
-      overtimeDurationMinutes: 5,
-      hasShootout: false,
-      hasSuddenDeath: false,
-      intermissionDurationMinutes: 15,
-      periodNameFormat: 'Q{number}',
-      overtimeName: 'OT',
-    },
-    scoring: {
-      scoringTypes: {
-        free_throw: 1,
-        field_goal: 2,
-        three_pointer: 3,
-      },
-      defaultScoreValue: 2,
-    },
-    terminology: {
-      gameStartTerm: 'Tip Off',
-      periodEndTerm: 'End of Quarter',
-      gameEndTerm: 'Final',
-      overtimeTerm: 'Overtime',
-    },
-    extensions: {
-      has_shot_clock: true,
-      shot_clock_seconds: 24,
-      has_three_point_line: true,
-    },
-  },
-]
+async function handler(req: NextApiRequest, res: NextApiResponse, user: AuthenticatedUser) {
+  const admin = getAdminClient()
 
-const LEAGUES_DATA: LeagueConfig[] = [
-  {
-    name: 'National Hockey League',
-    code: 'nhl',
-    sportCode: 'hockey',
-    api: {
-      baseUrl: 'https://api-web.nhle.com/v1',
-      endpoints: {
-        scoreboard: '/score/{date}',
-        teams: '/teams',
-        standings: '/standings',
-      },
-      rateLimitPerMinute: 60,
-      cacheTTLSeconds: 300,
-    },
-    teamCount: 32,
-    conferenceStructure: {
-      Eastern: ['Metropolitan', 'Atlantic'],
-      Western: ['Central', 'Pacific'],
-    },
-    timingOverrides: {
-      overtimeDurationMinutes: 5,
-      hasShootout: true,
-    },
-    currentSeason: {
-      startDate: '2024-10-04',
-      endDate: '2025-06-30',
-      playoffStart: '2025-04-15',
-      isActive: true,
-    },
-  },
-  {
-    name: "Women's National Basketball Association",
-    code: 'wnba',
-    sportCode: 'basketball',
-    api: {
-      baseUrl: 'http://site.api.espn.com/apis/site/v2/sports/basketball/wnba',
-      endpoints: {
-        scoreboard: '/scoreboard',
-        teams: '/teams',
-        standings: '/standings',
-      },
-      rateLimitPerMinute: 60,
-      cacheTTLSeconds: 300,
-    },
-    teamCount: 12,
-    timingOverrides: {
-      periodDurationMinutes: 10,
-    },
-    currentSeason: {
-      startDate: '2025-05-16',
-      endDate: '2025-10-20',
-      playoffStart: '2025-09-15',
-      isActive: false,
-    },
-  },
-]
-
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
-    // Return all sports and leagues
-    res.status(200).json({
-      sports: SPORTS_DATA,
-      leagues: LEAGUES_DATA,
-    })
-  } else {
-    res.status(405).json({ error: 'Method not allowed' })
+    try {
+      // Fetch sports from database
+      const { data: sports, error: sportsError } = await admin
+        .from('sports')
+        .select('*')
+        .order('name')
+
+      if (sportsError) {
+        console.error('Error fetching sports:', sportsError)
+        return res.status(500).json({ error: 'Failed to fetch sports' })
+      }
+
+      // Fetch leagues from database
+      const { data: leagues, error: leaguesError } = await admin
+        .from('leagues')
+        .select('*')
+        .order('name')
+
+      if (leaguesError) {
+        console.error('Error fetching leagues:', leaguesError)
+        return res.status(500).json({ error: 'Failed to fetch leagues' })
+      }
+
+      // Transform the data to match the expected format
+      const transformedSports =
+        sports?.map(sport => ({
+          id: sport.id,
+          name: sport.name,
+          code: sport.code,
+          timing: sport.config?.timing || {},
+          scoring: sport.config?.scoring || {},
+          terminology: sport.config?.terminology || {},
+          extensions: sport.config?.extensions || {},
+        })) || []
+
+      const transformedLeagues =
+        leagues?.map(league => {
+          // Find the sport code from the sport_id
+          const sport = sports?.find(s => s.id === league.sport_id)
+          const sportCode = sport?.code || ''
+
+          // Parse current_season if it's a string
+          let currentSeason = league.current_season || {}
+          if (typeof currentSeason === 'string') {
+            try {
+              currentSeason = JSON.parse(currentSeason)
+            } catch (e) {
+              console.error('Failed to parse current_season for league', league.code, ':', e)
+              currentSeason = {}
+            }
+          }
+
+          return {
+            id: league.id,
+            name: league.name,
+            code: league.code,
+            sportCode: sportCode,
+            sportId: league.sport_id,
+            api: league.api_config || {},
+            teamCount: league.team_count,
+            conferenceStructure: league.conference_structure || {},
+            timingOverrides: league.timing_overrides || {},
+            currentSeason: currentSeason,
+          }
+        }) || []
+
+      return res.status(200).json({
+        sports: transformedSports,
+        leagues: transformedLeagues,
+      })
+    } catch (error) {
+      console.error('Error in GET /api/admin/sports-leagues:', error)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
   }
+
+  if (req.method === 'PUT') {
+    try {
+      const { sports, leagues } = req.body
+
+      // Update sports if provided
+      if (sports && Array.isArray(sports)) {
+        for (const sport of sports) {
+          const { id, name, code, timing, scoring, terminology, extensions } = sport
+
+          const config = {
+            timing,
+            scoring,
+            terminology,
+            extensions,
+          }
+
+          const { error } = await admin
+            .from('sports')
+            .update({
+              name,
+              code,
+              config,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', id)
+
+          if (error) {
+            console.error(`Error updating sport ${code}:`, error)
+            return res.status(500).json({ error: `Failed to update sport ${code}` })
+          }
+        }
+      }
+
+      // Update leagues if provided
+      if (leagues && Array.isArray(leagues)) {
+        for (const league of leagues) {
+          const {
+            id,
+            name,
+            code,
+            sportId,
+            api,
+            teamCount,
+            conferenceStructure,
+            timingOverrides,
+            currentSeason,
+          } = league
+
+          const updateData: any = {
+            name,
+            code,
+            api_config: api,
+            team_count: teamCount,
+            conference_structure: conferenceStructure,
+            timing_overrides: timingOverrides,
+            current_season: currentSeason,
+            updated_at: new Date().toISOString(),
+          }
+
+          // Only update sport_id if provided
+          if (sportId) {
+            updateData.sport_id = sportId
+          }
+
+          const { error } = await admin.from('leagues').update(updateData).eq('id', id)
+
+          if (error) {
+            console.error(`Error updating league ${code}:`, error)
+            return res.status(500).json({ error: `Failed to update league ${code}` })
+          }
+        }
+      }
+
+      return res.status(200).json({ success: true })
+    } catch (error) {
+      console.error('Error in PUT /api/admin/sports-leagues:', error)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  if (req.method === 'POST') {
+    try {
+      const { sport, league } = req.body
+
+      // Create new sport if provided
+      if (sport) {
+        const { name, code, timing, scoring, terminology, extensions } = sport
+
+        const config = {
+          timing,
+          scoring,
+          terminology,
+          extensions,
+        }
+
+        const { data, error } = await admin
+          .from('sports')
+          .insert({
+            name,
+            code,
+            config,
+          })
+          .select()
+          .single()
+
+        if (error) {
+          console.error('Error creating sport:', error)
+          return res.status(500).json({ error: 'Failed to create sport' })
+        }
+
+        return res.status(201).json({ success: true, sport: data })
+      }
+
+      // Create new league if provided
+      if (league) {
+        const {
+          name,
+          code,
+          sportId,
+          sportCode,
+          api,
+          teamCount,
+          conferenceStructure,
+          timingOverrides,
+          currentSeason,
+        } = league
+
+        // Get sport_id from sportCode if not provided
+        let actualSportId = sportId
+        if (!actualSportId && sportCode) {
+          const { data: sportData } = await admin
+            .from('sports')
+            .select('id')
+            .eq('code', sportCode)
+            .single()
+
+          actualSportId = sportData?.id
+        }
+
+        const config = {
+          api,
+          teamCount,
+          conferenceStructure,
+          timingOverrides,
+          currentSeason,
+        }
+
+        const { data, error } = await admin
+          .from('leagues')
+          .insert({
+            name,
+            code,
+            sport_id: actualSportId,
+            api_config: api,
+            team_count: teamCount,
+            conference_structure: conferenceStructure,
+            timing_overrides: timingOverrides,
+            current_season: currentSeason,
+          })
+          .select()
+          .single()
+
+        if (error) {
+          console.error('Error creating league:', error)
+          return res.status(500).json({ error: 'Failed to create league' })
+        }
+
+        return res.status(201).json({ success: true, league: data })
+      }
+
+      return res.status(400).json({ error: 'No sport or league data provided' })
+    } catch (error) {
+      console.error('Error in POST /api/admin/sports-leagues:', error)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
+  }
+
+  res.setHeader('Allow', ['GET', 'PUT', 'POST'])
+  return res.status(405).json({ error: 'Method not allowed' })
 }
+
+// Export handler wrapped with admin authentication
+export default withAuth(handler, true)

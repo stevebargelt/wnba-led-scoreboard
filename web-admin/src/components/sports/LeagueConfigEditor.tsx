@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -14,12 +14,41 @@ interface LeagueConfigEditorProps {
 }
 
 export function LeagueConfigEditor({ league, sport, onSave, onCancel }: LeagueConfigEditorProps) {
+  // Clean the currentSeason to ensure it only has expected fields
+  const cleanCurrentSeason = league.currentSeason
+    ? {
+        startDate: league.currentSeason.startDate || '',
+        endDate: league.currentSeason.endDate || '',
+        playoffStart: league.currentSeason.playoffStart || '',
+        isActive: league.currentSeason.isActive || false,
+      }
+    : undefined
+
   const [editedLeague, setEditedLeague] = useState<LeagueConfig>({
     ...league,
+    currentSeason: cleanCurrentSeason,
     timingOverrides: league.timingOverrides || {},
   })
 
   const [showAdvanced, setShowAdvanced] = useState(false)
+
+  // Update state when league prop changes
+  useEffect(() => {
+    const updatedCleanSeason = league.currentSeason
+      ? {
+          startDate: league.currentSeason.startDate || '',
+          endDate: league.currentSeason.endDate || '',
+          playoffStart: league.currentSeason.playoffStart || '',
+          isActive: league.currentSeason.isActive || false,
+        }
+      : undefined
+
+    setEditedLeague({
+      ...league,
+      currentSeason: updatedCleanSeason,
+      timingOverrides: league.timingOverrides || {},
+    })
+  }, [league])
 
   const handleTimingOverride = (field: keyof TimingConfig, value: any) => {
     setEditedLeague({
@@ -339,13 +368,15 @@ export function LeagueConfigEditor({ league, sport, onSave, onCancel }: LeagueCo
               </label>
               <Input
                 type="date"
-                value={editedLeague.currentSeason.startDate}
+                value={editedLeague.currentSeason.startDate || ''}
                 onChange={e =>
                   setEditedLeague({
                     ...editedLeague,
                     currentSeason: {
-                      ...editedLeague.currentSeason!,
                       startDate: e.target.value,
+                      endDate: editedLeague.currentSeason!.endDate,
+                      playoffStart: editedLeague.currentSeason!.playoffStart,
+                      isActive: editedLeague.currentSeason!.isActive,
                     },
                   })
                 }
@@ -357,13 +388,15 @@ export function LeagueConfigEditor({ league, sport, onSave, onCancel }: LeagueCo
               </label>
               <Input
                 type="date"
-                value={editedLeague.currentSeason.endDate}
+                value={editedLeague.currentSeason.endDate || ''}
                 onChange={e =>
                   setEditedLeague({
                     ...editedLeague,
                     currentSeason: {
-                      ...editedLeague.currentSeason!,
+                      startDate: editedLeague.currentSeason!.startDate,
                       endDate: e.target.value,
+                      playoffStart: editedLeague.currentSeason!.playoffStart,
+                      isActive: editedLeague.currentSeason!.isActive,
                     },
                   })
                 }
@@ -380,8 +413,10 @@ export function LeagueConfigEditor({ league, sport, onSave, onCancel }: LeagueCo
                   setEditedLeague({
                     ...editedLeague,
                     currentSeason: {
-                      ...editedLeague.currentSeason!,
+                      startDate: editedLeague.currentSeason!.startDate,
+                      endDate: editedLeague.currentSeason!.endDate,
                       playoffStart: e.target.value || undefined,
+                      isActive: editedLeague.currentSeason!.isActive,
                     },
                   })
                 }
