@@ -2,15 +2,23 @@
 Direct Supabase configuration loader - simplified architecture without agent/websockets.
 """
 
-import os
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
+from datetime import datetime
+from typing import Dict, List, Optional
 from dataclasses import dataclass
 from supabase import Client
 from zoneinfo import ZoneInfo
 
 from src.config.types import MatrixConfig, RefreshConfig, RenderConfig
-from src.config.multi_sport_types import MultiSportAppConfig, SportFavorites, SportPriorityConfig, FavoriteTeam
+
+
+@dataclass
+class TeamInfo:
+    """Full team information from database."""
+    team_id: str
+    name: str
+    abbreviation: str
+    league_code: str
+    logo_url: Optional[str] = None
 
 
 @dataclass
@@ -22,10 +30,11 @@ class DeviceConfiguration:
     matrix_config: MatrixConfig
     render_config: RenderConfig
     refresh_config: RefreshConfig
-    priority_config: SportPriorityConfig
     enabled_leagues: List[str]
-    favorite_teams: Dict[str, List[str]]  # league_code -> team_ids
+    league_priorities: List[str]  # Ordered list of leagues by priority
+    favorite_teams: Dict[str, List[TeamInfo]]  # league_code -> team info
     last_updated: datetime
+    tz: Optional[ZoneInfo] = None
 
 
 class SupabaseConfigLoader:
@@ -50,20 +59,16 @@ class SupabaseConfigLoader:
 
     def load_full_config(self) -> DeviceConfiguration:
         """
-        Load complete configuration from Supabase.
+        Load complete configuration from Supabase using database function.
 
         Returns:
             DeviceConfiguration with all settings
         """
         try:
-            # 1. Load main device config
-            response = (
-                self.client.table('device_config')
-                .select('*')
-                .eq('device_id', self.device_id)
-                .single()
-                .execute()
-            )
+            # Call the database function to get complete config
+            response = self.client.rpc('get_device_configuration', {
+                'p_device_id': self.device_id
+            }).execute()
 
             if not response.data:
                 # Create default config if none exists
@@ -71,69 +76,71 @@ class SupabaseConfigLoader:
 
             config_data = response.data
 
-            # 2. Load enabled leagues
-            leagues_response = (
-                self.client.table('device_leagues')
-                .select('league:leagues(code), priority')
-                .eq('device_id', self.device_id)
-                .eq('enabled', True)
-                .order('priority')
-                .execute()
-            )
-
+            # Parse enabled leagues
             enabled_leagues = [
-                item['league']['code']
-                for item in leagues_response.data
-                if item.get('league', {}).get('code')
+                league['code'] for league in config_data.get('enabled_leagues', [])
             ]
 
-            # 3. Load favorite teams grouped by league
-            favorites_response = (
-                self.client.table('device_favorite_teams')
-                .select('team_id, league:leagues(code), priority')
-                .eq('device_id', self.device_id)
-                .order('priority')
-                .execute()
+            # Parse league priorities (same order as enabled leagues)
+            league_priorities = enabled_leagues.copy()
+
+            # Parse favorite teams with full team info
+            favorite_teams: Dict[str, List[TeamInfo]] = {}
+            for league_code, teams in config_data.get('favorite_teams', {}).items():
+                favorite_teams[league_code] = [
+                    TeamInfo(
+                        team_id=team['team_id'],
+                        name=team['name'],
+                        abbreviation=team['abbreviation'],
+                        league_code=league_code,
+                        logo_url=team.get('logo_url')
+                    )
+                    for team in teams
+                ]
+
+            # Parse matrix config
+            matrix_data = config_data.get('matrix_config', {})
+            matrix_config = MatrixConfig(
+                width=matrix_data.get('width', 128),
+                height=matrix_data.get('height', 64),
+                brightness=matrix_data.get('brightness', 100)
             )
 
-            # Group favorites by league
-            favorite_teams: Dict[str, List[str]] = {}
-            for item in favorites_response.data:
-                league_code = item.get('league', {}).get('code')
-                if league_code:
-                    if league_code not in favorite_teams:
-                        favorite_teams[league_code] = []
-                    favorite_teams[league_code].append(item['team_id'])
-
-            # 4. Parse configuration into objects
-            matrix_config = MatrixConfig(**config_data.get('matrix_config', {}))
-            render_config = RenderConfig(**config_data.get('render_config', {}))
-            refresh_config = RefreshConfig(**config_data.get('refresh_config', {}))
-
-            # Parse priority config
-            priority_data = config_data.get('priority_config', {})
-            priority_config = SportPriorityConfig(
-                conflict_resolution=priority_data.get('conflict_resolution', 'priority'),
-                live_game_boost=priority_data.get('live_game_boost', True),
-                favorite_team_boost=priority_data.get('favorite_team_boost', True),
-                close_game_boost=priority_data.get('close_game_boost', True),
-                playoff_boost=priority_data.get('playoff_boost', True),
-                manual_override_duration_minutes=priority_data.get('manual_override_duration_minutes', 60),
-                auto_clear_override_on_game_end=priority_data.get('auto_clear_override_on_game_end', True),
+            # Parse render config
+            render_data = config_data.get('render_config', {})
+            render_config = RenderConfig(
+                live_layout=render_data.get('live_layout', 'stacked'),
+                logo_variant=render_data.get('logo_variant', 'mini')
             )
+
+            # Parse refresh config
+            refresh_data = config_data.get('refresh_config', {})
+            refresh_config = RefreshConfig(
+                pregame_sec=refresh_data.get('pregame_sec', 600),
+                ingame_sec=refresh_data.get('ingame_sec', 120),
+                final_sec=refresh_data.get('final_sec', 900)
+            )
+
+            # Get timezone object
+            timezone = config_data.get('timezone', 'America/Los_Angeles')
+            try:
+                tz = ZoneInfo(timezone)
+            except Exception:
+                tz = ZoneInfo('America/Los_Angeles')
 
             # 5. Build complete configuration
             device_config = DeviceConfiguration(
                 device_id=self.device_id,
-                timezone=config_data.get('timezone', 'America/Los_Angeles'),
-                enabled=config_data.get('enabled', True),
+                timezone=timezone,
+                enabled=True,
                 matrix_config=matrix_config,
                 render_config=render_config,
                 refresh_config=refresh_config,
-                priority_config=priority_config,
                 enabled_leagues=enabled_leagues,
+                league_priorities=league_priorities,
                 favorite_teams=favorite_teams,
-                last_updated=datetime.now()
+                last_updated=datetime.now(),
+                tz=tz
             )
 
             # Cache the config
@@ -165,17 +172,19 @@ class SupabaseConfigLoader:
         except Exception as e:
             print(f"[warning] Could not create default config in DB: {e}")
 
+        tz = ZoneInfo('America/Los_Angeles')
         return DeviceConfiguration(
             device_id=self.device_id,
             timezone='America/Los_Angeles',
             enabled=True,
-            matrix_config=MatrixConfig(),
+            matrix_config=MatrixConfig(width=128, height=64, brightness=100),
             render_config=RenderConfig(),
             refresh_config=RefreshConfig(),
-            priority_config=SportPriorityConfig(),
             enabled_leagues=['wnba', 'nhl'],
+            league_priorities=['wnba', 'nhl'],
             favorite_teams={},
-            last_updated=datetime.now()
+            last_updated=datetime.now(),
+            tz=tz
         )
 
     def should_refresh(self, interval_seconds: int = 60) -> bool:
@@ -195,7 +204,7 @@ class SupabaseConfigLoader:
         return elapsed >= interval_seconds
 
     def update_heartbeat(self) -> None:
-        """Update the device's last_seen_at timestamp."""
+        """Update the device's last_seen_at timestamp using database function."""
         # Only send heartbeat every 5 minutes to reduce DB writes
         if self._last_heartbeat:
             elapsed = (datetime.now() - self._last_heartbeat).total_seconds()
@@ -203,58 +212,13 @@ class SupabaseConfigLoader:
                 return
 
         try:
-            self.client.table('device_config').update({
-                'last_seen_at': datetime.now().isoformat()
-            }).eq('device_id', self.device_id).execute()
-
+            self.client.rpc('device_heartbeat', {
+                'p_device_id': self.device_id
+            }).execute()
             self._last_heartbeat = datetime.now()
             print(f"[debug] Heartbeat sent for device {self.device_id}")
         except Exception as e:
             print(f"[warning] Failed to update heartbeat: {e}")
-
-    def to_legacy_config(self, device_config: DeviceConfiguration) -> MultiSportAppConfig:
-        """
-        Convert DeviceConfiguration to legacy MultiSportAppConfig format.
-        This maintains compatibility with existing renderer code.
-        """
-        # Build sports list from enabled leagues and favorites
-        sports = []
-        sport_priorities = device_config.priority_config.__dict__.get('sport_order', ['wnba', 'nhl', 'nba'])
-
-        for idx, league_code in enumerate(sport_priorities):
-            enabled = league_code in device_config.enabled_leagues
-            favorites = device_config.favorite_teams.get(league_code, [])
-
-            # Convert team IDs to FavoriteTeam objects
-            # For now, use team_id as all fields until we load full team data
-            favorite_teams = [
-                FavoriteTeam(id=team_id, abbr=team_id, name=team_id)
-                for team_id in favorites
-            ]
-
-            sport_config = SportFavorites(
-                sport=league_code,
-                enabled=enabled,
-                priority=idx + 1,
-                teams=favorite_teams
-            )
-            sports.append(sport_config)
-
-        # Get timezone object
-        try:
-            tz = ZoneInfo(device_config.timezone)
-        except Exception:
-            tz = ZoneInfo('America/Los_Angeles')
-
-        return MultiSportAppConfig(
-            sports=sports,
-            sport_priority=device_config.priority_config,
-            timezone=device_config.timezone,
-            tz=tz,
-            matrix=device_config.matrix_config,
-            refresh=device_config.refresh_config,
-            render=device_config.render_config
-        )
 
     def get_refresh_interval(self, has_live_game: bool = False) -> int:
         """

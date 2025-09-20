@@ -14,11 +14,13 @@ from urllib.parse import urlparse
 import requests
 from PIL import Image
 import cairosvg
+from dotenv import load_dotenv
 
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent.parent))
 
-from src.sports.nhl import NHLClient
+from src.sports.leagues.nhl import NHLClient, NHL_LEAGUE
+from src.sports.definitions import HOCKEY_SPORT
 
 
 NHL_LOGO_BASE_URLS: Iterable[str] = (
@@ -34,8 +36,8 @@ def fetch_nhl_teams_data() -> tuple[List[Dict], bool]:
     """Fetch NHL teams data using the NHL client."""
     print("Fetching NHL teams data...")
     
-    client = NHLClient()
-    teams_data = client.fetch_team_info()
+    client = NHLClient(NHL_LEAGUE, HOCKEY_SPORT)
+    teams_data = client.fetch_teams()
     
     if not teams_data:
         print("❌ Failed to fetch NHL teams data")
@@ -198,6 +200,65 @@ CURRENT_NHL_TEAMS = {
 }
 
 
+def populate_supabase(teams_data: List[Dict[str, Any]]) -> bool:
+    """Populate league_teams table in Supabase if credentials are available."""
+    try:
+        from supabase import create_client
+
+        # Load environment variables
+        load_dotenv()
+        supabase_url = os.getenv("SUPABASE_URL")
+        # Use service role key for admin operations (bypasses RLS)
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
+        if not supabase_url or not supabase_key:
+            print("ℹ️  Supabase credentials not found, skipping database update")
+            return False
+
+        client = create_client(supabase_url, supabase_key)
+
+        # Get NHL league ID
+        league_result = client.table('leagues').select('id').eq('code', 'nhl').single().execute()
+        if not league_result.data:
+            print("⚠️  NHL league not found in database")
+            return False
+
+        nhl_league_id = league_result.data['id']
+
+        # Prepare teams data for insertion
+        league_teams = []
+        for team in teams_data:
+            # Only add current teams (those with abbreviations in CURRENT_NHL_TEAMS)
+            abbr = str(team.get('abbreviation', '')).upper()
+            if abbr in CURRENT_NHL_TEAMS:
+                league_teams.append({
+                    'league_id': nhl_league_id,
+                    'team_id': str(team.get('id') or team.get('teamId', '')),
+                    'name': team.get('name', ''),
+                    'abbreviation': abbr,
+                    'conference': team.get('conference', ''),
+                    'division': team.get('division', '')
+                })
+
+        # Upsert teams (insert or update)
+        if league_teams:
+            result = client.table('league_teams').upsert(
+                league_teams,
+                on_conflict='league_id,team_id'
+            ).execute()
+            print(f"✅ Updated {len(league_teams)} NHL teams in database")
+            return True
+
+    except ImportError:
+        print("ℹ️  Supabase library not installed, skipping database update")
+        return False
+    except Exception as e:
+        print(f"⚠️  Failed to update Supabase: {e}")
+        return False
+
+    return False
+
+
 def main():
     """Main function to fetch NHL assets."""
     print("🏒 Fetching NHL Teams, Logos, and Colors")
@@ -272,7 +333,10 @@ def main():
         print(f"✅ Updated teams data with logo paths")
 
     print(f"\n🏒 NHL assets ready! Teams data: {NHL_TEAMS_CACHE_FILE}")
-    
+
+    # Populate Supabase if credentials available
+    populate_supabase(teams_data)
+
     return 0
 
 

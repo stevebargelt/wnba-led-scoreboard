@@ -7,9 +7,9 @@ from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 
-from src.config.multi_sport_loader import load_multi_sport_config, apply_environment_overrides_to_multi_sport_config
-from src.config.multi_sport_types import convert_multi_sport_to_legacy
 from src.config.supabase_config_loader import SupabaseConfigLoader, DeviceConfiguration
+from src.config.types import MatrixConfig, RefreshConfig, RenderConfig
+from zoneinfo import ZoneInfo
 from src.model.game import GameSnapshot, GameState
 from src.model.sport_game import EnhancedGameSnapshot
 from typing import Optional
@@ -18,7 +18,6 @@ from src.sports.supabase_loader import SupabaseSportsLoader
 from supabase import create_client
 from src.render.renderer import Renderer
 from src.demo.simulator import DemoSimulator, parse_demo_options, DEFAULT_ROTATION_SECONDS
-from src.runtime.reload import ConfigWatcher
 from src.runtime.adaptive_refresh import AdaptiveRefreshManager
 
 
@@ -78,8 +77,6 @@ def main():
             # Initialize device config loader
             config_loader = SupabaseConfigLoader(device_id, supabase_client)
             device_config = config_loader.load_full_config()
-            multi_cfg = config_loader.to_legacy_config(device_config)
-            cfg = convert_multi_sport_to_legacy(multi_cfg)
             print(f"[info] Loaded device {device_id} configuration from Supabase")
 
         except Exception as e:
@@ -88,59 +85,37 @@ def main():
             config_loader = None
             sports_loader = None
 
-    # Fall back to local config file
+    # Database configuration is required even for demo mode
     if not config_loader:
-        if not (args.demo or os.getenv("DEMO_MODE", "false").lower() == "true"):
-            if not os.path.exists(args.config):
-                print(f"[error] Configuration required: Set DEVICE_ID, SUPABASE_URL, SUPABASE_ANON_KEY or provide {args.config}")
-                print("[info] To run without configuration, use --demo mode")
-                sys.exit(1)
-
-        # Load local configuration
-        multi_cfg = load_multi_sport_config(args.config)
-        multi_cfg = apply_environment_overrides_to_multi_sport_config(multi_cfg)
-        cfg = convert_multi_sport_to_legacy(multi_cfg)  # Renderer still consumes legacy shape
-        device_config = None
+        print(f"[error] Configuration required: Set DEVICE_ID, SUPABASE_URL, SUPABASE_ANON_KEY")
+        print("[info] Demo mode still requires database configuration for team data")
+        sys.exit(1)
 
     # Setup league aggregator
-    if config_loader and device_config:
-        # Using Supabase config
-        enabled_leagues = device_config.enabled_leagues
-        league_priorities = device_config.priority_config.__dict__.get('sport_order', ['wnba', 'nhl', 'nba'])
-        aggregator = LeagueAggregator(league_priorities, enabled_leagues)
-    elif sports_loader:
-        # Using environment variables with Supabase sports
-        if device_id:
-            enabled_leagues = sports_loader.load_device_leagues(device_id)
-        else:
-            enabled_leagues_env = os.getenv("ENABLED_LEAGUES", "wnba,nhl")
-            enabled_leagues = [l.strip() for l in enabled_leagues_env.split(",")]
-
-        league_priorities_env = os.getenv("LEAGUE_PRIORITIES", "wnba,nhl,nba")
-        league_priorities = [l.strip() for l in league_priorities_env.split(",")]
-        aggregator = LeagueAggregator(league_priorities, enabled_leagues)
+    if device_config and not (args.demo or os.getenv("DEMO_MODE", "false").lower() == "true"):
+        # Using device config for league aggregator
+        aggregator = LeagueAggregator(device_config.league_priorities, device_config.enabled_leagues)
+        print(f"[info] Enabled leagues: {device_config.enabled_leagues}")
     else:
-        # Demo mode or local config
+        # Demo mode doesn't need aggregator
         aggregator = None
+        if args.demo or os.getenv("DEMO_MODE", "false").lower() == "true":
+            print("[info] Running in demo mode")
 
-    # Configure priority rules from configuration
+    # Configure priority rules for aggregator
     if aggregator:
-        priority_config = multi_cfg.sport_priority
+        # Use default priority rules
         aggregator.configure_priority_rules(
-            live_game_boost=priority_config.live_game_boost,
-            favorite_team_boost=priority_config.favorite_team_boost,
-            close_game_boost=priority_config.close_game_boost,
-            playoff_boost=priority_config.playoff_boost,
-            conflict_resolution=priority_config.conflict_resolution,
+            live_game_boost=True,
+            favorite_team_boost=True,
+            close_game_boost=True,
+            playoff_boost=True,
+            conflict_resolution='priority',
         )
-        print(f"[info] Enabled leagues: {enabled_leagues}")
-    else:
-        print("[info] Running in demo mode without league aggregator")
 
-    renderer = Renderer(cfg, force_sim=args.sim)
+    renderer = Renderer(device_config, force_sim=args.sim)
 
-    # Setup config watcher and signal handler
-    watcher = ConfigWatcher([args.config, ".env"])  # .env optional
+    # Setup signal handler for config reload
     signal.signal(signal.SIGHUP, _signal_reload)
     # Allow SIGUSR1 as alternative on some systems
     try:
@@ -169,14 +144,14 @@ def main():
             rotation_seconds=rotation_seconds or DEFAULT_ROTATION_SECONDS,
         )
 
-    demo = DemoSimulator(multi_cfg, cfg, options=demo_options) if use_demo else None
+    demo = DemoSimulator(device_config, options=demo_options) if use_demo else None
     
     # Setup adaptive refresh manager
-    refresh_manager = AdaptiveRefreshManager(cfg.refresh)
+    refresh_manager = AdaptiveRefreshManager(device_config.refresh_config)
 
     try:
         while True:
-            now_local = datetime.now(cfg.tz)
+            now_local = datetime.now(device_config.tz)
             if demo is not None:
                 snapshot: Optional[GameSnapshot] = demo.get_snapshot(now_local)
             elif aggregator:
@@ -184,34 +159,10 @@ def main():
                 try:
                     # Build favorite teams dictionary for aggregator
                     favorite_teams = {}
-
-                    # If we have device config, use its favorites
                     if device_config:
-                        favorite_teams = device_config.favorite_teams
-                    # Otherwise try to load from Supabase if we have device ID
-                    elif device_id and sports_loader:
-                        for league_code in enabled_leagues:
-                            favorites = sports_loader.load_device_favorites(device_id, league_code)
-                            if favorites:
-                                favorite_teams[league_code] = favorites
-                    else:
-                        # Fall back to config file for favorites (temporary compatibility)
-                        for sport_config in getattr(multi_cfg, 'sports', []):
-                            if sport_config.enabled:
-                                team_identifiers = []
-                                for team in sport_config.teams:
-                                    for candidate in (team.name, team.abbr, team.id):
-                                        if candidate:
-                                            team_identifiers.append(candidate)
-                                # Map sport to league codes
-                                sport_to_leagues = {
-                                    'wnba': ['wnba'],
-                                    'nhl': ['nhl'],
-                                    'nba': ['nba'],
-                                }
-                                for league_code in sport_to_leagues.get(sport_config.sport, []):
-                                    if league_code in enabled_leagues:
-                                        favorite_teams[league_code] = team_identifiers
+                        # Convert TeamInfo objects to team IDs for aggregator
+                        for league_code, teams in device_config.favorite_teams.items():
+                            favorite_teams[league_code] = [team.team_id for team in teams]
 
                     league_game = aggregator.get_featured_game(
                         now_local.date(),
@@ -266,96 +217,47 @@ def main():
             renderer.flush()
 
             # Check for config refresh from Supabase
-            if config_loader and config_loader.should_refresh():
+            if config_loader and (config_loader.should_refresh(60) or RELOAD_REQUESTED):
                 try:
-                    device_config = config_loader.load_full_config()
-                    multi_cfg = config_loader.to_legacy_config(device_config)
-                    new_cfg = convert_multi_sport_to_legacy(multi_cfg)
-
-                    # Update aggregator with new config
-                    enabled_leagues = device_config.enabled_leagues
-                    league_priorities = device_config.priority_config.__dict__.get('sport_order', ['wnba', 'nhl', 'nba'])
-                    aggregator = LeagueAggregator(league_priorities, enabled_leagues)
-                    aggregator.configure_priority_rules(
-                        live_game_boost=device_config.priority_config.live_game_boost,
-                        favorite_team_boost=device_config.priority_config.favorite_team_boost,
-                        close_game_boost=device_config.priority_config.close_game_boost,
-                        playoff_boost=device_config.priority_config.playoff_boost,
-                        conflict_resolution=device_config.priority_config.conflict_resolution,
-                    )
+                    RELOAD_REQUESTED = False
+                    # Reload from Supabase
+                    new_device_config = config_loader.load_full_config()
 
                     # Update renderer if matrix size changed
                     resized = (
-                        new_cfg.matrix.width != cfg.matrix.width
-                        or new_cfg.matrix.height != cfg.matrix.height
+                        new_device_config.matrix_config.width != device_config.matrix_config.width
+                        or new_device_config.matrix_config.height != device_config.matrix_config.height
                     )
-                    cfg = new_cfg
+
+                    old_config = device_config
+                    device_config = new_device_config
+
                     if resized:
                         try:
                             renderer.close()
                         except Exception:
                             pass
-                        renderer = Renderer(cfg, force_sim=args.sim)
+                        renderer = Renderer(device_config, force_sim=args.sim)
                     else:
-                        renderer.cfg = cfg
+                        renderer.cfg = device_config
 
-                    refresh_manager = AdaptiveRefreshManager(cfg.refresh)
+                    # Update aggregator with new leagues if not in demo mode
+                    if aggregator:
+                        aggregator = LeagueAggregator(device_config.league_priorities, device_config.enabled_leagues)
+                        aggregator.configure_priority_rules(
+                            live_game_boost=True,
+                            favorite_team_boost=True,
+                            close_game_boost=True,
+                            playoff_boost=True,
+                            conflict_resolution='priority',
+                        )
+
+                    refresh_manager = AdaptiveRefreshManager(device_config.refresh_config)
                     config_loader.update_heartbeat()
                     print(f"[info] Configuration refreshed from Supabase")
 
                 except Exception as e:
                     print(f"[warn] Config refresh failed: {e}")
-
-            # Also check for local file changes or reload signal
-            do_reload = False
-            if RELOAD_REQUESTED:
-                do_reload = True
-            elif watcher.changed():
-                do_reload = True
-
-            if do_reload and not config_loader:  # Only reload local config
-                RELOAD_REQUESTED = False
-                try:
-                    multi_cfg = load_multi_sport_config(args.config)
-                    multi_cfg = apply_environment_overrides_to_multi_sport_config(multi_cfg)
-                    new_cfg = convert_multi_sport_to_legacy(multi_cfg)
-
-                    # Rebuild aggregator with updated configuration
-                    if sports_loader and device_id:
-                        enabled_leagues = sports_loader.load_device_leagues(device_id)
-                    else:
-                        enabled_leagues_env = os.getenv("ENABLED_LEAGUES", "wnba,nhl")
-                        enabled_leagues = [l.strip() for l in enabled_leagues_env.split(",")]
-
-                    aggregator = LeagueAggregator(league_priorities, enabled_leagues)
-                    priority_config = multi_cfg.sport_priority
-                    aggregator.configure_priority_rules(
-                        live_game_boost=priority_config.live_game_boost,
-                        favorite_team_boost=priority_config.favorite_team_boost,
-                        close_game_boost=priority_config.close_game_boost,
-                        playoff_boost=priority_config.playoff_boost,
-                        conflict_resolution=priority_config.conflict_resolution,
-                    )
-
-                    # If matrix size changed, recreate renderer
-                    resized = (
-                        new_cfg.matrix.width != cfg.matrix.width
-                        or new_cfg.matrix.height != cfg.matrix.height
-                    )
-                    cfg = new_cfg
-                    if resized:
-                        try:
-                            renderer.close()
-                        except Exception:
-                            pass
-                        renderer = Renderer(cfg, force_sim=args.sim)
-                    else:
-                        renderer.cfg = cfg
-
-                    refresh_manager = AdaptiveRefreshManager(cfg.refresh)
-                    print(f"[info] Configuration reloaded; enabled leagues: {enabled_leagues}")
-                except Exception as e:
-                    print(f"[warn] reload failed: {e}")
 
             if args.once:
                 break
