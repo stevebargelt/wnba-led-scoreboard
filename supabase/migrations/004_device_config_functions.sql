@@ -1,3 +1,7 @@
+-- First drop the existing function if it exists
+DROP FUNCTION IF EXISTS get_device_configuration(UUID);
+DROP FUNCTION IF EXISTS device_heartbeat(UUID);
+
 -- Database functions for device configuration access
 -- Uses SECURITY DEFINER to allow controlled access without exposing tables
 
@@ -48,15 +52,15 @@ BEGIN
             l.code AS league_code,
             json_agg(
                 json_build_object(
-                    'team_id', lt.team_id,
-                    'name', lt.name,
-                    'abbreviation', lt.abbreviation,
+                    'team_id', dft.team_id,
+                    'name', COALESCE(lt.name, dft.team_id),  -- Use team_id as fallback name
+                    'abbreviation', COALESCE(lt.abbreviation, UPPER(LEFT(dft.team_id, 3))),  -- Generate 3-letter abbr
                     'logo_url', lt.logo_url
                 ) ORDER BY dft.priority
             ) AS teams
         FROM device_favorite_teams dft
         JOIN leagues l ON l.id = dft.league_id
-        JOIN league_teams lt ON lt.league_id = dft.league_id AND lt.team_id = dft.team_id
+        LEFT JOIN league_teams lt ON lt.league_id = dft.league_id AND lt.team_id = dft.team_id  -- LEFT JOIN instead of JOIN
         WHERE dft.device_id = p_device_id
         GROUP BY l.code
     )
@@ -64,17 +68,17 @@ BEGIN
         'device_id', device_data.id,
         'device_name', device_data.name,
         'timezone', COALESCE(device_data.timezone, 'America/Los_Angeles'),
-        'matrix_config', COALESCE(device_data.matrix_config, json_build_object(
+        'matrix_config', COALESCE(device_data.matrix_config::json, json_build_object(
             'width', 128,
             'height', 64,
             'brightness', 100
         )),
-        'refresh_config', COALESCE(device_data.refresh_config, json_build_object(
+        'refresh_config', COALESCE(device_data.refresh_config::json, json_build_object(
             'pregame_sec', 600,
             'ingame_sec', 120,
             'final_sec', 900
         )),
-        'render_config', COALESCE(device_data.render_config, json_build_object(
+        'render_config', COALESCE(device_data.render_config::json, json_build_object(
             'live_layout', 'stacked',
             'logo_variant', 'mini'
         )),
@@ -83,7 +87,7 @@ BEGIN
             (SELECT json_object_agg(league_code, teams) FROM favorite_teams),
             '{}'::json
         ),
-        'priority_config', COALESCE(device_data.priority_config, '{}'::json),
+        'priority_config', COALESCE(device_data.priority_config::json, '{}'::json),
         'last_updated', NOW()
     ) INTO v_config
     FROM device_data
@@ -128,13 +132,13 @@ $$;
 -- GRANT PERMISSIONS
 -- ============================================================================
 
--- Allow anonymous users to execute these functions
-GRANT EXECUTE ON FUNCTION get_device_configuration(UUID) TO anon;
-GRANT EXECUTE ON FUNCTION device_heartbeat(UUID) TO anon;
-
--- Also grant to authenticated users
+-- Only allow authenticated users and service role to execute these functions
 GRANT EXECUTE ON FUNCTION get_device_configuration(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION device_heartbeat(UUID) TO authenticated;
+
+-- Service role can execute for administrative purposes
+GRANT EXECUTE ON FUNCTION get_device_configuration(UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION device_heartbeat(UUID) TO service_role;
 
 -- ============================================================================
 -- COMMENTS

@@ -115,7 +115,6 @@ Run in order in Supabase SQL Editor.
 ├── supabase/                      # Database setup
 │   └── migrations/                # 3 clean migration files
 ├── assets/                        # Team logos and fonts
-├── config/                        # Local configuration fallback
 └── scripts/                       # Maintenance and setup scripts
 ```
 
@@ -134,7 +133,6 @@ Run in order in Supabase SQL Editor.
 
 ### Configuration Management
 - **Primary**: Supabase database (device_config, device_leagues, device_favorite_teams)
-- **Fallback**: Local `config/favorites.json` if Supabase unavailable
 - **Environment Overrides**: `.env` file can override any setting
 - **Hot Reload**: SIGHUP signal triggers configuration reload
 

@@ -39,20 +39,20 @@ class DeviceConfiguration:
 
 class SupabaseConfigLoader:
     """
-    Loads device configuration directly from Supabase.
-    No websockets, no agents, just simple polling.
+    Loads device configuration from Supabase using secure database functions.
+    Uses service role key for function access with proper device ownership validation.
     """
 
-    def __init__(self, device_id: str, supabase_client: Client):
+    def __init__(self, device_id: str, service_client: Client):
         """
         Initialize the config loader.
 
         Args:
             device_id: UUID of the device
-            supabase_client: Initialized Supabase client
+            service_client: Supabase client with service role key
         """
         self.device_id = device_id
-        self.client = supabase_client
+        self.client = service_client
         self._last_updated: Optional[datetime] = None
         self._cached_config: Optional[DeviceConfiguration] = None
         self._last_heartbeat: Optional[datetime] = None

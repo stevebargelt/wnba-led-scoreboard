@@ -56,7 +56,8 @@ def main():
 
     # Check for Supabase configuration
     supabase_url = os.getenv("SUPABASE_URL")
-    supabase_key = os.getenv("SUPABASE_ANON_KEY")
+    supabase_anon_key = os.getenv("SUPABASE_ANON_KEY")
+    supabase_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     device_id = os.getenv("DEVICE_ID")
 
     # Initialize configuration loader
@@ -64,18 +65,20 @@ def main():
     sports_loader = None
 
     # Try Supabase configuration first
-    if supabase_url and supabase_key and device_id:
+    if supabase_url and supabase_service_key and device_id:
         try:
-            # Create Supabase client
-            supabase_client = create_client(supabase_url, supabase_key)
+            # Create Supabase clients - anon for sports, service for device config
+            anon_client = create_client(supabase_url, supabase_anon_key) if supabase_anon_key else None
+            service_client = create_client(supabase_url, supabase_service_key)
 
-            # Initialize sports/leagues registry
-            sports_loader = SupabaseSportsLoader()
-            sports_loader.initialize_registry()
-            print("[info] Loaded sports and leagues from Supabase")
+            # Initialize sports/leagues registry (can use anon client)
+            if anon_client:
+                sports_loader = SupabaseSportsLoader()
+                sports_loader.initialize_registry()
+                print("[info] Loaded sports and leagues from Supabase")
 
-            # Initialize device config loader
-            config_loader = SupabaseConfigLoader(device_id, supabase_client)
+            # Initialize device config loader (uses service client for security)
+            config_loader = SupabaseConfigLoader(device_id, service_client)
             device_config = config_loader.load_full_config()
             print(f"[info] Loaded device {device_id} configuration from Supabase")
 
@@ -87,8 +90,8 @@ def main():
 
     # Database configuration is required even for demo mode
     if not config_loader:
-        print(f"[error] Configuration required: Set DEVICE_ID, SUPABASE_URL, SUPABASE_ANON_KEY")
-        print("[info] Demo mode still requires database configuration for team data")
+        print(f"[error] Configuration required: Set DEVICE_ID, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY")
+        print("[info] Demo mode requires database access for device configuration and team data")
         sys.exit(1)
 
     # Setup league aggregator
