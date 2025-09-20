@@ -256,6 +256,7 @@ BRIGHTNESS=75                # LED brightness (1-100)
 ## Do Not Section
 - Do not commit directly to the `main` branch.
 - Do not sign or mention Claude, Claude Code, Anthropic, LLM, AI, ML in any commit messages or PR text.
-- Do not create new files unless absolutely necessary for achieving your goal.
 - Always prefer editing an existing file to creating a new one.
+
+## Memories
 - Demo mode is network connected and also calls ESPN/NHL / sport endpoints.
