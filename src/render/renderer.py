@@ -7,7 +7,7 @@ from typing import Optional
 
 from PIL import Image, ImageDraw, ImageFont
 
-from src.config.types import AppConfig
+from src.config.supabase_config_loader import DeviceConfiguration
 from src.model.game import GameSnapshot
 from .scenes.pregame import draw_pregame
 from .scenes.live import draw_live
@@ -16,10 +16,10 @@ from .scenes.live_big import draw_live_big
 
 
 class Renderer:
-    def __init__(self, cfg: AppConfig, force_sim: bool = False):
+    def __init__(self, cfg: DeviceConfiguration, force_sim: bool = False):
         self.cfg = cfg
-        self.width = cfg.matrix.width
-        self.height = cfg.matrix.height
+        self.width = cfg.matrix_config.width
+        self.height = cfg.matrix_config.height
         self._buffer = Image.new("RGB", (self.width, self.height))
         self._draw = ImageDraw.Draw(self._buffer)
         self._matrix = None
@@ -45,14 +45,14 @@ class Renderer:
             return
 
         opts = RGBMatrixOptions()
-        opts.rows = self.cfg.matrix.height
-        opts.cols = self.cfg.matrix.width
-        opts.chain_length = self.cfg.matrix.chain_length
-        opts.parallel = self.cfg.matrix.parallel
-        opts.gpio_slowdown = self.cfg.matrix.gpio_slowdown
-        opts.hardware_mapping = self.cfg.matrix.hardware_mapping
-        opts.brightness = self.cfg.matrix.brightness
-        opts.pwm_bits = self.cfg.matrix.pwm_bits
+        opts.rows = self.cfg.matrix_config.height
+        opts.cols = self.cfg.matrix_config.width
+        opts.chain_length = self.cfg.matrix_config.chain_length
+        opts.parallel = self.cfg.matrix_config.parallel
+        opts.gpio_slowdown = self.cfg.matrix_config.gpio_slowdown
+        opts.hardware_mapping = self.cfg.matrix_config.hardware_mapping
+        opts.brightness = self.cfg.matrix_config.brightness
+        opts.pwm_bits = self.cfg.matrix_config.pwm_bits
 
         try:
             self._matrix = RGBMatrix(options=opts)
@@ -77,19 +77,19 @@ class Renderer:
 
     def render_pregame(self, snap: GameSnapshot, now_local: datetime):
         self.clear((0, 0, 0))
-        draw_pregame(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant=self.cfg.render.logo_variant)
+        draw_pregame(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant=self.cfg.render_config.logo_variant)
 
     def render_live(self, snap: GameSnapshot, now_local: datetime):
         self.clear((0, 0, 0))
-        if (self.cfg.render.live_layout or "stacked").lower() == "big-logos":
+        if (self.cfg.render_config.live_layout or "stacked").lower() == "big-logos":
             # Big-logos scene uses 20x20 target; override to banner variant
             draw_live_big(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant="banner")
         else:
-            draw_live(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant=self.cfg.render.logo_variant)
+            draw_live(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant=self.cfg.render_config.logo_variant)
 
     def render_final(self, snap: GameSnapshot, now_local: datetime):
         self.clear((0, 0, 0))
-        draw_final(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant=self.cfg.render.logo_variant)
+        draw_final(self._buffer, self._draw, snap, now_local, self._font_small, self._font_large, logo_variant=self.cfg.render_config.logo_variant)
 
     def flush(self):
         if self.sim or self._matrix is None:

@@ -8,8 +8,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Sequence
 from zoneinfo import ZoneInfo
 
-from src.config.multi_sport_types import MultiSportAppConfig
-from src.config.types import AppConfig, FavoriteTeam
+from src.config.supabase_config_loader import DeviceConfiguration, TeamInfo
 from src.model.game import GameSnapshot, GameState, TeamSide
 from src.model.sport_game import EnhancedGameSnapshot, GameTiming, SportTeam
 
@@ -44,7 +43,7 @@ def _fallback_identifier(name: str, default: str) -> str:
 
 def _favorite_to_team(
     league_code: str,
-    favorite: Optional[FavoriteTeam],
+    favorite: Optional[TeamInfo],
     default_name: str,
     default_id: str,
     default_abbr: str,
@@ -55,18 +54,15 @@ def _favorite_to_team(
             name=default_name,
             abbr=default_abbr,
             score=0,
-            league_code=league_code,  # Updated from sport
+            league_code=league_code,
         )
 
-    name = favorite.name or default_name
-    abbr = favorite.abbr or _fallback_identifier(name, default_abbr)
-    team_id = favorite.id or abbr
     return SportTeam(
-        id=str(team_id),
-        name=name,
-        abbr=abbr,
+        id=favorite.team_id,
+        name=favorite.name,
+        abbr=favorite.abbreviation,
         score=0,
-        league_code=league_code,  # Updated from sport
+        league_code=league_code,
     )
 
 
@@ -79,7 +75,7 @@ class LeagueDemoSimulator:
         self,
         league_code: str,
         tz: ZoneInfo,
-        favorites: Sequence[FavoriteTeam],
+        favorites: Sequence[TeamInfo],
         *,
         rng: Optional[random.Random] = None,
     ) -> None:
@@ -318,11 +314,9 @@ class DemoSimulator:
 
     def __init__(
         self,
-        multi_cfg: Optional[MultiSportAppConfig],
-        cfg: AppConfig,
+        cfg: DeviceConfiguration,
         options: Optional[DemoOptions] = None,
     ) -> None:
-        self.multi_cfg = multi_cfg
         self.cfg = cfg
         self.tz = cfg.tz or ZoneInfo(cfg.timezone)
         self.options = options or DemoOptions()
@@ -331,40 +325,34 @@ class DemoSimulator:
         self.simulators: Dict[str, LeagueDemoSimulator] = {}
         self.enabled_leagues: List[str] = []
 
-        if multi_cfg:
-            # Use multi-sport configuration
-            for sport_config in multi_cfg.sports:
-                league_code = sport_config.sport
-
-                # If forced leagues specified, only use those
-                if self.options.forced_leagues:
-                    if league_code not in self.options.forced_leagues:
-                        continue
-                # Otherwise respect the enabled flag
-                elif not sport_config.enabled:
-                    continue
-
-                self.enabled_leagues.append(league_code)
-                favorites = sport_config.teams
-
-                if league_code == "wnba":
-                    self.simulators[league_code] = WNBADemoSimulator(
-                        league_code, self.tz, favorites
-                    )
-                elif league_code == "nhl":
-                    self.simulators[league_code] = NHLDemoSimulator(
-                        league_code, self.tz, favorites
-                    )
-                elif league_code == "nba":
-                    self.simulators[league_code] = NBADemoSimulator(
-                        league_code, self.tz, favorites
-                    )
+        # Determine which leagues to simulate
+        # If forced leagues are specified, only simulate those (but they must be enabled)
+        if self.options.forced_leagues:
+            leagues_to_simulate = [
+                league for league in self.options.forced_leagues
+                if league in cfg.enabled_leagues
+            ]
+            if not leagues_to_simulate:
+                print(f"[warning] Forced leagues {self.options.forced_leagues} not in enabled leagues {cfg.enabled_leagues}")
         else:
-            # Fallback to single sport mode (WNBA)
-            self.enabled_leagues = ["wnba"]
-            self.simulators["wnba"] = WNBADemoSimulator(
-                "wnba", self.tz, cfg.favorites if hasattr(cfg, 'favorites') else []
-            )
+            leagues_to_simulate = cfg.enabled_leagues
+
+        for league_code in leagues_to_simulate:
+            self.enabled_leagues.append(league_code)
+            favorites = cfg.favorite_teams.get(league_code, [])
+
+            if league_code == "wnba":
+                self.simulators[league_code] = WNBADemoSimulator(
+                    league_code, self.tz, favorites
+                )
+            elif league_code == "nhl":
+                self.simulators[league_code] = NHLDemoSimulator(
+                    league_code, self.tz, favorites
+                )
+            elif league_code == "nba":
+                self.simulators[league_code] = NBADemoSimulator(
+                    league_code, self.tz, favorites
+                )
 
         self.current_league_index = 0
         self.last_rotation = datetime.now(self.tz)

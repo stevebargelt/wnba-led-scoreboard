@@ -4,7 +4,11 @@
   "private": true,
   "description": "WNBA LED Scoreboard System",
   "scripts": {
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "test": "npm run test:python && npm run test:web-admin",
+    "test:python": "python -m unittest discover tests -v",
+    "test:web-admin": "cd web-admin && npm run test -- --watchman=false --coverage",
+    "test:ci": "npm run test:python && cd web-admin && npm run test:ci"
   },
   "workspaces": [
     "web-admin"

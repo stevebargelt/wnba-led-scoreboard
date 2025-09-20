@@ -15,7 +15,7 @@
 
 ## 📋 Overview
 
-Display **live sports scores** on RGB LED matrices for multiple professional leagues. The system uses **direct Supabase integration** where the Python app polls configuration from the database - no agents or WebSockets required.
+Display **live sports scores** on RGB LED matrices for multiple professional leagues. The system uses **direct Supabase integration** with secure database functions - no agents or WebSockets required.
 
 ### 🎯 Core Features
 - 🏀 **Multi-League Support** - WNBA, NHL, NBA, MLB, NFL
@@ -47,22 +47,28 @@ Display **live sports scores** on RGB LED matrices for multiple professional lea
 ### Step 1: Supabase Setup
 
 1. Create a project at [supabase.com](https://supabase.com)
-2. In SQL Editor, run these 3 migrations in order:
+2. In SQL Editor, run these migrations in order:
    ```sql
    -- 1. Copy contents of supabase/migrations/001_complete_schema.sql
    -- 2. Copy contents of supabase/migrations/002_rls_policies.sql
    -- 3. Copy contents of supabase/migrations/003_seed_data.sql
+   -- 4. Copy contents of supabase/migrations/004_device_config_functions_fixed.sql
    ```
 
-3. Create your device:
+3. Create your device via the web admin (see Step 3 below) or manually:
    ```sql
-   -- Get your user ID
+   -- Get your user ID (requires authentication)
    SELECT id, email FROM auth.users;
 
    -- Create device
    INSERT INTO devices (name, user_id)
    VALUES ('Living Room Display', 'your-user-id')
    RETURNING id;  -- Save this device ID
+
+   -- Enable leagues for your device
+   INSERT INTO device_leagues (device_id, league_id, enabled, priority)
+   SELECT 'your-device-id', id, true, ROW_NUMBER() OVER (ORDER BY code)
+   FROM leagues WHERE code IN ('wnba', 'nhl');
    ```
 
 ### Step 2: Python App Setup
@@ -76,6 +82,7 @@ cd wnba-led-scoreboard
 cat > .env << EOF
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 DEVICE_ID=your-device-id-from-step-1
 EOF
 
@@ -84,9 +91,10 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Fetch team assets
+# Fetch team assets and populate database
 python scripts/fetch_wnba_assets.py
 python scripts/fetch_nhl_assets.py
+# These scripts now also populate the league_teams table in Supabase
 
 # Test in simulation mode
 python app.py --sim --once
@@ -103,6 +111,7 @@ cat > .env << EOF
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+ADMIN_EMAILS=your-email@example.com
 EOF
 
 # Install and run
@@ -254,14 +263,14 @@ pm2 start npm --name scoreboard-admin -- start
 ## 🔍 Testing
 
 ```bash
-# Test Supabase connection
-python test_supabase_integration.py
+# Test database connection and configuration
+python -c "from src.config.supabase_config_loader import *; from supabase import create_client; import os; client = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_ANON_KEY')); loader = SupabaseConfigLoader(os.getenv('DEVICE_ID'), client); print('Config loaded:', loader.load_full_config().device_id)"
 
 # Run in demo mode
-python app.py --demo
+python app.py --demo --sim
 
-# Run web admin tests
-cd web-admin && npm test
+# Run all tests
+npm test
 ```
 
 ---
@@ -272,34 +281,57 @@ cd web-admin && npm test
 
 ```bash
 # Check environment variables
-python -c "import os; print(os.getenv('DEVICE_ID'))"
+python -c "import os; print('DEVICE_ID:', os.getenv('DEVICE_ID')); print('SUPABASE_URL:', os.getenv('SUPABASE_URL')[:30] if os.getenv('SUPABASE_URL') else None)"
 
-# Test Supabase connection
-python test_supabase_integration.py
+# Test database function access
+python -c "from src.config.supabase_config_loader import *; from supabase import create_client; import os; client = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_ANON_KEY')); loader = SupabaseConfigLoader(os.getenv('DEVICE_ID'), client); config = loader.load_full_config(); print('✅ Config loaded:', config.device_id, 'Leagues:', config.enabled_leagues)"
 
 # Enable debug logging
-PYTHONPATH=. python app.py --sim 2>&1 | tee debug.log
+python app.py --sim --demo --once 2>&1 | tee debug.log
 ```
 
 ### Web Admin Issues
 
 ```bash
 # Check browser console for errors
-# Verify .env file exists
-# Ensure SUPABASE_SERVICE_ROLE_KEY is set
+# Verify .env file exists in web-admin/
+# Ensure SUPABASE_SERVICE_ROLE_KEY and ADMIN_EMAILS are set
+cd web-admin && npm run type-check
+```
+
+### Missing Team Names in Demo Mode
+
+```bash
+# Populate team data in database
+python scripts/fetch_wnba_assets.py
+python scripts/fetch_nhl_assets.py
+
+# Verify teams were populated
+python -c "from supabase import create_client; import os; client = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_ANON_KEY')); result = client.table('league_teams').select('team_id,name,abbreviation').limit(5).execute(); print('Sample teams:', result.data)"
 ```
 
 ### Database Issues
 
 ```sql
--- Check device ownership
+-- Test the database function (most important)
+SELECT get_device_configuration('your-device-id');
+
+-- Check if device exists and is owned by current user
 SELECT * FROM devices WHERE id = 'your-device-id';
 
--- Verify leagues exist
+-- Verify leagues and teams are populated
 SELECT code, name FROM leagues;
+SELECT COUNT(*) as team_count, l.code as league
+FROM league_teams lt
+JOIN leagues l ON l.id = lt.league_id
+GROUP BY l.code;
 
--- Check RLS policies
-SELECT tablename, policyname FROM pg_policies;
+-- Check device league configuration
+SELECT dl.enabled, l.code, l.name, dl.priority
+FROM device_leagues dl
+JOIN leagues l ON l.id = dl.league_id
+WHERE dl.device_id = 'your-device-id'
+ORDER BY dl.priority;
 ```
 
 ---
@@ -311,6 +343,7 @@ SELECT tablename, policyname FROM pg_policies;
 ├── app.py                    # Main scoreboard application
 ├── src/
 │   ├── config/              # Configuration management
+│   │   └── supabase_config_loader.py # Database function calls
 │   ├── sports/              # Sports/leagues architecture
 │   │   ├── leagues/         # League-specific clients
 │   │   └── league_aggregator.py # Multi-league orchestration
@@ -318,12 +351,15 @@ SELECT tablename, policyname FROM pg_policies;
 ├── web-admin/               # Next.js admin interface
 │   ├── src/
 │   │   ├── components/      # React components
-│   │   └── pages/          # Next.js pages
+│   │   └── pages/          # Next.js pages and API routes
 │   └── package.json
 ├── supabase/
-│   └── migrations/         # Database setup (3 files)
+│   └── migrations/         # Database setup (4 files)
+├── scripts/                 # Asset fetching + DB population
+│   ├── fetch_wnba_assets.py # Downloads logos + populates teams
+│   └── fetch_nhl_assets.py  # Downloads logos + populates teams
 ├── assets/                 # Team logos and colors
-└── config/                 # Local configuration
+└── tests/                  # Python unit tests
 ```
 
 ---
@@ -333,7 +369,7 @@ SELECT tablename, policyname FROM pg_policies;
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Run tests: `python -m pytest` and `cd web-admin && npm test`
+4. Run tests: `npm test` (runs both Python and web-admin tests with coverage)
 5. Submit a pull request
 
 ---
