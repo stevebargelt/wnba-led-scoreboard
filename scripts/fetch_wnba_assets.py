@@ -3,10 +3,11 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import requests
 from PIL import Image
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 ASSETS_DIR = BASE_DIR / "assets"
@@ -75,6 +76,60 @@ def make_variant(src: Path, dest: Path, height: int, max_w: int):
         out.save(dest)
 
 
+def populate_supabase(teams_data: List[Dict[str, Any]]) -> bool:
+    """Populate league_teams table in Supabase if credentials are available."""
+    try:
+        from supabase import create_client
+
+        # Load environment variables
+        load_dotenv()
+        supabase_url = os.getenv("SUPABASE_URL")
+        # Use service role key for admin operations (bypasses RLS)
+        supabase_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
+        if not supabase_url or not supabase_key:
+            print("[info] Supabase credentials not found, skipping database update")
+            return False
+
+        client = create_client(supabase_url, supabase_key)
+
+        # Get WNBA league ID
+        league_result = client.table('leagues').select('id').eq('code', 'wnba').single().execute()
+        if not league_result.data:
+            print("[warn] WNBA league not found in database")
+            return False
+
+        wnba_league_id = league_result.data['id']
+
+        # Prepare teams data for insertion
+        league_teams = []
+        for team in teams_data:
+            league_teams.append({
+                'league_id': wnba_league_id,
+                'team_id': team['id'],
+                'name': team['name'],
+                'abbreviation': team['abbr']
+            })
+
+        # Upsert teams (insert or update)
+        if league_teams:
+            result = client.table('league_teams').upsert(
+                league_teams,
+                on_conflict='league_id,team_id'
+            ).execute()
+            print(f"[info] Updated {len(league_teams)} WNBA teams in database")
+            return True
+
+    except ImportError:
+        print("[info] Supabase library not installed, skipping database update")
+        return False
+    except Exception as e:
+        print(f"[warn] Failed to update Supabase: {e}")
+        return False
+
+    return False
+
+
 def main():
     teams = fetch_teams()
     entries: List[Dict[str, Any]] = []
@@ -110,6 +165,9 @@ def main():
     with open(WNBA_TEAMS_FILE, "w", encoding="utf-8") as f:
         json.dump({"teams": entries}, f, indent=2)
     print(f"Wrote {WNBA_TEAMS_FILE} and logos in {LOGOS_DIR}")
+
+    # Populate Supabase if credentials available
+    populate_supabase(entries)
 
 
 if __name__ == "__main__":
