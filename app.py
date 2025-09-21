@@ -222,7 +222,6 @@ def main():
             # Check for config refresh from Supabase
             if config_loader and (config_loader.should_refresh(60) or RELOAD_REQUESTED):
                 try:
-                    RELOAD_REQUESTED = False
                     # Reload from Supabase
                     new_device_config = config_loader.load_full_config()
 
@@ -257,10 +256,14 @@ def main():
 
                     refresh_manager = AdaptiveRefreshManager(device_config.refresh_config)
                     config_loader.update_heartbeat()
+
+                    # Only clear the reload flag after successful completion
+                    RELOAD_REQUESTED = False
                     print(f"[info] Configuration refreshed from Supabase")
 
                 except Exception as e:
                     print(f"[warn] Config refresh failed: {e}")
+                    # Note: RELOAD_REQUESTED stays True so we'll retry next iteration
 
             if args.once:
                 break
