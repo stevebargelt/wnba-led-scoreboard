@@ -1,0 +1,38 @@
+{
+  "default": {
+    "font": "04B_24__.TTF",
+    "size": 8
+  },
+  "period": {
+    "font": "04B_24__.TTF",
+    "size": 8
+  },
+  "clock": {
+    "font": "04B_24__.TTF",
+    "size": 8
+  },
+  "score": {
+    "font": "score_large.otf",
+    "size": 16
+  },
+  "score_large": {
+    "font": "score_large.otf",
+    "size": 20
+  },
+  "team_name": {
+    "font": "04B_03B_.TTF",
+    "size": 8
+  },
+  "small": {
+    "font": "04B_03B_.TTF",
+    "size": 6
+  },
+  "medium": {
+    "font": "score_large.otf",
+    "size": 16
+  },
+  "large": {
+    "font": "04B_24__.TTF",
+    "size": 24
+  }
+}

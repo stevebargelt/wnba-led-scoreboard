@@ -7,41 +7,11 @@ on each side and centered period/score information.
 
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
-import os
-from typing import Optional, Tuple
+from typing import Optional
 
 from src.model.game import GameSnapshot
 from src.assets import logos
-
-
-def load_pixel_fonts() -> Tuple[ImageFont.FreeTypeFont, ImageFont.FreeTypeFont, ImageFont.FreeTypeFont]:
-    """
-    Load pixel-perfect fonts for LED display.
-
-    Returns:
-        Tuple of (small_font, medium_font, large_font)
-    """
-    font_dir = "assets/fonts/pixel"
-
-    try:
-        # Try to load the pixel fonts we downloaded
-        small_font = ImageFont.truetype(os.path.join(font_dir, "04B_03B_.TTF"), size=8)
-        medium_font = ImageFont.truetype(os.path.join(font_dir, "score_large.otf"), size=16)
-        large_font = ImageFont.truetype(os.path.join(font_dir, "score_large.otf"), size=20)
-    except Exception as e:
-        print(f"[NHL] Failed to load pixel fonts: {e}, falling back to default")
-        try:
-            # Fallback to system fonts
-            small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size=8)
-            medium_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size=14)
-            large_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", size=18)
-        except:
-            # Last resort: use default font
-            small_font = ImageFont.load_default()
-            medium_font = ImageFont.load_default()
-            large_font = ImageFont.load_default()
-
-    return small_font, medium_font, large_font
+from src.render.fonts import get_font_manager
 
 
 def draw_nhl_large_logo(
@@ -65,20 +35,17 @@ def draw_nhl_large_logo(
         draw: ImageDraw instance
         snapshot: Current game snapshot
         now_local: Current local time
-        font_small: Small font (optional, will load pixel fonts if not provided)
-        font_large: Large font (optional, will load pixel fonts if not provided)
+        font_small: Small font (optional, will load from font manager if not provided)
+        font_large: Large font (optional, will load from font manager if not provided)
     """
     width = buffer.width
     height = buffer.height
 
-    # Load pixel fonts if not provided
-    if font_small is None or font_large is None:
-        pixel_small, pixel_medium, pixel_large = load_pixel_fonts()
-        font_small = font_small or pixel_small
-        font_large = font_large or pixel_medium  # Use medium for scores
-        font_period = pixel_small  # Smaller font for period
-    else:
-        font_period = font_small
+    # Use font manager to get appropriate fonts
+    font_mgr = get_font_manager()
+    font_period = font_mgr.get_period_font()  # 04B_24__.TTF at size 8
+    font_clock = font_mgr.get_clock_font()    # 04B_24__.TTF at size 8
+    font_score = font_mgr.get_score_font()    # score_large.otf at size 16
 
     # Clear the buffer with black background
     draw.rectangle([(0, 0), (width - 1, height - 1)], fill=(0, 0, 0))
@@ -89,17 +56,21 @@ def draw_nhl_large_logo(
         logo_size = 24
         logo_y_offset = 4
         period_y = 2
-        score_y = 12
-        score_font = font_large
+        clock_y = 10  # Clock right under period
+        score_y = 20  # Score below clock
     else:  # 128x64 or larger
         logo_size = 48
         logo_y_offset = 8
         period_y = 4
-        score_y = 24
-        score_font = pixel_large if 'pixel_large' in locals() else font_large
+        clock_y = 20  # Clock right under period
+        score_y = 36  # Score below clock
+        # Use larger score font for bigger displays
+        font_score = font_mgr.get_font("score_large")
 
     # Calculate logo positions
-    logo_spacing = 8  # Space between logo and edge
+    # Position logos to significantly overlap edges for better visual effect
+    # Negative values will clip the logos at the edges
+    logo_spacing = -6 if width <= 64 else -4  # More dramatic overlap
     away_logo_x = logo_spacing
     home_logo_x = width - logo_size - logo_spacing
 
@@ -140,28 +111,26 @@ def draw_nhl_large_logo(
         text_x = center_x - (text_width // 2)
         draw.text((text_x, period_y), period_text, fill=(255, 255, 255), font=font_period)
 
-    # Draw scores below period
+    # Draw game clock right under period if available and game is live
+    if snapshot.display_clock and str(snapshot.state) == 'GameState.LIVE':
+        clock_text = snapshot.display_clock
+        bbox = draw.textbbox((0, 0), clock_text, font=font_clock)
+        text_width = bbox[2] - bbox[0]
+        text_x = center_x - (text_width // 2)
+        draw.text((text_x, clock_y), clock_text, fill=(200, 200, 200), font=font_clock)
+
+    # Draw scores at the bottom
     away_score = str(snapshot.away.score)
     home_score = str(snapshot.home.score)
     score_text = f"{away_score} - {home_score}"
 
     # Center the score text
-    bbox = draw.textbbox((0, 0), score_text, font=score_font)
+    bbox = draw.textbbox((0, 0), score_text, font=font_score)
     text_width = bbox[2] - bbox[0]
     text_x = center_x - (text_width // 2)
 
     # Use team colors for scores if available, otherwise white
-    draw.text((text_x, score_y), score_text, fill=(255, 255, 255), font=score_font)
-
-    # Draw game clock if available and game is live
-    if snapshot.display_clock and str(snapshot.state) == 'GameState.LIVE':
-        clock_text = snapshot.display_clock
-        # Draw clock below the score
-        clock_y = score_y + 10 if height == 32 else score_y + 20
-        bbox = draw.textbbox((0, 0), clock_text, font=font_period)
-        text_width = bbox[2] - bbox[0]
-        text_x = center_x - (text_width // 2)
-        draw.text((text_x, clock_y), clock_text, fill=(200, 200, 200), font=font_period)
+    draw.text((text_x, score_y), score_text, fill=(255, 255, 255), font=font_score)
 
     # Add power play indicator if applicable (future enhancement)
     # _draw_power_play_indicator(draw, snapshot, width, height)

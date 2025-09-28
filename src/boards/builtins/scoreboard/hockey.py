@@ -12,7 +12,8 @@ from src.render.scenes.pregame import draw_pregame
 from src.render.scenes.live import draw_live
 from src.render.scenes.final import draw_final
 from src.render.scenes.live_big import draw_live_big
-from src.render.scenes.nhl_large_logo import draw_nhl_large_logo, load_pixel_fonts
+from src.render.scenes.nhl_large_logo import draw_nhl_large_logo
+from src.render.fonts import get_font_manager
 
 
 class HockeyScoreboardBoard(BaseScoreboardBoard):
@@ -28,12 +29,12 @@ class HockeyScoreboardBoard(BaseScoreboardBoard):
         self._load_fonts()
 
     def _load_fonts(self):
-        """Load fonts for rendering - now uses pixel fonts for better LED readability."""
-        # Load pixel-perfect fonts for LED displays
-        pixel_small, pixel_medium, pixel_large = load_pixel_fonts()
-        self._font_small = pixel_small
-        self._font_large = pixel_medium  # Use medium for most text
-        self._font_score = pixel_large  # Large font specifically for scores
+        """Load fonts for rendering - uses font manager for consistency."""
+        # Use font manager for consistent font loading
+        font_mgr = get_font_manager()
+        self._font_small = font_mgr.get_default_font()
+        self._font_large = font_mgr.get_score_font()
+        self._font_score = font_mgr.get_font("score_large")
 
     def _render_pregame(self,
                         buffer: Image.Image,
