@@ -42,11 +42,10 @@ def fetch_nhl_teams_data() -> tuple[List[Dict], bool]:
     if not teams_data:
         print("❌ Failed to fetch NHL teams data")
         return [], True
-    
+
     print(f"✅ Fetched {len(teams_data)} NHL teams")
-    if client.used_static_fallback:
-        print("⚠️ Using bundled fallback data (network unavailable)")
-    return teams_data, client.used_static_fallback
+    # NHLClient doesn't have used_static_fallback attribute
+    return teams_data, False
 
 
 def _normalize_url(url: Optional[str]) -> Optional[str]:
@@ -193,10 +192,10 @@ def create_logo_variants(original_path: Path, team_key: str) -> None:
 
 # Current NHL teams (32 active franchises as of 2024-25 season)
 CURRENT_NHL_TEAMS = {
-    "ANA", "ARI", "BOS", "BUF", "CAR", "CBJ", "CGY", "CHI", "COL", "DAL",
+    "ANA", "BOS", "BUF", "CAR", "CBJ", "CGY", "CHI", "COL", "DAL",
     "DET", "EDM", "FLA", "LAK", "MIN", "MTL", "NJD", "NSH", "NYI", "NYR",
     "OTT", "PHI", "PIT", "SEA", "SJS", "STL", "TBL", "TOR", "VAN", "VGK",
-    "WPG", "WSH", "UTA"  # Utah Hockey Club (replaced Arizona Coyotes)
+    "WPG", "WSH", "UTA"  # Utah Hockey Club (replaced Arizona Coyotes in 2024)
 }
 
 
@@ -226,26 +225,33 @@ def populate_supabase(teams_data: List[Dict[str, Any]]) -> bool:
         nhl_league_id = league_result.data['id']
 
         # Prepare teams data for insertion
-        league_teams = []
+        # Use a dict to avoid duplicates by abbreviation, preferring lower IDs (actual NHL teams)
+        teams_by_abbr = {}
         for team in teams_data:
             # Only add current teams (those with abbreviations in CURRENT_NHL_TEAMS)
             abbr = str(team.get('abbreviation', '')).upper()
             if abbr in CURRENT_NHL_TEAMS:
-                league_teams.append({
-                    'league_id': nhl_league_id,
-                    'team_id': str(team.get('id') or team.get('teamId', '')),
-                    'name': team.get('name', ''),
-                    'abbreviation': abbr,
-                    'conference': team.get('conference', ''),
-                    'division': team.get('division', '')
-                })
+                team_id = str(team.get('id') or team.get('teamId', ''))
+                # For duplicate abbreviations, prefer the team with lower ID (actual NHL team)
+                # Utah Hockey Club (59) should be preferred over Utah Mammoth (68)
+                if abbr not in teams_by_abbr or int(team_id) < int(teams_by_abbr[abbr]['team_id']):
+                    teams_by_abbr[abbr] = {
+                        'league_id': nhl_league_id,
+                        'team_id': team_id,
+                        'name': team.get('name', ''),
+                        'abbreviation': abbr,
+                        'conference': team.get('conference', ''),
+                        'division': team.get('division', '')
+                    }
 
-        # Upsert teams (insert or update)
+        league_teams = list(teams_by_abbr.values())
+
+        # Clear existing NHL teams first to avoid duplicates
+        client.table('league_teams').delete().eq('league_id', nhl_league_id).execute()
+
+        # Insert fresh team data
         if league_teams:
-            result = client.table('league_teams').upsert(
-                league_teams,
-                on_conflict='league_id,team_id'
-            ).execute()
+            result = client.table('league_teams').insert(league_teams).execute()
             print(f"✅ Updated {len(league_teams)} NHL teams in database")
             return True
 
