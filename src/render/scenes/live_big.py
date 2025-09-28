@@ -29,12 +29,8 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
     w, h = img.size
 
     # 1) Status line (period + clock) at very top
-    # Use status_detail if available (contains proper period name like P1, Q1, OT, etc.)
-    if hasattr(snap, 'status_detail') and snap.status_detail:
-        period_label = snap.status_detail
-    else:
-        # Fall back to generic Q{period} format
-        period_label = "PRE" if snap.period <= 0 else ("OT" if snap.period > 4 else f"Q{snap.period}")
+    # Use period_name from unified model
+    period_label = snap.period_name
     clock = (snap.display_clock or "").strip()
     status = f"{period_label} {clock}".strip()
     sth = 0
@@ -61,11 +57,10 @@ def draw_live_big(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapsho
     # 3) Paste logos (fit to computed height)
     left_x = 1
     home_x = left_x
-    away_sport = infer_team_sport(snap, snap.away)
-    home_sport = infer_team_sport(snap, snap.home)
+    sport_code = snap.sport.code
 
-    alogo = get_logo(snap.away.id, snap.away.abbr, sport=away_sport, variant=logo_variant or "banner")
-    hlogo = get_logo(snap.home.id, snap.home.abbr, sport=home_sport, variant=logo_variant or "banner")
+    alogo = get_logo(snap.away.id, snap.away.abbr, sport=sport_code, variant=logo_variant or "banner")
+    hlogo = get_logo(snap.home.id, snap.home.abbr, sport=sport_code, variant=logo_variant or "banner")
 
     if hlogo:
         hlogo = _fit_logo(hlogo, 20, logo_h)

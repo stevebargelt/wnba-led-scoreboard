@@ -14,11 +14,10 @@ def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot
     # Top row: logos + VS
     w, h = img.size
     top_y = 2
-    away_sport = infer_team_sport(snap, snap.away)
-    home_sport = infer_team_sport(snap, snap.home)
+    sport_code = snap.sport.code
 
-    alogo = get_logo(snap.away.id, snap.away.abbr, sport=away_sport, variant=logo_variant or "mini")
-    hlogo = get_logo(snap.home.id, snap.home.abbr, sport=home_sport, variant=logo_variant or "mini")
+    alogo = get_logo(snap.away.id, snap.away.abbr, sport=sport_code, variant=logo_variant or "mini")
+    hlogo = get_logo(snap.home.id, snap.home.abbr, sport=sport_code, variant=logo_variant or "mini")
     if alogo:
         img.paste(alogo, (2, top_y), alogo)
     if hlogo:
@@ -41,14 +40,8 @@ def draw_pregame(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot
     draw.text(((w - tw) // 2, (h - th) // 2), ctext, fill=(255, 200, 0), font=font_large)
 
     # Bottom: start time local with sport-appropriate terminology
-    # Determine sport for appropriate terminology
-    sport = infer_team_sport(snap, snap.home) or infer_team_sport(snap, snap.away)
-
-    # Use "Drop" for NHL, "Tip" for basketball sports
-    if sport == "nhl":
-        start_term = "Drop"
-    else:
-        start_term = "Tip"
+    # Use sport terminology from config
+    start_term = snap.sport.terminology.game_start_term
 
     start_time = snap.start_time_local.strftime(f"{start_term} %I:%M %p").lstrip('0')
     draw.text((1, h - 9), start_time, fill=(150, 150, 150), font=font_small)

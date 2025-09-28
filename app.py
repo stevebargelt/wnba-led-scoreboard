@@ -11,7 +11,6 @@ from src.config.supabase_config_loader import SupabaseConfigLoader, DeviceConfig
 from src.config.types import MatrixConfig, RefreshConfig, RenderConfig
 from zoneinfo import ZoneInfo
 from src.model.game import GameSnapshot, GameState
-from src.model.sport_game import EnhancedGameSnapshot
 from typing import Optional
 from src.sports.league_aggregator import LeagueAggregator
 from src.sports.supabase_loader import SupabaseSportsLoader
@@ -167,31 +166,17 @@ def main():
                         for league_code, teams in device_config.favorite_teams.items():
                             favorite_teams[league_code] = [team.team_id for team in teams]
 
-                    league_game = aggregator.get_featured_game(
+                    snapshot = aggregator.get_featured_game(
                         now_local.date(),
                         now_local,
                         favorite_teams,
                     )
 
-                    if league_game:
-                        # Convert LeagueGameSnapshot to GameSnapshot for renderer
-                        snapshot = GameSnapshot(
-                            event_id=league_game.event_id,
-                            start_time_local=league_game.start_time_local,
-                            state=league_game.state,
-                            home=league_game.home,
-                            away=league_game.away,
-                            status_detail=league_game.status_detail,
-                            period=league_game.current_period,
-                            display_clock=league_game.display_clock,
-                            seconds_to_start=league_game.seconds_to_start,
-                        )
+                    if snapshot:
                         print(
-                            f"[info] Selected {league_game.league.name} game: "
-                            f"{league_game.away.abbr} @ {league_game.home.abbr}"
+                            f"[info] Selected {snapshot.league.name} game: "
+                            f"{snapshot.away.abbr} @ {snapshot.home.abbr}"
                         )
-                    else:
-                        snapshot = None
 
                     refresh_manager.record_request_success()
 

@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 
 from src.config.supabase_config_loader import DeviceConfiguration, TeamInfo
 from src.model.game import GameSnapshot, GameState, TeamSide
-from src.model.sport_game import EnhancedGameSnapshot, GameTiming, SportTeam
+from src.sports.registry import registry
 
 DEFAULT_ROTATION_SECONDS = 120
 DEFAULT_PREGAME_SECONDS = 10
@@ -47,22 +47,20 @@ def _favorite_to_team(
     default_name: str,
     default_id: str,
     default_abbr: str,
-) -> SportTeam:
+) -> TeamSide:
     if favorite is None:
-        return SportTeam(
+        return TeamSide(
             id=default_id,
             name=default_name,
             abbr=default_abbr,
             score=0,
-            league_code=league_code,
         )
 
-    return SportTeam(
+    return TeamSide(
         id=favorite.team_id,
         name=favorite.name,
         abbr=favorite.abbreviation,
         score=0,
-        league_code=league_code,
     )
 
 
@@ -83,8 +81,11 @@ class LeagueDemoSimulator:
         self.tz = tz
         self._favorites = list(favorites)
         self.rng = rng or random.Random()
-        self._home: SportTeam
-        self._away: SportTeam
+        self._home: TeamSide
+        self._away: TeamSide
+        # Get sport and league configs from registry
+        self.league_config = registry.get_league(league_code)
+        self.sport_config = registry.get_sport(self.league_config.sport_code) if self.league_config else None
         self._start_time: datetime
         self._next_score_time: datetime
         self._final_label: str = "Final"
@@ -124,7 +125,7 @@ class LeagueDemoSimulator:
         """Get current game snapshot."""
         return self._build_snapshot(now_local)
 
-    def _build_snapshot(self, now_local: datetime) -> Optional[EnhancedGameSnapshot]:
+    def _build_snapshot(self, now_local: datetime) -> Optional[GameSnapshot]:
         """Build snapshot - override in subclasses."""
         raise NotImplementedError
 
@@ -143,7 +144,7 @@ class WNBADemoSimulator(LeagueDemoSimulator):
     def _reset_internal(self, now_local: datetime) -> None:
         self._schedule_next_score(self._start_time)
 
-    def _build_snapshot(self, now_local: datetime) -> Optional[EnhancedGameSnapshot]:
+    def _build_snapshot(self, now_local: datetime) -> Optional[GameSnapshot]:
         if now_local < self._start_time:
             seconds_to_start = int((self._start_time - now_local).total_seconds())
             return self._make_snapshot(
@@ -193,27 +194,27 @@ class WNBADemoSimulator(LeagueDemoSimulator):
         display_clock: str,
         period_name: str,
         is_overtime: bool,
-    ) -> EnhancedGameSnapshot:
-        timing = GameTiming(
-            current_period=period,
-            period_name=period_name,
-            period_max=self.period_count,
-            display_clock=display_clock,
-            clock_running=state == GameState.LIVE,
-            is_intermission=False,
-            is_overtime=is_overtime,
-            is_shootout=False,
-        )
-        return EnhancedGameSnapshot(
-            league_code=self.league_code,  # Updated from sport
+    ) -> GameSnapshot:
+        if not self.sport_config or not self.league_config:
+            raise ValueError(f"Sport/league config not found for {self.league_code}")
+
+        return GameSnapshot(
+            sport=self.sport_config,
+            league=self.league_config,
             event_id=f"{self.league_code}-demo",
             start_time_local=self._start_time,
             state=state,
             home=self._home,
             away=self._away,
-            timing=timing,
+            current_period=period,
+            period_name=period_name,
+            display_clock=display_clock,
             seconds_to_start=seconds_to_start,
             status_detail=period_name if state != GameState.FINAL else self._final_label,
+            sport_specific_data={
+                "is_overtime": is_overtime,
+                "is_demo": True,
+            },
         )
 
 
@@ -227,7 +228,7 @@ class NHLDemoSimulator(LeagueDemoSimulator):
         # Hockey scores less frequently
         self._schedule_next_score(self._start_time, minimum=45, maximum=120)
 
-    def _build_snapshot(self, now_local: datetime) -> Optional[EnhancedGameSnapshot]:
+    def _build_snapshot(self, now_local: datetime) -> Optional[GameSnapshot]:
         if now_local < self._start_time:
             seconds_to_start = int((self._start_time - now_local).total_seconds())
             return self._make_snapshot(
@@ -277,27 +278,27 @@ class NHLDemoSimulator(LeagueDemoSimulator):
         display_clock: str,
         period_name: str,
         is_overtime: bool,
-    ) -> EnhancedGameSnapshot:
-        timing = GameTiming(
-            current_period=period,
-            period_name=period_name,
-            period_max=self.period_count,
-            display_clock=display_clock,
-            clock_running=state == GameState.LIVE,
-            is_intermission=False,
-            is_overtime=is_overtime,
-            is_shootout=False,
-        )
-        return EnhancedGameSnapshot(
-            league_code=self.league_code,  # Updated from sport
+    ) -> GameSnapshot:
+        if not self.sport_config or not self.league_config:
+            raise ValueError(f"Sport/league config not found for {self.league_code}")
+
+        return GameSnapshot(
+            sport=self.sport_config,
+            league=self.league_config,
             event_id=f"{self.league_code}-demo",
             start_time_local=self._start_time,
             state=state,
             home=self._home,
             away=self._away,
-            timing=timing,
+            current_period=period,
+            period_name=period_name,
+            display_clock=display_clock,
             seconds_to_start=seconds_to_start,
             status_detail=period_name if state != GameState.FINAL else self._final_label,
+            sport_specific_data={
+                "is_overtime": is_overtime,
+                "is_demo": True,
+            },
         )
 
 

@@ -1,20 +1,20 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from src.model.game import GameSnapshot
 
 
-def infer_team_sport(snapshot: Any, team: Any) -> Optional[str]:
-    """Best-effort sport/league lookup for legacy and enhanced snapshots."""
+def get_sport_code(snap: GameSnapshot) -> str:
+    """Get sport code from snapshot."""
+    return snap.sport.code
 
-    for source in (team, snapshot):
-        if not source:
-            continue
-        for attr in ("league_code", "sport", "sport_type"):
-            value = getattr(source, attr, None)
-            if value is None:
-                continue
-            # Return string league codes directly
-            if isinstance(value, str):
-                return value.lower()
-    return None
+
+def get_league_code(snap: GameSnapshot) -> str:
+    """Get league code from snapshot."""
+    return snap.league.code
+
+
+def infer_team_sport(snapshot: GameSnapshot, team: Any) -> str:
+    """Get sport code from unified model (for backward compatibility)."""
+    # Now we always have sport/league in the snapshot
+    return snapshot.sport.code
 
