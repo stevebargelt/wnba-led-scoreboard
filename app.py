@@ -162,9 +162,10 @@ def main():
                     # Build favorite teams dictionary for aggregator
                     favorite_teams = {}
                     if device_config:
-                        # Convert TeamInfo objects to team IDs for aggregator
+                        # Convert TeamInfo objects to abbreviations for aggregator
+                        # Use abbreviations as they're more reliable for matching
                         for league_code, teams in device_config.favorite_teams.items():
-                            favorite_teams[league_code] = [team.team_id for team in teams]
+                            favorite_teams[league_code] = [team.abbreviation for team in teams]
 
                     snapshot = aggregator.get_featured_game(
                         now_local.date(),
