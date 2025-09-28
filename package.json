@@ -1,29 +1,40 @@
 {
   "name": "wnba-led-scoreboard",
   "version": "1.0.0",
+  "description": "Multi-league LED scoreboard with web admin",
   "private": true,
-  "description": "WNBA LED Scoreboard System",
   "scripts": {
-    "prepare": "husky install",
-    "test": "npm run test:python && npm run test:web-admin",
-    "test:python": "python -m unittest discover tests -v",
-    "test:web-admin": "cd web-admin && npm run test -- --watchman=false --coverage",
-    "test:ci": "npm run test:python && cd web-admin && npm run test:ci"
+    "test": "npm run test:python && npm run test:web",
+    "test:python": "python -m coverage run -m unittest discover tests -q && python -m coverage report",
+    "test:web": "cd web-admin && npm test",
+    "test:coverage": "npm run test:python && npm run test:web:coverage",
+    "test:web:coverage": "cd web-admin && npm run test:coverage",
+    "test:all": "npm run test:python && cd web-admin && npm run test:ci",
+    "test:watch": "cd web-admin && npm run test:watch",
+    "lint": "cd web-admin && npm run lint",
+    "lint:fix": "cd web-admin && npm run lint:fix",
+    "format": "cd web-admin && npm run format",
+    "dev": "cd web-admin && npm run dev",
+    "build": "cd web-admin && npm run build",
+    "install:all": "pip install -r requirements.txt && pip install coverage && cd web-admin && npm ci",
+    "clean": "make clean && cd web-admin && rm -rf .next node_modules"
   },
-  "workspaces": [
-    "web-admin"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stevebargelt/wnba-led-scoreboard.git"
+  },
+  "keywords": [
+    "led",
+    "scoreboard",
+    "sports",
+    "wnba",
+    "nhl",
+    "raspberry-pi"
   ],
-  "devDependencies": {
-    "husky": "^9.1.7",
-    "lint-staged": "^16.1.6"
+  "author": "Steve Bargelt",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/stevebargelt/wnba-led-scoreboard/issues"
   },
-  "lint-staged": {
-    "web-admin/src/**/*.{ts,tsx,js,jsx}": [
-      "cd web-admin && npm run lint:fix",
-      "cd web-admin && npm run format"
-    ],
-    "web-admin/src/**/*.{ts,tsx,js,jsx,json,css,md}": [
-      "cd web-admin && npm run format"
-    ]
-  }
+  "homepage": "https://github.com/stevebargelt/wnba-led-scoreboard#readme"
 }
