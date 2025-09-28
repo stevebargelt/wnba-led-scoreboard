@@ -12,6 +12,8 @@ from PIL import Image, ImageDraw
 
 from src.boards.base import BoardBase
 from src.boards.builtins.scoreboard import ScoreboardFactory
+from src.boards.builtins.clock import ClockBoard
+from src.boards.state import StateManager, BoardState
 from src.config.supabase_config_loader import DeviceConfiguration
 
 
@@ -31,6 +33,9 @@ class BoardManager:
         self.board_history: List[str] = []
         self.interrupts: Queue = Queue()
         self._last_context: Optional[Dict[str, Any]] = None
+
+        # Initialize state manager
+        self.state_manager = StateManager()
 
         # Load all boards
         self._load_builtin_boards()
@@ -71,8 +76,20 @@ class BoardManager:
             'generic', generic_config
         )
 
-        # Future: Load other built-in boards (Clock, Standings, etc.)
-        # self._load_clock_board(board_configs)
+        # Load Clock board for idle display
+        clock_config = board_configs.get('clock', {
+            'enabled': True,
+            'priority': 10,  # Lower priority than game boards
+            'refresh_rate': 30.0,
+            'show_seconds': False,
+            'show_date': True,
+            '24h_format': False,
+            'date_format': '%a %m/%d',
+        })
+        self.boards['clock'] = ClockBoard(clock_config)
+        print(f"[BoardManager] Loaded clock board")
+
+        # Future: Load other built-in boards (Standings, etc.)
         # self._load_standings_board(board_configs)
 
     def _load_plugin_boards(self):
@@ -132,17 +149,36 @@ class BoardManager:
         """
         self._last_context = context
 
+        # Update state based on context
+        new_state = self.state_manager.determine_state(context)
+        state_changed = self.state_manager.update_state(new_state)
+
+        if state_changed:
+            print(f"[BoardManager] State changed to: {new_state.value}")
+
         # Check for interrupts (user input, alerts, etc.)
         if not self.interrupts.empty():
             interrupt = self.interrupts.get()
             if interrupt and interrupt in self.boards:
                 return self.boards[interrupt]
 
+        # Check if state manager wants to rotate boards
+        rotation_board_name = self.state_manager.get_next_board_in_rotation()
+        if rotation_board_name and rotation_board_name in self.boards:
+            board = self.boards[rotation_board_name]
+            if board.enabled and board.should_display(context):
+                return board
+
         # Special handling for game snapshots - select sport-specific scoreboard
         game_snapshot = context.get('game_snapshot')
         if game_snapshot:
             sport_code = game_snapshot.sport.code if game_snapshot.sport else 'generic'
             board_key = f'scoreboard_{sport_code}'
+
+            # Check if state manager wants to force scoreboard
+            if self.state_manager.should_force_board(board_key):
+                if board_key in self.boards and self.boards[board_key].enabled:
+                    return self.boards[board_key]
 
             # Try sport-specific board first
             if board_key in self.boards and self.boards[board_key].enabled:
@@ -180,6 +216,13 @@ class BoardManager:
         if self.current_board and self.current_board != board:
             self.current_board.on_exit()
             self.board_history.append(self.current_board.name)
+
+            # Record transition in state manager
+            self.state_manager.record_transition(
+                from_board=self.current_board.name,
+                to_board=board.name,
+                transition_type="cut"  # For now, just use cut transitions
+            )
 
         # Enter new board
         if board != self.current_board:
