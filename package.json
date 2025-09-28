@@ -11,6 +11,7 @@
     "test:web:coverage": "cd web-admin && npm run test:coverage",
     "test:all": "npm run test:python && cd web-admin && npm run test:ci",
     "test:watch": "cd web-admin && npm run test:watch",
+    "coverage:combined": "python scripts/combined-coverage.py",
     "lint": "cd web-admin && npm run lint",
     "lint:fix": "cd web-admin && npm run lint:fix",
     "format": "cd web-admin && npm run format",
