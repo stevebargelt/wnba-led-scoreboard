@@ -19,6 +19,12 @@ CLAUDE.local.md
 # These are fetched via scripts to avoid trademark issues
 assets/
 !assets/.gitkeep
+# Keep pixel fonts for scoreboard rendering
+!assets/fonts/
+!assets/fonts/pixel/
+!assets/fonts/pixel/*.TTF
+!assets/fonts/pixel/*.ttf
+!assets/fonts/pixel/*.otf
 
 # Test coverage and reports (don’t track generated artifacts)
 coverage/
