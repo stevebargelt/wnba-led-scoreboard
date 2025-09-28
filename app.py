@@ -18,6 +18,7 @@ from supabase import create_client
 from src.render.renderer import Renderer
 from src.demo.simulator import DemoSimulator, parse_demo_options, DEFAULT_ROTATION_SECONDS
 from src.runtime.adaptive_refresh import AdaptiveRefreshManager
+from src.boards.manager import BoardManager
 
 
 RELOAD_REQUESTED = False
@@ -117,6 +118,9 @@ def main():
 
     renderer = Renderer(device_config, force_sim=args.sim)
 
+    # Initialize board manager
+    board_manager = BoardManager(device_config)
+
     # Setup signal handler for config reload
     signal.signal(signal.SIGHUP, _signal_reload)
     # Allow SIGUSR1 as alternative on some systems
@@ -189,19 +193,32 @@ def main():
                 # No aggregator and no demo - just idle
                 snapshot = None
 
-            # Render appropriate scene
-            if snapshot is None:
-                renderer.render_idle(now_local)
+            # Build context for boards
+            board_context = {
+                'game_snapshot': snapshot,
+                'current_time': now_local,
+                'state': 'idle' if snapshot is None else str(snapshot.state).lower(),
+                'favorite_teams': favorite_teams if 'favorite_teams' in locals() else {},
+                'device_config': device_config,
+            }
+
+            # Select and render board
+            next_board = board_manager.get_next_board(board_context)
+            if next_board:
+                # Transition to new board if needed
+                if next_board != board_manager.current_board:
+                    board_manager.transition_to(next_board)
+                # Render the board
+                board_manager.render_current(renderer._buffer, renderer._draw)
             else:
-                if snapshot.state == GameState.PRE:
-                    renderer.render_pregame(snapshot, now_local)
-                elif snapshot.state == GameState.LIVE:
-                    renderer.render_live(snapshot, now_local)
-                else:
-                    renderer.render_final(snapshot, now_local)
-            
-            # Use adaptive refresh interval
-            sleep_s = refresh_manager.get_refresh_interval(snapshot, now_local)
+                # No board wants to display, show idle
+                renderer.render_idle(now_local)
+
+            # Use board's refresh rate if available, otherwise adaptive
+            if board_manager.current_board:
+                sleep_s = board_manager.get_current_refresh_rate()
+            else:
+                sleep_s = refresh_manager.get_refresh_interval(snapshot, now_local)
 
             renderer.flush()
 
@@ -239,6 +256,9 @@ def main():
                             playoff_boost=True,
                             conflict_resolution='priority',
                         )
+
+                    # Reinitialize board manager with new config
+                    board_manager = BoardManager(device_config)
 
                     refresh_manager = AdaptiveRefreshManager(device_config.refresh_config)
                     config_loader.update_heartbeat()
