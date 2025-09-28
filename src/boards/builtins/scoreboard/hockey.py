@@ -12,6 +12,7 @@ from src.render.scenes.pregame import draw_pregame
 from src.render.scenes.live import draw_live
 from src.render.scenes.final import draw_final
 from src.render.scenes.live_big import draw_live_big
+from src.render.scenes.nhl_large_logo import draw_nhl_large_logo, load_pixel_fonts
 
 
 class HockeyScoreboardBoard(BaseScoreboardBoard):
@@ -19,19 +20,20 @@ class HockeyScoreboardBoard(BaseScoreboardBoard):
 
     def __init__(self, config: Dict[str, Any]):
         """Initialize hockey scoreboard with configuration."""
+        # Always force NHL large logo layout for hockey
+        config['live_layout'] = 'nhl-large'
         super().__init__(config)
+        print(f"[HockeyScoreboard] Forced layout to nhl-large, config: {config}")
         # Load fonts like renderer does
         self._load_fonts()
 
     def _load_fonts(self):
-        """Load fonts for rendering."""
-        from PIL import ImageFont
-        try:
-            self._font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=8)
-            self._font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=12)
-        except Exception:
-            self._font_small = ImageFont.load_default()
-            self._font_large = ImageFont.load_default()
+        """Load fonts for rendering - now uses pixel fonts for better LED readability."""
+        # Load pixel-perfect fonts for LED displays
+        pixel_small, pixel_medium, pixel_large = load_pixel_fonts()
+        self._font_small = pixel_small
+        self._font_large = pixel_medium  # Use medium for most text
+        self._font_score = pixel_large  # Large font specifically for scores
 
     def _render_pregame(self,
                         buffer: Image.Image,
@@ -63,14 +65,17 @@ class HockeyScoreboardBoard(BaseScoreboardBoard):
         scores, and optionally penalties/power play status.
         """
         now_local = context.get('current_time', datetime.now())
-        layout = self.config.get('live_layout', 'stacked').lower()
+        layout = self.config.get('live_layout', 'nhl-large').lower()
         logo_variant = self.config.get('logo_variant', 'mini')
 
         # Clear buffer
         draw.rectangle([(0, 0), (buffer.width - 1, buffer.height - 1)], fill=(0, 0, 0))
 
-        # Use existing live rendering based on layout
-        if layout == "big-logos":
+        # Use NHL-style large logo layout by default for hockey
+        if layout == "nhl-large" or layout == "nhl":
+            draw_nhl_large_logo(buffer, draw, snapshot, now_local,
+                              self._font_small, self._font_large)
+        elif layout == "big-logos":
             draw_live_big(buffer, draw, snapshot, now_local,
                          self._font_small, self._font_large,
                          logo_variant="banner")
