@@ -7,8 +7,8 @@ import requests
 import os
 
 from ..models.league_config import LeagueConfig, LeagueAPIConfig, LeagueSeason
-from ..clients.base import LeagueClient, LeagueGameSnapshot
-from src.model.game import GameState, TeamSide
+from ..clients.base import LeagueClient
+from src.model.game import GameSnapshot, GameState, TeamInfo
 
 
 # WNBA League Configuration
@@ -51,7 +51,7 @@ class WNBAClient(LeagueClient):
         """Initialize WNBA client with league and sport configs."""
         super().__init__(league_config, sport_config)
 
-    def fetch_games(self, target_date: date) -> List[LeagueGameSnapshot]:
+    def fetch_games(self, target_date: date) -> List[GameSnapshot]:
         """Fetch WNBA games for the target date."""
         games = []
         datestr = target_date.strftime("%Y%m%d")
@@ -74,7 +74,7 @@ class WNBAClient(LeagueClient):
 
         return games
 
-    def _parse_game(self, event: dict) -> Optional[LeagueGameSnapshot]:
+    def _parse_game(self, event: dict) -> Optional[GameSnapshot]:
         """Parse a single WNBA game from ESPN data."""
         try:
             event_id = event.get("id")
@@ -93,9 +93,9 @@ class WNBAClient(LeagueClient):
                 return None
 
             # Parse teams
-            def parse_team(competitor: dict) -> TeamSide:
+            def parse_team(competitor: dict) -> TeamInfo:
                 team = competitor.get("team", {})
-                return TeamSide(
+                return TeamInfo(
                     id=str(team.get("id")) if team.get("id") is not None else None,
                     name=team.get("displayName") or team.get("name") or "",
                     abbr=team.get("abbreviation") or (team.get("shortDisplayName") or "").upper(),
@@ -136,7 +136,7 @@ class WNBAClient(LeagueClient):
             if not status_detail:
                 status_detail = period_name
 
-            return LeagueGameSnapshot(
+            return GameSnapshot(
                 sport=self.sport,
                 league=self.league,
                 event_id=str(event_id),

@@ -7,8 +7,8 @@ import requests
 import os
 
 from ..models.league_config import LeagueConfig, LeagueAPIConfig, LeagueSeason
-from ..clients.base import LeagueClient, LeagueGameSnapshot
-from src.model.game import GameState, TeamSide
+from ..clients.base import LeagueClient
+from src.model.game import GameSnapshot, GameState, TeamInfo
 
 
 # NHL League Configuration
@@ -55,7 +55,7 @@ class NHLClient(LeagueClient):
         """Initialize NHL client with league and sport configs."""
         super().__init__(league_config, sport_config)
 
-    def fetch_games(self, target_date: date) -> List[LeagueGameSnapshot]:
+    def fetch_games(self, target_date: date) -> List[GameSnapshot]:
         """Fetch NHL games for the target date."""
         games = []
         datestr = target_date.strftime("%Y-%m-%d")
@@ -88,7 +88,7 @@ class NHLClient(LeagueClient):
 
         return games
 
-    def _parse_game(self, game: dict, target_date: date) -> Optional[LeagueGameSnapshot]:
+    def _parse_game(self, game: dict, target_date: date) -> Optional[GameSnapshot]:
         """Parse a single NHL game."""
         try:
             game_id = game.get("id")
@@ -99,14 +99,14 @@ class NHLClient(LeagueClient):
             home_team = game.get("homeTeam", {})
             away_team = game.get("awayTeam", {})
 
-            home = TeamSide(
+            home = TeamInfo(
                 id=str(home_team.get("id", "")),
                 name=home_team.get("name", {}).get("default", ""),
                 abbr=home_team.get("abbrev", ""),
                 score=int(home_team.get("score", 0)),
             )
 
-            away = TeamSide(
+            away = TeamInfo(
                 id=str(away_team.get("id", "")),
                 name=away_team.get("name", {}).get("default", ""),
                 abbr=away_team.get("abbrev", ""),
@@ -152,7 +152,7 @@ class NHLClient(LeagueClient):
             else:
                 status_detail = period_name
 
-            return LeagueGameSnapshot(
+            return GameSnapshot(
                 sport=self.sport,
                 league=self.league,
                 event_id=str(game_id),

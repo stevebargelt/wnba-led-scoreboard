@@ -8,44 +8,9 @@ import logging
 
 from ..models.league_config import LeagueConfig
 from ..models.sport_config import SportConfig, TimingConfig, ScoringConfig, TerminologyConfig
-from src.model.game import GameState, TeamSide
+from src.model.game import GameSnapshot, GameState, TeamInfo
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class LeagueGameSnapshot:
-    """Enhanced game snapshot with sport/league information."""
-    # League and sport information
-    sport: SportConfig
-    league: LeagueConfig
-
-    # Game identification
-    event_id: str
-    start_time_local: datetime
-
-    # Game state
-    state: GameState
-
-    # Teams
-    home: TeamSide
-    away: TeamSide
-
-    # Timing
-    current_period: int
-    period_name: str
-    display_clock: str
-    seconds_to_start: int = -1
-
-    # Status
-    status_detail: str = ""
-
-    # Sport-specific data
-    sport_specific_data: Dict[str, Any] = None
-
-    def __post_init__(self):
-        if self.sport_specific_data is None:
-            self.sport_specific_data = {}
 
 
 class LeagueClient(ABC):
@@ -59,7 +24,7 @@ class LeagueClient(ABC):
         self.effective_terminology = league.get_effective_terminology(sport.terminology)
 
     @abstractmethod
-    def fetch_games(self, target_date: date) -> List[LeagueGameSnapshot]:
+    def fetch_games(self, target_date: date) -> List[GameSnapshot]:
         """
         Fetch games for the target date.
 
@@ -67,7 +32,7 @@ class LeagueClient(ABC):
             target_date: Date to fetch games for
 
         Returns:
-            List of LeagueGameSnapshot objects
+            List of GameSnapshot objects
         """
         pass
 
@@ -136,7 +101,7 @@ class CachedLeagueClient(LeagueClient):
         """Generate cache key for a date."""
         return f"games_{target_date.strftime('%Y%m%d')}"
 
-    def _load_from_cache(self, cache_key: str) -> Optional[List[LeagueGameSnapshot]]:
+    def _load_from_cache(self, cache_key: str) -> Optional[List[GameSnapshot]]:
         """Load games from cache if available and not expired."""
         import json
         import time
@@ -156,23 +121,40 @@ class CachedLeagueClient(LeagueClient):
                 data = json.load(f)
                 games = []
                 for game_data in data:
-                    # Reconstruct complex objects
-                    sport = SportConfig(**game_data['sport']) if 'sport' in game_data else self.sport
-                    league = LeagueConfig(**game_data['league']) if 'league' in game_data else self.league
-
                     # Parse datetime
                     start_time = datetime.fromisoformat(game_data['start_time_local'])
 
-                    # Reconstruct team sides
-                    home = TeamSide(**game_data['home'])
-                    away = TeamSide(**game_data['away'])
+                    # Reconstruct team sides with extended fields
+                    home_data = game_data['home']
+                    home = TeamInfo(
+                        id=home_data.get('id'),
+                        name=home_data['name'],
+                        abbr=home_data['abbr'],
+                        score=home_data.get('score', 0),
+                        colors=home_data.get('colors', {}),
+                        logo_url=home_data.get('logo_url'),
+                        conference=home_data.get('conference'),
+                        division=home_data.get('division')
+                    )
+
+                    away_data = game_data['away']
+                    away = TeamInfo(
+                        id=away_data.get('id'),
+                        name=away_data['name'],
+                        abbr=away_data['abbr'],
+                        score=away_data.get('score', 0),
+                        colors=away_data.get('colors', {}),
+                        logo_url=away_data.get('logo_url'),
+                        conference=away_data.get('conference'),
+                        division=away_data.get('division')
+                    )
 
                     # Reconstruct game state
-                    state = GameState(game_data['state']) if isinstance(game_data['state'], str) else GameState(**game_data['state'])
+                    state = GameState[game_data['state']] if isinstance(game_data['state'], str) else GameState(game_data['state'])
 
-                    game = LeagueGameSnapshot(
-                        sport=sport,
-                        league=league,
+                    game = GameSnapshot(
+                        sport=self.sport,
+                        league=self.league,
                         event_id=game_data['event_id'],
                         start_time_local=start_time,
                         state=state,
@@ -192,7 +174,7 @@ class CachedLeagueClient(LeagueClient):
             logger.warning(f"Failed to load cache: {e}")
             return None
 
-    def _save_to_cache(self, cache_key: str, games: List[LeagueGameSnapshot]):
+    def _save_to_cache(self, cache_key: str, games: List[GameSnapshot]):
         """Save games to cache."""
         import json
         cache_file = self.cache_path / f"{cache_key}.json"
@@ -204,11 +186,9 @@ class CachedLeagueClient(LeagueClient):
             data = []
             for game in games:
                 game_dict = {
-                    'sport': asdict(game.sport),
-                    'league': asdict(game.league),
                     'event_id': game.event_id,
                     'start_time_local': game.start_time_local.isoformat(),
-                    'state': game.state.value if hasattr(game.state, 'value') else str(game.state),
+                    'state': game.state.name,  # Use enum name for serialization
                     'home': asdict(game.home),
                     'away': asdict(game.away),
                     'current_period': game.current_period,

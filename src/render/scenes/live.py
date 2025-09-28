@@ -20,8 +20,8 @@ def draw_live(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, n
     score_right_x = w - 1
 
     # Away row
-    away_sport = infer_team_sport(snap, snap.away)
-    alogo = get_logo(snap.away.id, snap.away.abbr, sport=away_sport, variant=logo_variant or "mini")
+    sport_code = snap.sport.code
+    alogo = get_logo(snap.away.id, snap.away.abbr, sport=sport_code, variant=logo_variant or "mini")
     if alogo:
         img.paste(alogo, (logo_x, top_y), alogo)
     else:
@@ -32,8 +32,7 @@ def draw_live(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, n
     draw.text((score_right_x - atw, top_y), ascore, fill=(255, 255, 255), font=font_large)
 
     # Home row
-    home_sport = infer_team_sport(snap, snap.home)
-    hlogo = get_logo(snap.home.id, snap.home.abbr, sport=home_sport, variant=logo_variant or "mini")
+    hlogo = get_logo(snap.home.id, snap.home.abbr, sport=sport_code, variant=logo_variant or "mini")
     if hlogo:
         img.paste(hlogo, (logo_x, bot_y), hlogo)
     else:
@@ -44,11 +43,7 @@ def draw_live(img: Image.Image, draw: ImageDraw.ImageDraw, snap: GameSnapshot, n
     draw.text((score_right_x - htw, bot_y), hscore, fill=(255, 255, 255), font=font_large)
 
     # Bottom center: clock + period
-    # Use status_detail if available (contains proper period name like P1, Q1, OT, etc.)
-    # Otherwise fall back to generic Q{period} format
-    if hasattr(snap, 'status_detail') and snap.status_detail:
-        status = f"{snap.status_detail} {snap.display_clock or ''}".strip()
-    else:
-        status = f"Q{snap.period} {snap.display_clock or ''}".strip()
+    # Use period_name from unified model
+    status = f"{snap.period_name} {snap.display_clock or ''}".strip()
     stw, sth = draw.textbbox((0, 0), status, font=font_small)[2:]
     draw.text(((w - stw) // 2, h - sth - 1), status, fill=(0, 255, 0), font=font_small)

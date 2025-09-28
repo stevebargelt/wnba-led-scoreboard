@@ -7,8 +7,8 @@ import requests
 import os
 
 from ..models.league_config import LeagueConfig, LeagueAPIConfig, LeagueSeason
-from ..clients.base import LeagueClient, LeagueGameSnapshot
-from src.model.game import GameState, TeamSide
+from ..clients.base import LeagueClient
+from src.model.game import GameSnapshot, GameState, TeamInfo
 
 
 # NBA League Configuration (loaded from Supabase, this is a fallback)
@@ -51,7 +51,7 @@ class NBAClient(LeagueClient):
         """Initialize NBA client with league and sport configs."""
         super().__init__(league_config, sport_config)
 
-    def fetch_games(self, target_date: date) -> List[LeagueGameSnapshot]:
+    def fetch_games(self, target_date: date) -> List[GameSnapshot]:
         """Fetch NBA games for the target date."""
         games = []
         datestr = target_date.strftime("%Y%m%d")
@@ -74,7 +74,7 @@ class NBAClient(LeagueClient):
 
         return games
 
-    def _parse_game(self, event: dict) -> Optional[LeagueGameSnapshot]:
+    def _parse_game(self, event: dict) -> Optional[GameSnapshot]:
         """Parse a single NBA game from ESPN data."""
         try:
             event_id = event.get("id")
@@ -118,7 +118,7 @@ class NBAClient(LeagueClient):
                 team_data = comp.get("team", {})
                 is_home = comp.get("homeAway") == "home"
 
-                team = TeamSide(
+                team = TeamInfo(
                     id=team_data.get("id"),
                     name=team_data.get("displayName", ""),
                     abbr=team_data.get("abbreviation", ""),
@@ -136,7 +136,7 @@ class NBAClient(LeagueClient):
             # Format period name
             period_name = self._format_period_name(period, game_state)
 
-            return LeagueGameSnapshot(
+            return GameSnapshot(
                 sport=self.sport,
                 league=self.league,
                 event_id=event_id,

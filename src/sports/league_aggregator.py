@@ -8,9 +8,8 @@ from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 from enum import Enum
 
-from src.model.game import GameState
+from src.model.game import GameSnapshot, GameState
 from .registry import registry
-from .clients.base import LeagueGameSnapshot
 
 
 class ConflictResolution(Enum):
@@ -94,7 +93,7 @@ class LeagueAggregator:
         target_date: date,
         now_local: datetime,
         favorite_teams: Dict[str, List[str]] = None
-    ) -> Optional[LeagueGameSnapshot]:
+    ) -> Optional[GameSnapshot]:
         """
         Get the highest priority game across all enabled leagues.
 
@@ -142,7 +141,7 @@ class LeagueAggregator:
 
     def _calculate_game_priority(
         self,
-        game: LeagueGameSnapshot,
+        game: GameSnapshot,
         league_code: str,
         now: datetime,
         favorite_teams: List[str]
@@ -196,9 +195,9 @@ class LeagueAggregator:
 
     def _apply_conflict_resolution(
         self,
-        games: List[LeagueGameSnapshot],
+        games: List[GameSnapshot],
         now: datetime
-    ) -> Optional[LeagueGameSnapshot]:
+    ) -> Optional[GameSnapshot]:
         """Apply conflict resolution strategy to select final game."""
         if not games:
             return None
@@ -220,7 +219,7 @@ class LeagueAggregator:
         _, expires_at = self._manual_override
         return datetime.now() < expires_at
 
-    def _get_manual_override_game(self, target_date: date) -> Optional[LeagueGameSnapshot]:
+    def _get_manual_override_game(self, target_date: date) -> Optional[GameSnapshot]:
         """Get the manually overridden game if it exists."""
         if not self._manual_override:
             return None
@@ -248,7 +247,7 @@ class LeagueAggregator:
         """Clear any active manual override."""
         self._manual_override = None
 
-    def get_all_games(self, target_date: date) -> Dict[str, List[LeagueGameSnapshot]]:
+    def get_all_games(self, target_date: date) -> Dict[str, List[GameSnapshot]]:
         """
         Get all games for all enabled leagues.
 

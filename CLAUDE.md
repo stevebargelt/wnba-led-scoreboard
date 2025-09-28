@@ -256,5 +256,8 @@ BRIGHTNESS=75                # LED brightness (1-100)
 - Do not sign or mention Claude, Claude Code, Anthropic, LLM, AI, ML in any commit messages or PR text.
 - Always prefer editing an existing file to creating a new one.
 
+## Always Do Section
+Always use conventional commits https://www.conventionalcommits.org/en/v1.0.0/ and https://gitmoji.dev when creating branches, commit messages, pr messages
+
 ## Memories
 - Demo mode is network connected and also calls ESPN/NHL / sport endpoints.
