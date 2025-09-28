@@ -30,3 +30,4 @@ web-admin/coverage/
 supabase/**/.temp/
 web-admin/supabase/.temp/
 supabase/supabase/.temp/
+.coverage

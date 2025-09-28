@@ -127,7 +127,7 @@ class StateManager:
 
         elif game_state in ['final', 'end', 'post']:
             # Show postgame for a while after game ends
-            if hasattr(game_snapshot, 'end_time'):
+            if hasattr(game_snapshot, 'end_time') and game_snapshot.end_time:
                 time_since_end = (datetime.now() - game_snapshot.end_time).total_seconds()
                 if time_since_end < 3600:  # Show postgame for 1 hour
                     return BoardState.POSTGAME

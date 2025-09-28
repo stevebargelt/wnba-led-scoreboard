@@ -154,7 +154,7 @@ class BoardManager:
         state_changed = self.state_manager.update_state(new_state)
 
         if state_changed:
-            print(f"[BoardManager] State changed to: {new_state.value}")
+            print(f"[BoardManager] State changed to: {new_state}")
 
         # Check for interrupts (user input, alerts, etc.)
         if not self.interrupts.empty():
