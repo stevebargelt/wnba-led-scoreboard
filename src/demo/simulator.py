@@ -9,7 +9,7 @@ from typing import Dict, List, Optional, Sequence
 from zoneinfo import ZoneInfo
 
 from src.config.supabase_config_loader import DeviceConfiguration, TeamInfo
-from src.model.game import GameSnapshot, GameState, TeamSide
+from src.model.game import GameSnapshot, GameState, TeamInfo
 from src.sports.registry import registry
 
 DEFAULT_ROTATION_SECONDS = 120
@@ -47,16 +47,16 @@ def _favorite_to_team(
     default_name: str,
     default_id: str,
     default_abbr: str,
-) -> TeamSide:
+) -> TeamInfo:
     if favorite is None:
-        return TeamSide(
+        return TeamInfo(
             id=default_id,
             name=default_name,
             abbr=default_abbr,
             score=0,
         )
 
-    return TeamSide(
+    return TeamInfo(
         id=favorite.team_id,
         name=favorite.name,
         abbr=favorite.abbreviation,
@@ -81,8 +81,8 @@ class LeagueDemoSimulator:
         self.tz = tz
         self._favorites = list(favorites)
         self.rng = rng or random.Random()
-        self._home: TeamSide
-        self._away: TeamSide
+        self._home: TeamInfo
+        self._away: TeamInfo
         # Get sport and league configs from registry
         self.league_config = registry.get_league(league_code)
         self.sport_config = registry.get_sport(self.league_config.sport_code) if self.league_config else None

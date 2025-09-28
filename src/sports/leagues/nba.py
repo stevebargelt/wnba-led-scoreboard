@@ -8,7 +8,7 @@ import os
 
 from ..models.league_config import LeagueConfig, LeagueAPIConfig, LeagueSeason
 from ..clients.base import LeagueClient
-from src.model.game import GameSnapshot, GameState, TeamSide
+from src.model.game import GameSnapshot, GameState, TeamInfo
 
 
 # NBA League Configuration (loaded from Supabase, this is a fallback)
@@ -118,7 +118,7 @@ class NBAClient(LeagueClient):
                 team_data = comp.get("team", {})
                 is_home = comp.get("homeAway") == "home"
 
-                team = TeamSide(
+                team = TeamInfo(
                     id=team_data.get("id"),
                     name=team_data.get("displayName", ""),
                     abbr=team_data.get("abbreviation", ""),

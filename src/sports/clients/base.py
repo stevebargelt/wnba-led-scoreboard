@@ -8,7 +8,7 @@ import logging
 
 from ..models.league_config import LeagueConfig
 from ..models.sport_config import SportConfig, TimingConfig, ScoringConfig, TerminologyConfig
-from src.model.game import GameSnapshot, GameState, TeamSide
+from src.model.game import GameSnapshot, GameState, TeamInfo
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ class CachedLeagueClient(LeagueClient):
 
                     # Reconstruct team sides with extended fields
                     home_data = game_data['home']
-                    home = TeamSide(
+                    home = TeamInfo(
                         id=home_data.get('id'),
                         name=home_data['name'],
                         abbr=home_data['abbr'],
@@ -138,7 +138,7 @@ class CachedLeagueClient(LeagueClient):
                     )
 
                     away_data = game_data['away']
-                    away = TeamSide(
+                    away = TeamInfo(
                         id=away_data.get('id'),
                         name=away_data['name'],
                         abbr=away_data['abbr'],

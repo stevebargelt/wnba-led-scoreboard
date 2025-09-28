@@ -13,7 +13,7 @@ class GameState(Enum):
 
 
 @dataclass
-class TeamSide:
+class TeamInfo:
     """Team information with extended metadata."""
     id: Optional[str]
     name: str
@@ -41,8 +41,8 @@ class GameSnapshot:
     state: GameState
 
     # Team Information (enhanced)
-    home: TeamSide
-    away: TeamSide
+    home: TeamInfo
+    away: TeamInfo
 
     # Timing Information (unified)
     current_period: int

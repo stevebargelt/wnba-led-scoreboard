@@ -8,7 +8,7 @@ import os
 
 from ..models.league_config import LeagueConfig, LeagueAPIConfig, LeagueSeason
 from ..clients.base import LeagueClient
-from src.model.game import GameSnapshot, GameState, TeamSide
+from src.model.game import GameSnapshot, GameState, TeamInfo
 
 
 # NHL League Configuration
@@ -99,14 +99,14 @@ class NHLClient(LeagueClient):
             home_team = game.get("homeTeam", {})
             away_team = game.get("awayTeam", {})
 
-            home = TeamSide(
+            home = TeamInfo(
                 id=str(home_team.get("id", "")),
                 name=home_team.get("name", {}).get("default", ""),
                 abbr=home_team.get("abbrev", ""),
                 score=int(home_team.get("score", 0)),
             )
 
-            away = TeamSide(
+            away = TeamInfo(
                 id=str(away_team.get("id", "")),
                 name=away_team.get("name", {}).get("default", ""),
                 abbr=away_team.get("abbrev", ""),

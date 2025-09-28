@@ -8,7 +8,7 @@ import os
 
 from ..models.league_config import LeagueConfig, LeagueAPIConfig, LeagueSeason
 from ..clients.base import LeagueClient
-from src.model.game import GameSnapshot, GameState, TeamSide
+from src.model.game import GameSnapshot, GameState, TeamInfo
 
 
 # WNBA League Configuration
@@ -93,9 +93,9 @@ class WNBAClient(LeagueClient):
                 return None
 
             # Parse teams
-            def parse_team(competitor: dict) -> TeamSide:
+            def parse_team(competitor: dict) -> TeamInfo:
                 team = competitor.get("team", {})
-                return TeamSide(
+                return TeamInfo(
                     id=str(team.get("id")) if team.get("id") is not None else None,
                     name=team.get("displayName") or team.get("name") or "",
                     abbr=team.get("abbreviation") or (team.get("shortDisplayName") or "").upper(),

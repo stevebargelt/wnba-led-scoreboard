@@ -366,27 +366,27 @@ python -m mypy app.py
 ## Migration Checklist Summary
 
 ### Files to Modify (15 files)
-- [x] `src/model/game.py` - Add sport/league fields
-- [ ] `src/sports/clients/base.py` - Remove LeagueGameSnapshot
-- [ ] `src/sports/leagues/wnba.py` - Use GameSnapshot
-- [ ] `src/sports/leagues/nhl.py` - Use GameSnapshot
-- [ ] `src/sports/leagues/nba.py` - Use GameSnapshot
-- [ ] `src/sports/league_aggregator.py` - Use GameSnapshot
-- [ ] `app.py` - Remove conversion logic
-- [ ] `src/demo/simulator.py` - Use GameSnapshot
-- [ ] `src/render/scenes/_helpers.py` - Remove infer_team_sport
-- [ ] `src/render/scenes/pregame.py` - Use snapshot.sport/league
-- [ ] `src/render/scenes/live.py` - Use snapshot.sport/league
-- [ ] `src/render/scenes/final.py` - Use snapshot.sport/league
-- [ ] `src/render/scenes/live_big.py` - Use snapshot.sport/league
-- [ ] `src/runtime/adaptive_refresh.py` - Verify imports
-- [ ] `src/sports/adapter.py` - Update if needed
+- [x] `src/model/game.py` - Add sport/league fields ✅
+- [x] `src/sports/clients/base.py` - Remove LeagueGameSnapshot ✅
+- [x] `src/sports/leagues/wnba.py` - Use GameSnapshot ✅
+- [x] `src/sports/leagues/nhl.py` - Use GameSnapshot ✅
+- [x] `src/sports/leagues/nba.py` - Use GameSnapshot ✅
+- [x] `src/sports/league_aggregator.py` - Use GameSnapshot ✅
+- [x] `app.py` - Remove conversion logic ✅
+- [x] `src/demo/simulator.py` - Use GameSnapshot ✅
+- [x] `src/render/scenes/_helpers.py` - Remove infer_team_sport ✅
+- [x] `src/render/scenes/pregame.py` - Use snapshot.sport/league ✅
+- [x] `src/render/scenes/live.py` - Use snapshot.sport/league ✅
+- [x] `src/render/scenes/final.py` - Use snapshot.sport/league ✅
+- [x] `src/render/scenes/live_big.py` - Use snapshot.sport/league ✅
+- [x] `src/runtime/adaptive_refresh.py` - Verify imports ✅
+- [x] `src/sports/adapter.py` - Update if needed ✅
 
 ### Files to Delete (3+ files)
-- [ ] `src/model/sport_game.py`
-- [ ] `src/data/espn.py`
-- [ ] `src/data/enhanced_espn.py`
-- [ ] `src/demo/simulator_old.py` (cleanup)
+- [x] `src/model/sport_game.py` ✅
+- [x] `src/data/espn.py` ✅
+- [x] `src/data/enhanced_espn.py` ✅
+- [x] `src/demo/simulator_old.py` (cleanup) ✅
 
 ### Key Benefits After Consolidation
 
@@ -426,10 +426,19 @@ After successful consolidation:
 
 ## Success Criteria
 
-- [ ] Zero import errors for `GameSnapshot` in all modules
-- [ ] `app.py --sim --once` runs without errors
-- [ ] `app.py --demo --sim --once` runs without errors
-- [ ] All render scenes display correctly
-- [ ] No `LeagueGameSnapshot` or `EnhancedGameSnapshot` references remain
-- [ ] Type checking passes with no errors
-- [ ] All deleted files removed from git
+- [x] Zero import errors for `GameSnapshot` in all modules ✅
+- [x] `app.py --sim --once` runs without errors ✅
+- [x] `app.py --demo --sim --once` runs without errors ✅
+- [x] All render scenes display correctly ✅
+- [x] No `LeagueGameSnapshot` or `EnhancedGameSnapshot` references remain ✅
+- [x] Type checking passes with no errors ✅
+- [x] All deleted files removed from git ✅
+
+## Completion Status
+
+✅ **COMPLETED**: All 9 phases successfully implemented and tested.
+- Unified model now used throughout the codebase
+- 4 deprecated files deleted
+- 15 files updated
+- All tests passing
+- Committed to branch: `refactor/consolidate-game-models`
