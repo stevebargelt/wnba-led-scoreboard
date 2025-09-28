@@ -246,12 +246,25 @@ def populate_supabase(teams_data: List[Dict[str, Any]]) -> bool:
 
         league_teams = list(teams_by_abbr.values())
 
-        # Clear existing NHL teams first to avoid duplicates
-        client.table('league_teams').delete().eq('league_id', nhl_league_id).execute()
-
-        # Insert fresh team data
+        # Use upsert to safely update teams without data loss
+        # This will update existing teams and insert new ones
         if league_teams:
-            result = client.table('league_teams').insert(league_teams).execute()
+            # First, get existing teams to identify which ones to remove
+            existing = client.table('league_teams').select('team_id').eq('league_id', nhl_league_id).execute()
+            existing_ids = {str(team['team_id']) for team in existing.data}
+            new_ids = {team['team_id'] for team in league_teams}
+
+            # Remove teams that are no longer current (e.g., Arizona Coyotes)
+            obsolete_ids = existing_ids - new_ids
+            if obsolete_ids:
+                client.table('league_teams').delete().eq('league_id', nhl_league_id).in_('team_id', list(obsolete_ids)).execute()
+                print(f"  Removed {len(obsolete_ids)} obsolete teams")
+
+            # Upsert current teams (insert or update based on league_id + team_id)
+            result = client.table('league_teams').upsert(
+                league_teams,
+                on_conflict='league_id,team_id'
+            ).execute()
             print(f"✅ Updated {len(league_teams)} NHL teams in database")
             return True
 
