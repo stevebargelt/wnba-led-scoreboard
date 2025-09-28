@@ -179,7 +179,8 @@ class NHLClient(LeagueClient):
     def fetch_teams(self) -> List[Dict[str, Any]]:
         """Fetch NHL team information."""
         teams = []
-        url = f"{self.league.api.base_url}/teams"
+        # Use the stats API endpoint which is still available
+        url = "https://api.nhle.com/stats/rest/en/team"
 
         try:
             timeout = float(os.getenv("HTTP_TIMEOUT", "10"))
@@ -187,7 +188,9 @@ class NHLClient(LeagueClient):
             response.raise_for_status()
             data = response.json()
 
-            for team in data.get("teams", []):
+            # The stats API returns data in a 'data' field
+            for team in data.get("data", []):
+                # The stats API uses different field names
                 teams.append({
                     "id": str(team.get("id", "")),
                     "name": team.get("fullName", ""),
@@ -195,8 +198,9 @@ class NHLClient(LeagueClient):
                     "logo_url": self.league.logo_url_template.format(
                         abbr=team.get("triCode", "").upper()
                     ) if self.league.logo_url_template else None,
-                    "conference": team.get("conference", {}).get("name", ""),
-                    "division": team.get("division", {}).get("name", ""),
+                    # Conference and division not available in this endpoint
+                    "conference": "",
+                    "division": "",
                 })
 
         except Exception as e:
