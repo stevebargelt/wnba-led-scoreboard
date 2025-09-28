@@ -150,6 +150,10 @@ class LeagueAggregator:
         Calculate priority score for a game.
 
         Higher scores mean higher priority.
+
+        Priority order:
+        1. LIVE game with favorite team (1000+ points)
+        2. League priority + other factors (0-200 points)
         """
         # Base priority from league order (100, 99, 98, ...)
         try:
@@ -159,17 +163,27 @@ class LeagueAggregator:
 
         score = float(base_priority)
 
-        # Live game boost
-        if self.priority_rules.live_game_boost and game.state == GameState.LIVE:
-            score += 50
-
-        # Favorite team boost
+        # Check if this game has a favorite team
+        has_favorite = False
         if self.priority_rules.favorite_team_boost:
             home_name = game.home.name if hasattr(game.home, 'name') else str(game.home.abbr)
             away_name = game.away.name if hasattr(game.away, 'name') else str(game.away.abbr)
+            home_abbr = game.home.abbr if hasattr(game.home, 'abbr') else ''
+            away_abbr = game.away.abbr if hasattr(game.away, 'abbr') else ''
 
-            if any(fav in [home_name, away_name] for fav in favorite_teams):
+            # Check both name and abbreviation for favorite match
+            if any(fav in [home_name, away_name, home_abbr, away_abbr] for fav in favorite_teams):
+                has_favorite = True
                 score += 30
+
+        # LIVE game with favorite team gets massive boost (overrides league priority)
+        if game.state == GameState.LIVE:
+            if has_favorite:
+                # Massive boost ensures LIVE + favorite always wins
+                score += 1000
+            elif self.priority_rules.live_game_boost:
+                # Regular LIVE game boost
+                score += 50
 
         # Close game boost (only for live games)
         if self.priority_rules.close_game_boost and game.state == GameState.LIVE:
