@@ -26,6 +26,14 @@ from src.core.logging import get_logger
 from src.core.options import RuntimeOptions
 
 from src.config.supabase_config_loader import SupabaseConfigLoader, DeviceConfiguration
+from src.config.provider import (
+    UnifiedConfigurationProvider,
+    RuntimeConfigSource,
+    EnvironmentConfigSource,
+    SupabaseConfigSource,
+    DefaultConfigSource
+)
+from src.config.models import ConfigurationValidator
 from src.render.renderer import Renderer
 from src.boards.manager import BoardManager
 from src.runtime.adaptive_refresh import AdaptiveRefreshManager
@@ -71,15 +79,23 @@ class ServiceBootstrap:
         """
         logger.info("Bootstrapping application services")
 
-        # 1. Register configuration provider
+        # 1. Set up unified configuration provider
+        self._setup_unified_configuration(options, supabase_client, device_id)
+
+        # 2. Register legacy configuration provider (for compatibility)
         config_loader = SupabaseConfigLoader(device_id, supabase_client)
         config_provider = SupabaseConfigurationProvider(config_loader)
         self.container.register(ConfigurationProvider, config_provider)
         logger.debug("Registered ConfigurationProvider")
 
-        # 2. Load initial configuration
+        # 3. Load initial configuration
         self._device_config = config_provider.load_configuration()
         logger.info(f"Loaded configuration for device {self._device_config.device_id}")
+
+        # 4. Update unified configuration with Supabase data
+        if hasattr(self, '_supabase_source'):
+            self._supabase_source.update(self._device_config)
+            logger.debug("Updated unified configuration with Supabase data")
 
         # 3. Register display manager (Renderer with adapter)
         renderer = Renderer(self._device_config, force_sim=options.is_simulation)
@@ -107,6 +123,51 @@ class ServiceBootstrap:
 
         logger.info("Service bootstrap complete")
         return self._device_config
+
+    def _setup_unified_configuration(
+        self,
+        options: RuntimeOptions,
+        supabase_client: SupabaseClient,
+        device_id: str
+    ) -> None:
+        """
+        Set up the unified configuration provider.
+
+        Args:
+            options: Runtime options
+            supabase_client: Supabase client instance
+            device_id: Device ID
+        """
+        # Create configuration sources with proper precedence
+        sources = []
+
+        # 1. Default configuration (lowest priority)
+        sources.append(DefaultConfigSource())
+
+        # 2. Supabase configuration (medium priority)
+        # Will be populated after loading from Supabase
+        self._supabase_source = SupabaseConfigSource()
+        sources.append(self._supabase_source)
+
+        # 3. Environment variables (high priority)
+        sources.append(EnvironmentConfigSource())
+
+        # 4. Runtime options (highest priority)
+        runtime_config = {
+            "simulation_mode": options.is_simulation,
+            "demo_mode": options.is_demo,
+            "run_once": options.run_once,
+        }
+        if options.demo_leagues:
+            runtime_config["demo_leagues"] = options.demo_leagues
+        if options.demo_rotation_seconds:
+            runtime_config["demo_rotation_seconds"] = options.demo_rotation_seconds
+
+        sources.append(RuntimeConfigSource(runtime_config))
+
+        # Create unified provider
+        self._unified_config = UnifiedConfigurationProvider(sources)
+        logger.debug("Created unified configuration provider with 4 sources")
 
     def _register_demo_provider(self, options: RuntimeOptions) -> None:
         """

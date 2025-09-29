@@ -34,6 +34,16 @@ Display **live sports scores** on RGB LED matrices for multiple professional lea
 └─────────────┘     └──────────────┘     └──────────────┘
 ```
 
+#### Python Application Architecture
+
+The Python application uses a modern, testable architecture with dependency injection:
+
+- **Orchestrator Pattern**: Clean separation of concerns with `ApplicationOrchestrator` managing the main loop
+- **Dependency Injection**: `ServiceContainer` for managing service lifecycle and dependencies
+- **Adapter Pattern**: Adapters bridge existing components to standardized interfaces
+- **Configuration Management**: Unified configuration with 4-level precedence system
+- **Structured Logging**: Centralized logging with color support and configurable levels
+
 ---
 
 ## 🚀 Quick Start
@@ -197,7 +207,34 @@ TIMEZONE=America/New_York # Override timezone
 BRIGHTNESS=75             # LED brightness (1-100)
 ```
 
-### Local Configuration (Fallback)
+### Configuration System
+
+The application uses a unified configuration system with multiple sources and automatic precedence:
+
+#### Configuration Precedence (highest to lowest)
+1. **Runtime Arguments** - Command-line flags (e.g., `--sim`, `--demo`)
+2. **Environment Variables** - `SCOREBOARD_*` prefixed variables
+3. **Supabase Database** - Remote configuration from database
+4. **Default Values** - Built-in sensible defaults
+
+#### Environment Variables
+```bash
+# Override any configuration via environment
+export SCOREBOARD_MATRIX_WIDTH=128
+export SCOREBOARD_MATRIX_HEIGHT=64
+export SCOREBOARD_BRIGHTNESS=75
+export SCOREBOARD_SIMULATION_MODE=true
+export SCOREBOARD_TIMEZONE="America/New_York"
+```
+
+#### Configuration Validation
+All configuration values are validated at startup:
+- Matrix dimensions must be multiples of 8
+- Brightness must be between 1-100
+- Refresh intervals have min/max constraints
+- Leagues must be from supported list
+
+#### Local Configuration (Fallback)
 
 If Supabase is unavailable, create `config/favorites.json`:
 
@@ -262,15 +299,29 @@ pm2 start npm --name scoreboard-admin -- start
 
 ## 🔍 Testing
 
+The codebase includes comprehensive test coverage with 180+ unit tests:
+
 ```bash
+# Run all Python tests
+python -m unittest discover tests
+
+# Run specific test modules
+python -m unittest tests.test_core_container  # Test DI container
+python -m unittest tests.test_core_orchestrator  # Test orchestrator
+python -m unittest tests.test_config_provider  # Test configuration
+
+# Run with coverage report
+python -m coverage run -m unittest discover tests
+python -m coverage report
+
 # Test database connection and configuration
 python -c "from src.config.supabase_config_loader import *; from supabase import create_client; import os; client = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_ANON_KEY')); loader = SupabaseConfigLoader(os.getenv('DEVICE_ID'), client); print('Config loaded:', loader.load_full_config().device_id)"
 
 # Run in demo mode
 python app.py --demo --sim
 
-# Run all tests
-npm test
+# Web admin tests
+cd web-admin && npm test
 ```
 
 ---
