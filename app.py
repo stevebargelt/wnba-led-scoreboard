@@ -1,285 +1,74 @@
-import argparse
 import os
 import sys
-import time
-import signal
-from datetime import datetime, timezone
-
 from dotenv import load_dotenv
 
-from src.config.supabase_config_loader import SupabaseConfigLoader, DeviceConfiguration
-from src.config.types import MatrixConfig, RefreshConfig, RenderConfig
-from zoneinfo import ZoneInfo
-from src.model.game import GameSnapshot, GameState
-from typing import Optional
-from src.sports.league_aggregator import LeagueAggregator
+from src.core.logging import get_logger
+from src.core.options import RuntimeOptions
+from src.core.orchestrator import ApplicationOrchestrator
+from src.core.providers import SupabaseConfigurationProvider
+from src.config.supabase_config_loader import SupabaseConfigLoader
 from src.sports.supabase_loader import SupabaseSportsLoader
 from supabase import create_client
-from src.render.renderer import Renderer
-from src.demo.simulator import DemoSimulator, parse_demo_options, DEFAULT_ROTATION_SECONDS
-from src.runtime.adaptive_refresh import AdaptiveRefreshManager
-from src.boards.manager import BoardManager
 
 
-RELOAD_REQUESTED = False
-
-
-def _signal_reload(signum, frame):
-    global RELOAD_REQUESTED
-    RELOAD_REQUESTED = True
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Multi-League LED Scoreboard")
-    parser.add_argument("--config", default="config/favorites.json", help="Path to favorites/config JSON")
-    parser.add_argument("--sim", action="store_true", help="Force simulate display (no matrix)")
-    parser.add_argument("--once", action="store_true", help="Run one update cycle and exit")
-    parser.add_argument("--demo", action="store_true", help="Run in demo mode with a simulated game")
-    parser.add_argument(
-        "--demo-league",
-        action="append",
-        help="Limit demo mode to specific leagues (can be provided multiple times)",
-    )
-    parser.add_argument(
-        "--demo-rotation",
-        type=int,
-        default=None,
-        help="Number of seconds to show each league before rotating in demo mode",
-    )
-    return parser.parse_args()
+logger = get_logger(__name__)
 
 
 def main():
-    global RELOAD_REQUESTED
-    load_dotenv()  # .env overrides
-    args = parse_args()
+    """Main entry point for the LED Scoreboard application."""
+    load_dotenv()  # Load environment variables
 
-    # Check for Supabase configuration
+    # Parse runtime options
+    options = RuntimeOptions.from_args()
+
+    try:
+        # Validate options
+        options.validate()
+    except ValueError as e:
+        logger.error(f"Invalid configuration: {e}")
+        return 1
+
+    # Log runtime options
+    logger.info(options)
+
+    # Initialize Supabase configuration
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_anon_key = os.getenv("SUPABASE_ANON_KEY")
     supabase_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     device_id = os.getenv("DEVICE_ID")
 
-    # Initialize configuration loader
-    config_loader = None
-    sports_loader = None
+    # Initialize configuration provider
+    config_provider = None
 
-    # Try Supabase configuration first
     if supabase_url and supabase_service_key and device_id:
         try:
-            # Create Supabase clients - anon for sports, service for device config
+            # Create Supabase clients
             anon_client = create_client(supabase_url, supabase_anon_key) if supabase_anon_key else None
             service_client = create_client(supabase_url, supabase_service_key)
 
-            # Initialize sports/leagues registry (can use anon client)
+            # Initialize sports/leagues registry
             if anon_client:
                 sports_loader = SupabaseSportsLoader()
                 sports_loader.initialize_registry()
-                print("[info] Loaded sports and leagues from Supabase")
+                logger.info("Loaded sports and leagues from Supabase")
 
-            # Initialize device config loader (uses service client for security)
+            # Create configuration provider
             config_loader = SupabaseConfigLoader(device_id, service_client)
-            device_config = config_loader.load_full_config()
-            print(f"[info] Loaded device {device_id} configuration from Supabase")
+            config_provider = SupabaseConfigurationProvider(config_loader)
+
+            logger.info(f"Initialized configuration for device {device_id}")
 
         except Exception as e:
-            print(f"[warning] Failed to load from Supabase: {e}")
-            print("[info] Falling back to local configuration")
-            config_loader = None
-            sports_loader = None
-
-    # Database configuration is required even for demo mode
-    if not config_loader:
-        print(f"[error] Configuration required: Set DEVICE_ID, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY")
-        print("[info] Demo mode requires database access for device configuration and team data")
-        sys.exit(1)
-
-    # Setup league aggregator
-    if device_config and not (args.demo or os.getenv("DEMO_MODE", "false").lower() == "true"):
-        # Using device config for league aggregator
-        aggregator = LeagueAggregator(device_config.league_priorities, device_config.enabled_leagues)
-        print(f"[info] Enabled leagues: {device_config.enabled_leagues}")
+            logger.error(f"Failed to initialize Supabase: {e}")
+            return 1
     else:
-        # Demo mode doesn't need aggregator
-        aggregator = None
-        if args.demo or os.getenv("DEMO_MODE", "false").lower() == "true":
-            print("[info] Running in demo mode")
+        logger.error("Missing required environment variables for Supabase")
+        logger.error("Required: DEVICE_ID, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY")
+        return 1
 
-    # Configure priority rules for aggregator
-    if aggregator:
-        # Use default priority rules
-        aggregator.configure_priority_rules(
-            live_game_boost=True,
-            favorite_team_boost=True,
-            close_game_boost=True,
-            playoff_boost=True,
-            conflict_resolution='priority',
-        )
-
-    renderer = Renderer(device_config, force_sim=args.sim)
-
-    # Initialize board manager
-    board_manager = BoardManager(device_config)
-
-    # Setup signal handler for config reload
-    signal.signal(signal.SIGHUP, _signal_reload)
-    # Allow SIGUSR1 as alternative on some systems
-    try:
-        signal.signal(signal.SIGUSR1, _signal_reload)
-    except Exception:
-        pass
-
-    demo_env = os.getenv("DEMO_MODE", "false").lower() == "true"
-    use_demo = args.demo or demo_env
-
-    demo_options = None
-    if use_demo:
-        env_demo_leagues = os.getenv("DEMO_LEAGUES")
-        forced_leagues = args.demo_league or (
-            env_demo_leagues.split(",") if env_demo_leagues else None
-        )
-        env_rotation = os.getenv("DEMO_ROTATION_SECONDS")
-        rotation_seconds = args.demo_rotation
-        if rotation_seconds is None and env_rotation is not None:
-            try:
-                rotation_seconds = int(env_rotation)
-            except ValueError:
-                rotation_seconds = None
-        demo_options = parse_demo_options(
-            forced_leagues=forced_leagues,
-            rotation_seconds=rotation_seconds or DEFAULT_ROTATION_SECONDS,
-        )
-
-    demo = DemoSimulator(device_config, options=demo_options) if use_demo else None
-    
-    # Setup adaptive refresh manager
-    refresh_manager = AdaptiveRefreshManager(device_config.refresh_config)
-
-    try:
-        while True:
-            now_local = datetime.now(device_config.tz)
-            if demo is not None:
-                snapshot: Optional[GameSnapshot] = demo.get_snapshot(now_local)
-            elif aggregator:
-                # League mode: use aggregator to get best game across leagues
-                try:
-                    # Build favorite teams dictionary for aggregator
-                    favorite_teams = {}
-                    if device_config:
-                        # Convert TeamInfo objects to abbreviations for aggregator
-                        # Use abbreviations as they're more reliable for matching
-                        for league_code, teams in device_config.favorite_teams.items():
-                            favorite_teams[league_code] = [team.abbreviation for team in teams]
-
-                    snapshot = aggregator.get_featured_game(
-                        now_local.date(),
-                        now_local,
-                        favorite_teams,
-                    )
-
-                    if snapshot:
-                        print(
-                            f"[info] Selected {snapshot.league.name} game: "
-                            f"{snapshot.away.abbr} @ {snapshot.home.abbr}"
-                        )
-
-                    refresh_manager.record_request_success()
-
-                except Exception as e:
-                    print(f"[warn] League aggregation failed: {e}")
-                    refresh_manager.record_request_failure()
-                    snapshot = None
-            else:
-                # No aggregator and no demo - just idle
-                snapshot = None
-
-            # Build context for boards
-            board_context = {
-                'game_snapshot': snapshot,
-                'current_time': now_local,
-                'state': 'idle' if snapshot is None else str(snapshot.state).lower(),
-                'favorite_teams': favorite_teams if 'favorite_teams' in locals() else {},
-                'device_config': device_config,
-            }
-
-            # Select and render board
-            next_board = board_manager.get_next_board(board_context)
-            if next_board:
-                # Transition to new board if needed
-                if next_board != board_manager.current_board:
-                    board_manager.transition_to(next_board)
-                # Render the board
-                board_manager.render_current(renderer._buffer, renderer._draw)
-            else:
-                # No board wants to display, show idle
-                renderer.render_idle(now_local)
-
-            # Use board's refresh rate if available, otherwise adaptive
-            if board_manager.current_board:
-                sleep_s = board_manager.get_current_refresh_rate()
-            else:
-                sleep_s = refresh_manager.get_refresh_interval(snapshot, now_local)
-
-            renderer.flush()
-
-            # Check for config refresh from Supabase
-            if config_loader and (config_loader.should_refresh(60) or RELOAD_REQUESTED):
-                try:
-                    # Reload from Supabase
-                    new_device_config = config_loader.load_full_config()
-
-                    # Update renderer if matrix size changed
-                    resized = (
-                        new_device_config.matrix_config.width != device_config.matrix_config.width
-                        or new_device_config.matrix_config.height != device_config.matrix_config.height
-                    )
-
-                    old_config = device_config
-                    device_config = new_device_config
-
-                    if resized:
-                        try:
-                            renderer.close()
-                        except Exception:
-                            pass
-                        renderer = Renderer(device_config, force_sim=args.sim)
-                    else:
-                        renderer.cfg = device_config
-
-                    # Update aggregator with new leagues if not in demo mode
-                    if aggregator:
-                        aggregator = LeagueAggregator(device_config.league_priorities, device_config.enabled_leagues)
-                        aggregator.configure_priority_rules(
-                            live_game_boost=True,
-                            favorite_team_boost=True,
-                            close_game_boost=True,
-                            playoff_boost=True,
-                            conflict_resolution='priority',
-                        )
-
-                    # Reinitialize board manager with new config
-                    board_manager = BoardManager(device_config)
-
-                    refresh_manager = AdaptiveRefreshManager(device_config.refresh_config)
-                    config_loader.update_heartbeat()
-
-                    # Only clear the reload flag after successful completion
-                    RELOAD_REQUESTED = False
-                    print(f"[info] Configuration refreshed from Supabase")
-
-                except Exception as e:
-                    print(f"[warn] Config refresh failed: {e}")
-                    # Note: RELOAD_REQUESTED stays True so we'll retry next iteration
-
-            if args.once:
-                break
-
-            time.sleep(sleep_s)
-
-    except KeyboardInterrupt:
-        pass
-    finally:
-        renderer.close()
+    # Create and run orchestrator
+    orchestrator = ApplicationOrchestrator(config_provider, options)
+    return orchestrator.run()
 
 
 if __name__ == "__main__":

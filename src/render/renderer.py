@@ -101,6 +101,17 @@ class Renderer:
             except Exception as e:
                 print(f"[warn] SetImage failed: {e}")
 
+    def update_configuration(self, cfg: DeviceConfiguration):
+        """Update the configuration without reinitializing the hardware."""
+        self.cfg = cfg
+        # Update dimensions only if they haven't changed
+        if cfg.matrix_config.width == self.width and cfg.matrix_config.height == self.height:
+            # Just update the configuration
+            pass
+        else:
+            # Size changed, would need full reinit
+            raise ValueError("Cannot update configuration with different dimensions")
+
     def close(self):
         # Nothing to close for now
         pass
