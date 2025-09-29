@@ -299,3 +299,4 @@ Always use conventional commits https://www.conventionalcommits.org/en/v1.0.0/ a
 
 ## Memories
 - Demo mode is network connected and also calls ESPN/NHL / sport endpoints.
+- No. It's unacceptable to leave failing tests.
