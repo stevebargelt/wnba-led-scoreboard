@@ -7,6 +7,9 @@ from typing import List, Optional, Union
 from zoneinfo import ZoneInfo
 
 from src.core.exceptions import ConfigurationError
+from src.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -61,6 +64,29 @@ class ValidatedMatrixConfig:
         if self.hardware_mapping not in valid_mappings:
             raise ConfigurationError(
                 f"Hardware mapping must be one of {valid_mappings}, got {self.hardware_mapping}"
+            )
+
+        # Validate PWM bits and brightness relationship
+        # Lower PWM bits reduce brightness resolution, which can cause flickering at high brightness
+        if self.pwm_bits < 8 and self.brightness > 50:
+            logger.warning(
+                f"Low PWM bits ({self.pwm_bits}) with high brightness ({self.brightness}%) "
+                "may cause visible flickering. Consider increasing PWM bits or reducing brightness."
+            )
+
+        # Additional warning for very low PWM bits
+        if self.pwm_bits <= 4:
+            logger.warning(
+                f"Very low PWM bits ({self.pwm_bits}) detected. "
+                f"This will result in only {2**self.pwm_bits} brightness levels. "
+                "Consider using at least 8 PWM bits for smooth brightness control."
+            )
+
+        # Warn about performance impact of maximum PWM bits
+        if self.pwm_bits == 11 and self.gpio_slowdown < 2:
+            logger.warning(
+                "Maximum PWM bits (11) with low GPIO slowdown may cause performance issues. "
+                "Consider reducing PWM bits to 10 or increasing GPIO slowdown if you experience flicker."
             )
 
 

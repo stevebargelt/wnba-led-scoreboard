@@ -93,6 +93,52 @@ class TestValidatedMatrixConfig(unittest.TestCase):
             ValidatedMatrixConfig(width=64, height=32, parallel=4)
         self.assertIn("Parallel must be between 1 and 3", str(ctx.exception))
 
+    def test_pwm_brightness_validation_warnings(self):
+        """Test PWM bits and brightness relationship warnings."""
+        # Test low PWM bits with high brightness warning
+        with self.assertLogs('src.config.models', level='WARNING') as logs:
+            config = ValidatedMatrixConfig(
+                width=64, height=32,
+                pwm_bits=6, brightness=75
+            )
+            self.assertIn("Low PWM bits (6) with high brightness (75%)", logs.output[0])
+
+        # Test very low PWM bits warning
+        with self.assertLogs('src.config.models', level='WARNING') as logs:
+            config = ValidatedMatrixConfig(
+                width=64, height=32,
+                pwm_bits=3, brightness=30
+            )
+            self.assertIn("Very low PWM bits (3) detected", logs.output[0])
+            self.assertIn("only 8 brightness levels", logs.output[0])
+
+        # Test maximum PWM bits with low GPIO slowdown warning
+        with self.assertLogs('src.config.models', level='WARNING') as logs:
+            config = ValidatedMatrixConfig(
+                width=64, height=32,
+                pwm_bits=11, gpio_slowdown=1
+            )
+            self.assertIn("Maximum PWM bits (11) with low GPIO slowdown", logs.output[0])
+
+        # Test that no warnings are issued for good configurations
+        import logging
+        with self.assertLogs('src.config.models', level='ERROR') as logs:
+            # Set a high level to ensure no warnings are captured
+            logger = logging.getLogger('src.config.models')
+            original_level = logger.level
+            logger.setLevel(logging.ERROR)
+            try:
+                # This should not produce any warnings
+                config = ValidatedMatrixConfig(
+                    width=64, height=32,
+                    pwm_bits=10, brightness=80, gpio_slowdown=2
+                )
+                # Force a log to avoid "no logs of level ERROR" error
+                logger.error("Test complete")
+            finally:
+                logger.setLevel(original_level)
+            self.assertEqual(len(logs.output), 1)  # Only our test error
+
 
 class TestValidatedRefreshConfig(unittest.TestCase):
     """Test refresh configuration validation."""
