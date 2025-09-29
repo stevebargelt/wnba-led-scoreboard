@@ -121,42 +121,35 @@ class SupabaseConfigSource(ConfigSource):
 
         flat = {}
 
-        # Matrix config
+        # Define expected attributes for each config type
+        matrix_attrs = ['width', 'height', 'chain_length', 'parallel',
+                       'gpio_slowdown', 'hardware_mapping', 'brightness', 'pwm_bits']
+        refresh_attrs = ['pregame_sec', 'ingame_sec', 'final_sec']
+        render_attrs = ['live_layout', 'logo_variant']
+
+        # Flatten matrix config
         if self.device_config.matrix_config:
-            try:
-                # Try to use asdict for real dataclasses
-                for key, value in asdict(self.device_config.matrix_config).items():
-                    flat[f"matrix_{key}"] = value
-            except (TypeError, AttributeError):
-                # Fallback for Mock or regular objects - use attributes directly
-                for attr in ['width', 'height', 'chain_length', 'parallel',
-                           'gpio_slowdown', 'hardware_mapping', 'brightness', 'pwm_bits']:
-                    if hasattr(self.device_config.matrix_config, attr):
-                        flat[f"matrix_{attr}"] = getattr(self.device_config.matrix_config, attr)
+            flat.update(self._flatten_object(
+                self.device_config.matrix_config,
+                'matrix',
+                matrix_attrs
+            ))
 
-        # Refresh config
+        # Flatten refresh config
         if self.device_config.refresh_config:
-            try:
-                # Try to use asdict for real dataclasses
-                for key, value in asdict(self.device_config.refresh_config).items():
-                    flat[f"refresh_{key}"] = value
-            except (TypeError, AttributeError):
-                # Fallback for Mock or regular objects - use attributes directly
-                for attr in ['pregame_sec', 'ingame_sec', 'final_sec']:
-                    if hasattr(self.device_config.refresh_config, attr):
-                        flat[f"refresh_{attr}"] = getattr(self.device_config.refresh_config, attr)
+            flat.update(self._flatten_object(
+                self.device_config.refresh_config,
+                'refresh',
+                refresh_attrs
+            ))
 
-        # Render config
+        # Flatten render config
         if self.device_config.render_config:
-            try:
-                # Try to use asdict for real dataclasses
-                for key, value in asdict(self.device_config.render_config).items():
-                    flat[f"render_{key}"] = value
-            except (TypeError, AttributeError):
-                # Fallback for Mock or regular objects - use attributes directly
-                for attr in ['live_layout', 'logo_variant']:
-                    if hasattr(self.device_config.render_config, attr):
-                        flat[f"render_{attr}"] = getattr(self.device_config.render_config, attr)
+            flat.update(self._flatten_object(
+                self.device_config.render_config,
+                'render',
+                render_attrs
+            ))
 
         # Other configs
         flat["device_id"] = self.device_config.device_id
@@ -165,6 +158,56 @@ class SupabaseConfigSource(ConfigSource):
         flat["league_priorities"] = self.device_config.league_priorities
 
         return flat
+
+    def _flatten_object(self, obj: Any, prefix: str, expected_attrs: List[str]) -> Dict[str, Any]:
+        """
+        Flatten an object's attributes with a prefix.
+
+        Handles both dataclasses and regular objects/mocks gracefully.
+
+        Args:
+            obj: Object to flatten
+            prefix: Prefix for keys (e.g., 'matrix', 'refresh')
+            expected_attrs: List of expected attribute names
+
+        Returns:
+            Dictionary with flattened attributes
+        """
+        result = {}
+
+        # Check if this is a dataclass
+        if self._is_dataclass(obj):
+            # Use asdict for dataclasses
+            for key, value in asdict(obj).items():
+                result[f"{prefix}_{key}"] = value
+        else:
+            # For regular objects/mocks, use getattr for expected attributes
+            for attr in expected_attrs:
+                if hasattr(obj, attr):
+                    result[f"{prefix}_{attr}"] = getattr(obj, attr)
+
+        return result
+
+    def _is_dataclass(self, obj: Any) -> bool:
+        """
+        Check if an object is a dataclass instance.
+
+        Args:
+            obj: Object to check
+
+        Returns:
+            True if object is a dataclass, False otherwise
+        """
+        # Import dataclasses to use is_dataclass function
+        from dataclasses import is_dataclass
+
+        # Use the official is_dataclass check which properly validates
+        # both the instance and its class
+        try:
+            return is_dataclass(obj) and not isinstance(obj, type)
+        except Exception:
+            # If there's any issue, it's not a dataclass we can work with
+            return False
 
     def get(self, key: str, default=None) -> Any:
         """Get configuration value from Supabase."""
