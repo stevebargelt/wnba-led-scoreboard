@@ -81,7 +81,20 @@ Run in order in Supabase SQL Editor.
 
 ## Core Components
 
-### Scoreboard Application (`app.py`)
+### Application Architecture
+- **ApplicationOrchestrator** (`src/core/orchestrator.py`): Main application loop coordination
+- **ServiceContainer** (`src/core/container.py`): Dependency injection and service lifecycle
+- **ServiceBootstrap** (`src/core/bootstrap.py`): Service initialization and registration
+- **Interfaces** (`src/core/interfaces.py`): Abstract interfaces for all major components
+- **Adapters** (`src/core/adapters.py`): Bridge existing components to standardized interfaces
+
+### Configuration System
+- **UnifiedConfigurationProvider** (`src/config/provider.py`): Merges config from multiple sources
+- **Configuration Sources**: Runtime, Environment, Supabase, Defaults
+- **Validation Models** (`src/config/models.py`): Validated configuration with constraints
+- **Precedence System**: Runtime > Environment > Supabase > Defaults
+
+### Scoreboard Components
 - **SupabaseConfigLoader** (`src/config/supabase_config_loader.py`): Direct DB polling
 - **LeagueAggregator** (`src/sports/league_aggregator.py`): Multi-league game selection
 - **League Clients** (`src/sports/leagues/`): API integrations for each sport
@@ -147,10 +160,21 @@ Run in order in Supabase SQL Editor.
 
 ### Python Code
 - **Type Hints**: Use `from __future__ import annotations` for forward references
-- **Error Handling**: Explicit try/catch with meaningful logging
-- **Configuration**: Environment variables for runtime, Supabase for structure
+- **Error Handling**: Custom exception hierarchy (`src/core/exceptions.py`) with specific error types
+- **Configuration**: Unified system with validation and precedence
 - **Imports**: Absolute imports from `src.` package
+- **Dependency Injection**: Use ServiceContainer for service management
+- **Interfaces**: Define abstract interfaces for major components
+- **Logging**: Use structured logging via `get_logger(__name__)`
 - **No Comments**: Unless specifically requested
+
+### Architecture Patterns
+- **Orchestrator Pattern**: Centralize main loop logic in ApplicationOrchestrator
+- **Adapter Pattern**: Use adapters to bridge incompatible interfaces
+- **Repository Pattern**: Abstract data access behind interfaces
+- **Configuration as Code**: Validated configuration models with constraints
+- **Fail-Fast**: Validate configuration at startup, not runtime
+- **Graceful Degradation**: Handle transient vs critical errors differently
 
 ### TypeScript/React Code
 - **Strict TypeScript**: Enable `noUnusedLocals` and `noUnusedParameters`
@@ -176,16 +200,30 @@ Run in order in Supabase SQL Editor.
 
 ### Testing
 ```bash
-# Python app
+# Python unit tests (180+ tests)
+python -m unittest discover tests
+python -m unittest tests.test_core_container  # Specific module
+python -m coverage run -m unittest discover tests  # With coverage
+python -m coverage report
+
+# Integration tests
 python test_supabase_integration.py
-python app.py --demo
+python app.py --demo --sim --once
 
 # Web admin
 cd web-admin && npm test
+cd web-admin && npm run test:ci  # With coverage
 
 # Database connection
 python -c "import os; print(os.getenv('DEVICE_ID'))"
 ```
+
+### Testing Patterns
+- **Unit Tests**: Mock all external dependencies
+- **Test Coverage**: Maintain >40% coverage, aim for >60%
+- **Test Organization**: One test file per module
+- **Mock Strategy**: Use unittest.mock for isolation
+- **Test Naming**: test_<method>_<scenario>_<expected_result>
 
 ### Deployment
 - **Raspberry Pi**: Use systemd service (see README.md)
