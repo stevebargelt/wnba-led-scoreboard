@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 from src.core.logging import get_logger
 from src.core.options import RuntimeOptions
 from src.core.orchestrator import ApplicationOrchestrator
-from src.core.providers import SupabaseConfigurationProvider
-from src.config.supabase_config_loader import SupabaseConfigLoader
+from src.core.container import ServiceContainer
+from src.core.bootstrap import ServiceBootstrap
 from src.sports.supabase_loader import SupabaseSportsLoader
 from supabase import create_client
 
@@ -37,9 +37,7 @@ def main():
     supabase_service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
     device_id = os.getenv("DEVICE_ID")
 
-    # Initialize configuration provider
-    config_provider = None
-
+    # Initialize DI container and services
     if supabase_url and supabase_service_key and device_id:
         try:
             # Create Supabase clients
@@ -52,23 +50,26 @@ def main():
                 sports_loader.initialize_registry()
                 logger.info("Loaded sports and leagues from Supabase")
 
-            # Create configuration provider
-            config_loader = SupabaseConfigLoader(device_id, service_client)
-            config_provider = SupabaseConfigurationProvider(config_loader)
+            # Create DI container
+            container = ServiceContainer()
 
-            logger.info(f"Initialized configuration for device {device_id}")
+            # Bootstrap all services
+            bootstrap = ServiceBootstrap(container)
+            device_config = bootstrap.bootstrap(options, service_client, device_id)
+
+            logger.info(f"Bootstrapped services for device {device_id}")
+
+            # Create and run orchestrator
+            orchestrator = ApplicationOrchestrator(container, options)
+            return orchestrator.run(device_config, bootstrap)
 
         except Exception as e:
-            logger.error(f"Failed to initialize Supabase: {e}")
+            logger.error(f"Failed to initialize application: {e}")
             return 1
     else:
         logger.error("Missing required environment variables for Supabase")
         logger.error("Required: DEVICE_ID, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY")
         return 1
-
-    # Create and run orchestrator
-    orchestrator = ApplicationOrchestrator(config_provider, options)
-    return orchestrator.run()
 
 
 if __name__ == "__main__":

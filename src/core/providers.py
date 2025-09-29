@@ -7,6 +7,12 @@ from typing import Optional
 
 from src.core.interfaces import ConfigurationProvider, GameProvider
 from src.core.logging import get_logger
+from src.core.exceptions import (
+    ConfigurationError,
+    GameProviderError,
+    APIError,
+    TransientError
+)
 from src.config.supabase_config_loader import SupabaseConfigLoader, DeviceConfiguration
 from src.model.game import GameSnapshot
 from src.demo.simulator import DemoSimulator
@@ -92,10 +98,18 @@ class LeagueAggregatorProvider(GameProvider):
         self._config: Optional[DeviceConfiguration] = None
 
     def get_current_game(self, current_time: datetime) -> Optional[GameSnapshot]:
-        """Get the current game to display."""
+        """
+        Get the current game to display.
+
+        Raises:
+            ConfigurationError: If provider is not configured
+            GameProviderError: For critical errors that should halt execution
+
+        Returns:
+            Optional[GameSnapshot]: Current game or None if no games available
+        """
         if not self._config:
-            logger.warning("LeagueAggregatorProvider not configured")
-            return None
+            raise ConfigurationError("LeagueAggregatorProvider not configured")
 
         try:
             # Build favorite teams dictionary
@@ -117,8 +131,21 @@ class LeagueAggregatorProvider(GameProvider):
 
             return snapshot
 
+        except (ConnectionError, TimeoutError) as e:
+            # Network errors are transient and can be retried
+            logger.warning(f"Transient network error in game provider: {e}")
+            raise TransientError(f"Network error: {e}") from e
+
+        except (AttributeError, TypeError, ValueError) as e:
+            # Programming errors should not be silently caught
+            logger.error(f"Critical error in game provider: {e}", exc_info=True)
+            raise GameProviderError(f"Invalid data or configuration: {e}") from e
+
         except Exception as e:
-            logger.error(f"Failed to get game from aggregator: {e}")
+            # Log unexpected errors but allow retry for non-critical issues
+            logger.error(f"Unexpected error in game provider: {e}", exc_info=True)
+            # For backwards compatibility, return None for unexpected errors
+            # In future, consider raising GameProviderError
             return None
 
     def configure(self, config: DeviceConfiguration) -> None:

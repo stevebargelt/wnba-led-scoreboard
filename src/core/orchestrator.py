@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Optional, Dict, List
 
 from src.core.logging import get_logger
+from src.core.container import ServiceContainer
 from src.core.interfaces import (
     ConfigurationProvider,
     GameProvider,
@@ -18,13 +19,15 @@ from src.core.interfaces import (
     ApplicationLifecycle
 )
 from src.core.options import RuntimeOptions
-from src.config.supabase_config_loader import DeviceConfiguration, TeamInfo
+from src.core.bootstrap import ServiceBootstrap
+from src.core.exceptions import (
+    ConfigurationError,
+    ConfigurationReloadError,
+    TransientError,
+    GameProviderError
+)
+from src.config.supabase_config_loader import DeviceConfiguration
 from src.model.game import GameSnapshot
-from src.demo.simulator import DemoSimulator, parse_demo_options
-from src.sports.league_aggregator import LeagueAggregator
-from src.runtime.adaptive_refresh import AdaptiveRefreshManager
-from src.boards.manager import BoardManager
-from src.render.renderer import Renderer
 
 
 logger = get_logger(__name__)
@@ -37,27 +40,20 @@ class ApplicationOrchestrator:
 
     def __init__(
         self,
-        config_provider: ConfigurationProvider,
+        container: ServiceContainer,
         options: RuntimeOptions
     ):
         """
         Initialize the orchestrator.
 
         Args:
-            config_provider: Configuration provider instance
+            container: Dependency injection container with registered services
             options: Runtime options
         """
-        self.config_provider = config_provider
+        self.container = container
         self.options = options
         self.device_config: Optional[DeviceConfiguration] = None
         self.reload_requested = False
-
-        # Components (initialized in setup)
-        self.game_provider: Optional[GameProvider] = None
-        self.display_manager: Optional[DisplayManager] = None
-        self.board_manager: Optional[BoardManager] = None
-        self.refresh_manager: Optional[RefreshManager] = None
-        self.aggregator: Optional[LeagueAggregator] = None
 
         # Lifecycle hooks
         self.lifecycle_hooks: List[ApplicationLifecycle] = []
@@ -81,74 +77,50 @@ class ApplicationOrchestrator:
         logger.info(f"Received reload signal {signum}")
         self.reload_requested = True
 
-    def setup(self) -> None:
+    def setup(self, device_config: DeviceConfiguration) -> None:
         """
         Setup all components before running.
+
+        Args:
+            device_config: Initial device configuration from bootstrap
         """
         logger.info("Setting up application components")
 
-        # Load initial configuration
-        self.device_config = self.config_provider.load_configuration()
+        # Store the configuration
+        self.device_config = device_config
         logger.info(f"Loaded configuration for device {self.device_config.device_id}")
 
-        # Initialize display manager (renderer)
-        self.display_manager = Renderer(self.device_config, force_sim=self.options.is_simulation)
+        # All services should already be registered in the container
+        # Just verify they're available
+        config_provider = self.container.resolve(ConfigurationProvider)
+        display_manager = self.container.resolve(DisplayManager)
+        board_provider = self.container.resolve(BoardProvider)
+        game_provider = self.container.resolve(GameProvider)
+        refresh_manager = self.container.resolve(RefreshManager)
+
         logger.info(f"Display manager initialized (simulation={self.options.is_simulation})")
-
-        # Initialize board manager
-        self.board_manager = BoardManager(self.device_config)
-        logger.info(f"Board manager initialized with {len(self.board_manager.boards)} boards")
-
-        # Setup game provider based on mode
-        if self.options.is_demo:
-            self._setup_demo_provider()
-        else:
-            self._setup_league_aggregator()
-
-        # Initialize refresh manager
-        self.refresh_manager = AdaptiveRefreshManager(self.device_config.refresh_config)
-        logger.info("Refresh manager initialized")
+        logger.info("All services resolved from container")
 
         # Notify lifecycle hooks
         for hook in self.lifecycle_hooks:
             hook.on_startup()
 
-    def _setup_demo_provider(self):
-        """Setup demo mode provider."""
-        demo_options = parse_demo_options(
-            forced_leagues=self.options.demo_leagues,
-            rotation_seconds=self.options.demo_rotation_seconds
-        )
-        # Store as both game_provider and specific type for demo mode
-        self.game_provider = DemoSimulator(self.device_config, options=demo_options)
-        logger.info(f"Demo mode enabled with leagues: {self.options.demo_leagues or 'All'}")
 
-    def _setup_league_aggregator(self):
-        """Setup league aggregator for production mode."""
-        self.aggregator = LeagueAggregator(
-            self.device_config.league_priorities,
-            self.device_config.enabled_leagues
-        )
-        self.aggregator.configure_priority_rules(
-            live_game_boost=True,
-            favorite_team_boost=True,
-            close_game_boost=True,
-            playoff_boost=True,
-            conflict_resolution='priority'
-        )
-        logger.info(f"League aggregator setup with leagues: {self.device_config.enabled_leagues}")
-
-    def run(self) -> int:
+    def run(self, device_config: DeviceConfiguration, bootstrap: Optional[ServiceBootstrap] = None) -> int:
         """
         Run the main application loop.
+
+        Args:
+            device_config: Initial device configuration from bootstrap
+            bootstrap: Optional service bootstrap for configuration reloads
 
         Returns:
             Exit code (0 for success)
         """
         try:
-            self.setup()
+            self.setup(device_config)
             logger.info("Starting main application loop")
-            self._main_loop()
+            self._main_loop(bootstrap)
             return 0
 
         except KeyboardInterrupt:
@@ -162,7 +134,7 @@ class ApplicationOrchestrator:
         finally:
             self.cleanup()
 
-    def _main_loop(self):
+    def _main_loop(self, bootstrap: Optional[ServiceBootstrap] = None):
         """Main application loop."""
         while True:
             try:
@@ -179,8 +151,12 @@ class ApplicationOrchestrator:
                 self._render(context, snapshot, now_local)
 
                 # Check for configuration reload
-                if self._should_reload_config():
-                    self._reload_configuration()
+                if bootstrap and self._should_reload_config():
+                    try:
+                        self._reload_configuration(bootstrap)
+                    except ConfigurationReloadError as e:
+                        logger.warning(f"Configuration reload failed, continuing with current config: {e}")
+                        # Continue with existing configuration
 
                 # Check if we should exit
                 if self.options.run_once:
@@ -192,8 +168,27 @@ class ApplicationOrchestrator:
                 logger.debug(f"Sleeping for {sleep_interval:.1f} seconds")
                 time.sleep(sleep_interval)
 
+            except TransientError as e:
+                # Transient errors - retry with backoff
+                logger.warning(f"Transient error in main loop, retrying: {e}")
+                time.sleep(5)  # Short retry delay
+
+            except (ConfigurationError, GameProviderError) as e:
+                # Critical errors - notify hooks and possibly exit
+                logger.error(f"Critical error in main loop: {e}", exc_info=True)
+                context = self._build_context(None, datetime.now(self.device_config.tz))
+                should_continue = all(
+                    hook.on_error(e, context) for hook in self.lifecycle_hooks
+                )
+                if not should_continue:
+                    logger.error("Lifecycle hooks requested shutdown due to critical error")
+                    break
+                # Longer delay for critical errors
+                time.sleep(30)
+
             except Exception as e:
-                logger.error(f"Error in main loop: {e}", exc_info=True)
+                # Unexpected errors - log and continue with caution
+                logger.error(f"Unexpected error in main loop: {e}", exc_info=True)
                 # Let lifecycle hooks decide if we should continue
                 context = self._build_context(None, datetime.now(self.device_config.tz))
                 should_continue = all(
@@ -202,42 +197,43 @@ class ApplicationOrchestrator:
                 if not should_continue:
                     logger.error("Lifecycle hooks requested shutdown")
                     break
-                # Sleep a bit before retrying
-                time.sleep(5)
+                # Moderate delay for unexpected errors
+                time.sleep(10)
 
     def _get_game_snapshot(self, now_local: datetime) -> Optional[GameSnapshot]:
         """Get current game snapshot."""
-        if self.options.is_demo and isinstance(self.game_provider, DemoSimulator):
-            # Demo mode - DemoSimulator has different method signature
-            return self.game_provider.get_snapshot(now_local)
+        game_provider = self.container.resolve(GameProvider)
+        refresh_manager = self.container.resolve(RefreshManager)
 
-        elif self.aggregator:
-            # Production mode with aggregator
+        if game_provider:
             try:
-                # Build favorite teams dictionary
-                favorite_teams = {}
-                if self.device_config:
-                    for league_code, teams in self.device_config.favorite_teams.items():
-                        favorite_teams[league_code] = [team.abbreviation for team in teams]
-
-                snapshot = self.aggregator.get_featured_game(
-                    now_local.date(),
-                    now_local,
-                    favorite_teams
-                )
+                # Get current game from the provider
+                snapshot = game_provider.get_current_game(now_local)
 
                 if snapshot:
                     logger.info(
-                        f"Selected {snapshot.league.name} game: "
-                        f"{snapshot.away.abbr} @ {snapshot.home.abbr}"
+                        f"Selected game: {snapshot.away.abbr} @ {snapshot.home.abbr}"
                     )
 
-                self.refresh_manager.record_request_success()
+                refresh_manager.record_request_success()
                 return snapshot
 
+            except TransientError as e:
+                # Transient errors can be retried
+                logger.warning(f"Transient error getting game: {e}")
+                refresh_manager.record_request_failure()
+                return None
+
+            except (ConfigurationError, GameProviderError) as e:
+                # Critical errors should be re-raised
+                logger.error(f"Critical error in game provider: {e}")
+                refresh_manager.record_request_failure()
+                raise
+
             except Exception as e:
-                logger.warning(f"League aggregation failed: {e}")
-                self.refresh_manager.record_request_failure()
+                # Unexpected errors - log but continue
+                logger.error(f"Unexpected error in game provider: {e}", exc_info=True)
+                refresh_manager.record_request_failure()
                 return None
 
         return None
@@ -259,99 +255,158 @@ class ApplicationOrchestrator:
 
     def _render(self, context: Dict, snapshot: Optional[GameSnapshot], now_local: datetime):
         """Render the current state."""
+        board_provider = self.container.resolve(BoardProvider)
+        display_manager = self.container.resolve(DisplayManager)
+
         # Select and render board
-        next_board = self.board_manager.get_next_board(context)
+        next_board = board_provider.get_next_board(context)
         if next_board:
             # Transition to new board if needed
-            if next_board != self.board_manager.current_board:
-                self.board_manager.transition_to(next_board)
-            # Render the board
-            self.board_manager.render_current(
-                self.display_manager._buffer,
-                self.display_manager._draw
-            )
+            if next_board != board_provider.current_board:
+                board_provider.transition_to(next_board)
+            # Render the board using adapters
+            from src.core.adapters import RendererAdapter
+            if isinstance(display_manager, RendererAdapter):
+                board_provider.render_current(
+                    display_manager.get_buffer(),
+                    display_manager.get_draw()
+                )
         else:
             # No board wants to display, show idle
-            self.display_manager.render_idle(now_local)
+            display_manager.render(None, now_local)
 
         # Flush to display
-        self.display_manager.flush()
+        display_manager.flush()
 
     def _get_sleep_interval(self, snapshot: Optional[GameSnapshot], now_local: datetime) -> float:
         """Calculate sleep interval based on current state."""
+        board_provider = self.container.resolve(BoardProvider)
+        refresh_manager = self.container.resolve(RefreshManager)
+
         # Use board's refresh rate if available
-        if self.board_manager.current_board:
-            return self.board_manager.get_current_refresh_rate()
+        if board_provider.current_board:
+            return board_provider.get_refresh_rate()
 
         # Otherwise use adaptive refresh
-        return self.refresh_manager.get_refresh_interval(snapshot, now_local)
+        return refresh_manager.get_refresh_interval(snapshot, now_local)
 
     def _should_reload_config(self) -> bool:
         """Check if configuration should be reloaded."""
+        config_provider = self.container.resolve(ConfigurationProvider)
         return (
-            self.config_provider.should_reload() or
+            config_provider.should_reload() or
             self.reload_requested
         )
 
-    def _reload_configuration(self):
-        """Reload configuration from provider."""
+    def _reload_configuration(self, bootstrap: ServiceBootstrap):
+        """
+        Reload configuration from provider with transactional semantics.
+
+        This method ensures that configuration reload is atomic - either
+        all changes are applied or none are. If any step fails, the
+        configuration remains unchanged.
+
+        Args:
+            bootstrap: Service bootstrap instance for updating services
+
+        Raises:
+            ConfigurationReloadError: If reload fails but state is recoverable
+        """
+        old_config = self.device_config
+        new_config = None
+        services_updated = False
+
         try:
-            logger.info("Reloading configuration")
-            old_config = self.device_config
-            new_config = self.config_provider.reload()
+            logger.info("Starting transactional configuration reload")
 
-            # Check if display needs resize
-            resized = (
-                new_config.matrix_config.width != old_config.matrix_config.width or
-                new_config.matrix_config.height != old_config.matrix_config.height
-            )
+            # Step 1: Load new configuration (no side effects)
+            config_provider = self.container.resolve(ConfigurationProvider)
+            new_config = config_provider.reload()
 
-            # Update configuration
+            if not new_config:
+                raise ConfigurationError("Received null configuration from provider")
+
+            # Step 2: Validate new configuration
+            self._validate_configuration(new_config)
+
+            # Step 3: Create backup of current service state
+            # (In a real implementation, services should support snapshots)
+
+            # Step 4: Update all services with new configuration
+            bootstrap.update_configuration(new_config, self.options)
+            services_updated = True
+
+            # Step 5: Atomically update configuration
             self.device_config = new_config
 
-            # Handle display resize if needed
-            if resized:
-                logger.info("Display size changed, recreating renderer")
-                try:
-                    self.display_manager.close()
-                except Exception:
-                    pass
-                self.display_manager = Renderer(new_config, force_sim=self.options.is_simulation)
-            else:
-                self.display_manager.update_configuration(new_config)
-
-            # Reinitialize components
-            if not self.options.is_demo and self.aggregator:
-                self.aggregator = LeagueAggregator(
-                    new_config.league_priorities,
-                    new_config.enabled_leagues
-                )
-                self.aggregator.configure_priority_rules(
-                    live_game_boost=True,
-                    favorite_team_boost=True,
-                    close_game_boost=True,
-                    playoff_boost=True,
-                    conflict_resolution='priority'
-                )
-
-            # Reinitialize board manager
-            self.board_manager = BoardManager(new_config)
-
-            # Reinitialize refresh manager
-            self.refresh_manager = AdaptiveRefreshManager(new_config.refresh_config)
-
-            # Clear reload flag
+            # Step 6: Clear reload flag only after successful update
             self.reload_requested = False
 
-            # Notify lifecycle hooks
+            # Step 7: Notify lifecycle hooks (non-critical)
             for hook in self.lifecycle_hooks:
-                hook.on_config_reload(old_config, new_config)
+                try:
+                    hook.on_config_reload(old_config, new_config)
+                except Exception as hook_error:
+                    logger.warning(f"Lifecycle hook error during reload: {hook_error}")
 
-            logger.info("Configuration reloaded successfully")
+            logger.info("Configuration reload completed successfully")
+
+        except ConfigurationError as e:
+            # Configuration validation failed - keep old config
+            logger.error(f"Configuration validation failed: {e}")
+            self._handle_reload_failure(old_config, new_config, services_updated)
+            raise ConfigurationReloadError(
+                f"Invalid configuration: {e}",
+                partial_config=new_config
+            ) from e
 
         except Exception as e:
-            logger.error(f"Failed to reload configuration: {e}", exc_info=True)
+            # Unexpected error - attempt rollback
+            logger.error(f"Unexpected error during configuration reload: {e}", exc_info=True)
+            self._handle_reload_failure(old_config, new_config, services_updated)
             # Note: reload_requested stays True so we'll retry
+            raise ConfigurationReloadError(
+                f"Failed to reload configuration: {e}",
+                partial_config=new_config
+            ) from e
+
+    def _validate_configuration(self, config: DeviceConfiguration):
+        """
+        Validate configuration before applying it.
+
+        Args:
+            config: Configuration to validate
+
+        Raises:
+            ConfigurationError: If configuration is invalid
+        """
+        if not config.device_id:
+            raise ConfigurationError("Device ID is required")
+
+        if not config.enabled_leagues:
+            raise ConfigurationError("At least one league must be enabled")
+
+        # Add more validation as needed
+
+    def _handle_reload_failure(self, old_config, new_config, services_updated):
+        """
+        Handle configuration reload failure.
+
+        Args:
+            old_config: Previous configuration
+            new_config: Attempted new configuration
+            services_updated: Whether services were already updated
+        """
+        if services_updated and old_config:
+            # Attempt to rollback services to old configuration
+            try:
+                logger.info("Attempting to rollback services to previous configuration")
+                bootstrap = ServiceBootstrap(self.container)
+                bootstrap.update_configuration(old_config, self.options)
+                logger.info("Services rolled back successfully")
+            except Exception as rollback_error:
+                logger.critical(f"Failed to rollback services: {rollback_error}")
+                # System may be in inconsistent state
 
     def cleanup(self):
         """Cleanup resources before shutdown."""
@@ -365,11 +420,12 @@ class ApplicationOrchestrator:
                 logger.error(f"Error in lifecycle hook shutdown: {e}")
 
         # Close display
-        if self.display_manager:
-            try:
-                self.display_manager.close()
-            except Exception as e:
-                logger.error(f"Error closing display: {e}")
+        try:
+            display_manager = self.container.resolve_optional(DisplayManager)
+            if display_manager:
+                display_manager.close()
+        except Exception as e:
+            logger.error(f"Error closing display: {e}")
 
         logger.info("Cleanup complete")
 

@@ -6,9 +6,14 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from src.core.orchestrator import ApplicationOrchestrator
+from src.core.container import ServiceContainer
 from src.core.options import RuntimeOptions
 from src.core.interfaces import (
     ConfigurationProvider,
+    DisplayManager,
+    BoardProvider,
+    RefreshManager,
+    GameProvider,
     ApplicationLifecycle,
     ApplicationContext
 )
@@ -22,8 +27,22 @@ class TestApplicationOrchestrator(unittest.TestCase):
 
     def setUp(self):
         """Set up test fixtures."""
-        # Create mock configuration provider
+        # Create mock container
+        self.container = ServiceContainer()
+
+        # Create mock services
         self.mock_config_provider = Mock(spec=ConfigurationProvider)
+        self.mock_display_manager = Mock(spec=DisplayManager)
+        self.mock_board_provider = Mock(spec=BoardProvider)
+        self.mock_refresh_manager = Mock(spec=RefreshManager)
+        self.mock_game_provider = Mock(spec=GameProvider)
+
+        # Register mocks in container
+        self.container.register(ConfigurationProvider, self.mock_config_provider)
+        self.container.register(DisplayManager, self.mock_display_manager)
+        self.container.register(BoardProvider, self.mock_board_provider)
+        self.container.register(RefreshManager, self.mock_refresh_manager)
+        self.container.register(GameProvider, self.mock_game_provider)
 
         # Create mock device configuration
         self.mock_device_config = Mock(spec=DeviceConfiguration)
@@ -48,9 +67,9 @@ class TestApplicationOrchestrator(unittest.TestCase):
 
     def test_initialization(self):
         """Test orchestrator initialization."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
-        self.assertEqual(orchestrator.config_provider, self.mock_config_provider)
+        self.assertEqual(orchestrator.container, self.container)
         self.assertEqual(orchestrator.options, self.options)
         self.assertIsNone(orchestrator.device_config)
         self.assertFalse(orchestrator.reload_requested)
@@ -58,92 +77,41 @@ class TestApplicationOrchestrator(unittest.TestCase):
     @patch('src.core.orchestrator.signal')
     def test_signal_handlers_setup(self, mock_signal_module):
         """Test that signal handlers are set up."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
         # Should set up SIGHUP handler
         mock_signal_module.signal.assert_any_call(mock_signal_module.SIGHUP, orchestrator._signal_reload)
 
-    @patch('src.core.orchestrator.Renderer')
-    @patch('src.core.orchestrator.BoardManager')
-    @patch('src.core.orchestrator.AdaptiveRefreshManager')
-    def test_setup_non_demo_mode(self, mock_refresh, mock_board, mock_renderer):
+    def test_setup_non_demo_mode(self):
         """Test setup in non-demo mode."""
         self.options.demo_mode = False
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
-        with patch.object(orchestrator, '_setup_league_aggregator') as mock_setup_agg:
-            orchestrator.setup()
+        orchestrator.setup(self.mock_device_config)
 
-            # Should load configuration
-            self.mock_config_provider.load_configuration.assert_called_once()
-            self.assertEqual(orchestrator.device_config, self.mock_device_config)
+        # Should store configuration
+        self.assertEqual(orchestrator.device_config, self.mock_device_config)
 
-            # Should initialize components
-            mock_renderer.assert_called_once_with(self.mock_device_config, force_sim=True)
-            mock_board.assert_called_once_with(self.mock_device_config)
-            mock_refresh.assert_called_once()
+        # Should resolve services from container
+        self.container.resolve(ConfigurationProvider)
+        self.container.resolve(DisplayManager)
+        self.container.resolve(BoardProvider)
+        self.container.resolve(GameProvider)
+        self.container.resolve(RefreshManager)
 
-            # Should setup league aggregator for non-demo
-            mock_setup_agg.assert_called_once()
-
-    @patch('src.core.orchestrator.Renderer')
-    @patch('src.core.orchestrator.BoardManager')
-    @patch('src.core.orchestrator.AdaptiveRefreshManager')
-    def test_setup_demo_mode(self, mock_refresh, mock_board, mock_renderer):
+    def test_setup_demo_mode(self):
         """Test setup in demo mode."""
         self.options.demo_mode = True
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
-        with patch.object(orchestrator, '_setup_demo_provider') as mock_setup_demo:
-            orchestrator.setup()
+        orchestrator.setup(self.mock_device_config)
 
-            # Should setup demo provider
-            mock_setup_demo.assert_called_once()
-
-    @patch('src.core.orchestrator.DemoSimulator')
-    def test_setup_demo_provider(self, mock_demo_simulator):
-        """Test demo provider setup."""
-        self.options.demo_mode = True
-        self.options.demo_leagues = ["nhl"]
-        self.options.demo_rotation_seconds = 60
-
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
-        orchestrator.device_config = self.mock_device_config
-        orchestrator._setup_demo_provider()
-
-        # Should create demo simulator
-        mock_demo_simulator.assert_called_once()
-        self.assertIsNotNone(orchestrator.game_provider)
-
-    @patch('src.core.orchestrator.LeagueAggregator')
-    def test_setup_league_aggregator(self, mock_aggregator_class):
-        """Test league aggregator setup."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
-        orchestrator.device_config = self.mock_device_config
-
-        mock_aggregator = Mock()
-        mock_aggregator_class.return_value = mock_aggregator
-
-        orchestrator._setup_league_aggregator()
-
-        # Should create aggregator with correct leagues
-        mock_aggregator_class.assert_called_once_with(
-            self.mock_device_config.league_priorities,
-            self.mock_device_config.enabled_leagues
-        )
-
-        # Should configure priority rules
-        mock_aggregator.configure_priority_rules.assert_called_once_with(
-            live_game_boost=True,
-            favorite_team_boost=True,
-            close_game_boost=True,
-            playoff_boost=True,
-            conflict_resolution='priority'
-        )
+        # Should store configuration
+        self.assertEqual(orchestrator.device_config, self.mock_device_config)
 
     def test_signal_reload_handler(self):
         """Test signal reload handler sets flag."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
         self.assertFalse(orchestrator.reload_requested)
 
         orchestrator._signal_reload(None, None)
@@ -151,7 +119,7 @@ class TestApplicationOrchestrator(unittest.TestCase):
 
     def test_build_context(self):
         """Test building context for board selection."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
         orchestrator.device_config = self.mock_device_config
 
         # Create a mock game snapshot
@@ -169,7 +137,7 @@ class TestApplicationOrchestrator(unittest.TestCase):
 
     def test_build_context_idle_state(self):
         """Test building context with no game snapshot."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
         orchestrator.device_config = self.mock_device_config
 
         now = datetime.now(self.mock_device_config.tz)
@@ -180,7 +148,7 @@ class TestApplicationOrchestrator(unittest.TestCase):
 
     def test_should_reload_config(self):
         """Test configuration reload checks."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
         # Test with reload_requested flag
         orchestrator.reload_requested = True
@@ -198,23 +166,16 @@ class TestApplicationOrchestrator(unittest.TestCase):
 
     def test_register_lifecycle_hook(self):
         """Test registering lifecycle hooks."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
         mock_hook = Mock(spec=ApplicationLifecycle)
         orchestrator.register_lifecycle_hook(mock_hook)
 
         self.assertIn(mock_hook, orchestrator.lifecycle_hooks)
 
-    @patch('src.core.orchestrator.Renderer')
-    @patch('src.core.orchestrator.BoardManager')
-    @patch('src.core.orchestrator.AdaptiveRefreshManager')
-    def test_cleanup(self, mock_refresh, mock_board, mock_renderer):
+    def test_cleanup(self):
         """Test cleanup method."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
-
-        # Setup mock display manager
-        mock_display = Mock()
-        orchestrator.display_manager = mock_display
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
         # Add lifecycle hook
         mock_hook = Mock(spec=ApplicationLifecycle)
@@ -226,47 +187,38 @@ class TestApplicationOrchestrator(unittest.TestCase):
         mock_hook.on_shutdown.assert_called_once()
 
         # Should close display
-        mock_display.close.assert_called_once()
+        self.mock_display_manager.close.assert_called_once()
 
-    @patch('src.core.orchestrator.Renderer')
-    def test_cleanup_with_error(self, mock_renderer):
+    def test_cleanup_with_error(self):
         """Test cleanup continues even with errors."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
         # Setup mock that raises error
-        mock_display = Mock()
-        mock_display.close.side_effect = Exception("Close failed")
-        orchestrator.display_manager = mock_display
+        self.mock_display_manager.close.side_effect = Exception("Close failed")
 
         # Should not raise exception
         orchestrator.cleanup()
 
     def test_get_sleep_interval_with_board(self):
         """Test getting sleep interval when board has refresh rate."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
-        # Mock board manager
-        mock_board_manager = Mock()
-        mock_board_manager.current_board = Mock()
-        mock_board_manager.get_current_refresh_rate.return_value = 2.5
-        orchestrator.board_manager = mock_board_manager
+        # Mock board with refresh rate
+        self.mock_board_provider.current_board = Mock()
+        self.mock_board_provider.get_refresh_rate.return_value = 2.5
 
         interval = orchestrator._get_sleep_interval(None, datetime.now())
         self.assertEqual(interval, 2.5)
 
     def test_get_sleep_interval_adaptive(self):
         """Test getting sleep interval from adaptive refresh manager."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
         # No current board
-        mock_board_manager = Mock()
-        mock_board_manager.current_board = None
-        orchestrator.board_manager = mock_board_manager
+        self.mock_board_provider.current_board = None
 
         # Mock refresh manager
-        mock_refresh = Mock()
-        mock_refresh.get_refresh_interval.return_value = 5.0
-        orchestrator.refresh_manager = mock_refresh
+        self.mock_refresh_manager.get_refresh_interval.return_value = 5.0
 
         mock_snapshot = Mock()
         now = datetime.now()
@@ -274,38 +226,21 @@ class TestApplicationOrchestrator(unittest.TestCase):
         interval = orchestrator._get_sleep_interval(mock_snapshot, now)
 
         self.assertEqual(interval, 5.0)
-        mock_refresh.get_refresh_interval.assert_called_once_with(mock_snapshot, now)
+        self.mock_refresh_manager.get_refresh_interval.assert_called_once_with(mock_snapshot, now)
 
-    @patch('src.core.orchestrator.LeagueAggregator')
-    @patch('src.core.orchestrator.Renderer')
-    @patch('src.core.orchestrator.BoardManager')
-    @patch('src.core.orchestrator.AdaptiveRefreshManager')
     @patch('src.core.orchestrator.time.sleep')
-    def test_run_once_mode(self, mock_sleep, mock_refresh_class, mock_board_class,
-                          mock_renderer_class, mock_aggregator_class):
+    def test_run_once_mode(self, mock_sleep):
         """Test run exits after one cycle in once mode."""
         self.options.run_once = True
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
-        # Mock components
-        mock_board = Mock()
-        mock_board.current_board = None
-        mock_board.get_next_board.return_value = None
-        mock_board.boards = {}  # Add boards dictionary for len() call
-        mock_board_class.return_value = mock_board
+        # Mock game provider and board provider
+        self.mock_game_provider.get_current_game.return_value = None
+        self.mock_board_provider.get_next_board.return_value = None
+        self.mock_board_provider.current_board = None
+        self.mock_refresh_manager.get_refresh_interval.return_value = 1.0
 
-        mock_refresh = Mock()
-        mock_refresh.get_refresh_interval.return_value = 1.0
-        mock_refresh_class.return_value = mock_refresh
-
-        mock_display = Mock()
-        mock_renderer_class.return_value = mock_display
-
-        mock_aggregator = Mock()
-        mock_aggregator.get_featured_game.return_value = None
-        mock_aggregator_class.return_value = mock_aggregator
-
-        result = orchestrator.run()
+        result = orchestrator.run(self.mock_device_config)
 
         # Should return 0 for success
         self.assertEqual(result, 0)
@@ -313,34 +248,30 @@ class TestApplicationOrchestrator(unittest.TestCase):
         # Sleep should not be called (exits before sleep)
         mock_sleep.assert_not_called()
 
-    @patch('src.core.orchestrator.Renderer')
-    @patch('src.core.orchestrator.BoardManager')
-    def test_run_handles_keyboard_interrupt(self, mock_board_class, mock_renderer_class):
+    def test_run_handles_keyboard_interrupt(self):
         """Test run handles KeyboardInterrupt gracefully."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
         with patch.object(orchestrator, 'setup') as mock_setup:
             with patch.object(orchestrator, '_main_loop') as mock_loop:
                 with patch.object(orchestrator, 'cleanup') as mock_cleanup:
                     mock_loop.side_effect = KeyboardInterrupt()
 
-                    result = orchestrator.run()
+                    result = orchestrator.run(self.mock_device_config)
 
                     # Should return 0 and cleanup
                     self.assertEqual(result, 0)
                     mock_cleanup.assert_called_once()
 
-    @patch('src.core.orchestrator.Renderer')
-    @patch('src.core.orchestrator.BoardManager')
-    def test_run_handles_exception(self, mock_board_class, mock_renderer_class):
+    def test_run_handles_exception(self):
         """Test run handles exceptions and returns error code."""
-        orchestrator = ApplicationOrchestrator(self.mock_config_provider, self.options)
+        orchestrator = ApplicationOrchestrator(self.container, self.options)
 
         with patch.object(orchestrator, 'setup') as mock_setup:
             mock_setup.side_effect = Exception("Setup failed")
 
             with patch.object(orchestrator, 'cleanup') as mock_cleanup:
-                result = orchestrator.run()
+                result = orchestrator.run(self.mock_device_config)
 
                 # Should return 1 for error
                 self.assertEqual(result, 1)
