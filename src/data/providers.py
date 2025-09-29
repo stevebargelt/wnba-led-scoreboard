@@ -1,52 +1,16 @@
 """
-Game provider abstractions for flexible data source management.
+Game provider implementations for flexible data source management.
 """
 
-from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
+from src.core.interfaces import GameProvider
+from src.config.supabase_config_loader import DeviceConfiguration
 from src.model.game import GameSnapshot, GameState, TeamInfo
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
-
-
-class GameProvider(ABC):
-    """Abstract base class for game providers."""
-
-    @abstractmethod
-    def get_current_game(self, now: Optional[datetime] = None) -> Optional[GameSnapshot]:
-        """
-        Get the current game to display.
-
-        Args:
-            now: Current time (optional, defaults to datetime.now())
-
-        Returns:
-            GameSnapshot if a game is available, None otherwise
-        """
-        pass
-
-    @abstractmethod
-    def refresh(self) -> bool:
-        """
-        Refresh the provider's data.
-
-        Returns:
-            True if refresh successful, False otherwise
-        """
-        pass
-
-    @abstractmethod
-    def is_available(self) -> bool:
-        """
-        Check if the provider is available and operational.
-
-        Returns:
-            True if provider is available, False otherwise
-        """
-        pass
 
 
 class LeagueAggregatorProvider(GameProvider):
@@ -63,17 +27,25 @@ class LeagueAggregatorProvider(GameProvider):
         """
         self.aggregator = league_aggregator
         self._last_refresh = None
+        self._config = None
 
-    def get_current_game(self, now: Optional[datetime] = None) -> Optional[GameSnapshot]:
+    def get_current_game(self, current_time: datetime) -> Optional[GameSnapshot]:
         """Get current game from league aggregator."""
         try:
-            return self.aggregator.get_current_game(now)
+            return self.aggregator.get_current_game(current_time)
         except Exception as e:
             logger.error(f"Failed to get game from aggregator: {e}")
             return None
 
+    def configure(self, config: DeviceConfiguration) -> None:
+        """Configure the provider with device settings."""
+        self._config = config
+        # Pass configuration to aggregator if needed
+        if hasattr(self.aggregator, 'configure'):
+            self.aggregator.configure(config)
+
     def refresh(self) -> bool:
-        """Refresh aggregator data."""
+        """Refresh aggregator data - helper method not in interface."""
         try:
             self.aggregator.update()
             self._last_refresh = datetime.now()
@@ -83,7 +55,7 @@ class LeagueAggregatorProvider(GameProvider):
             return False
 
     def is_available(self) -> bool:
-        """Check if aggregator is available."""
+        """Check if aggregator is available - helper method not in interface."""
         return self.aggregator is not None
 
 
@@ -101,11 +73,12 @@ class DemoProvider(GameProvider):
         """
         self.demo_games = demo_games or []
         self._current_index = 0
+        self._config = None
 
-    def get_current_game(self, now: Optional[datetime] = None) -> Optional[GameSnapshot]:
+    def get_current_game(self, current_time: datetime) -> Optional[GameSnapshot]:
         """Get next demo game in rotation."""
         if not self.demo_games:
-            return self._generate_demo_game(now or datetime.now())
+            return self._generate_demo_game(current_time)
 
         if self._current_index >= len(self.demo_games):
             self._current_index = 0
@@ -114,12 +87,16 @@ class DemoProvider(GameProvider):
         self._current_index += 1
         return game
 
+    def configure(self, config: DeviceConfiguration) -> None:
+        """Configure the provider with device settings."""
+        self._config = config
+
     def refresh(self) -> bool:
-        """Demo provider always succeeds refresh."""
+        """Demo provider always succeeds refresh - helper method."""
         return True
 
     def is_available(self) -> bool:
-        """Demo provider is always available."""
+        """Demo provider is always available - helper method."""
         return True
 
     def _generate_demo_game(self, now: datetime) -> GameSnapshot:
@@ -218,13 +195,12 @@ class SingleLeagueProvider(GameProvider):
         self.league_code = league_code
         self._games_cache = []
         self._last_refresh = None
+        self._config = None
 
-    def get_current_game(self, now: Optional[datetime] = None) -> Optional[GameSnapshot]:
+    def get_current_game(self, current_time: datetime) -> Optional[GameSnapshot]:
         """Get current game from single league."""
         if not self._games_cache:
             self.refresh()
-
-        now = now or datetime.now()
 
         # Find best game (live > upcoming > recent final)
         live_games = [g for g in self._games_cache if g.state == GameState.LIVE]
@@ -233,7 +209,7 @@ class SingleLeagueProvider(GameProvider):
 
         upcoming = [g for g in self._games_cache if g.state == GameState.PRE]
         if upcoming:
-            return min(upcoming, key=lambda g: abs((g.start_time_local - now).total_seconds()))
+            return min(upcoming, key=lambda g: abs((g.start_time_local - current_time).total_seconds()))
 
         final_games = [g for g in self._games_cache if g.state == GameState.FINAL]
         if final_games:
@@ -241,8 +217,12 @@ class SingleLeagueProvider(GameProvider):
 
         return None
 
+    def configure(self, config: DeviceConfiguration) -> None:
+        """Configure the provider with device settings."""
+        self._config = config
+
     def refresh(self) -> bool:
-        """Refresh games from league client."""
+        """Refresh games from league client - helper method."""
         try:
             from datetime import date
             self._games_cache = self.client.fetch_games(date.today())
@@ -253,7 +233,7 @@ class SingleLeagueProvider(GameProvider):
             return False
 
     def is_available(self) -> bool:
-        """Check if league client is available."""
+        """Check if league client is available - helper method."""
         return self.client is not None and self.client.is_league_active()
 
 
@@ -268,18 +248,23 @@ class MockProvider(GameProvider):
         self.current_game = None
         self.available = True
         self.refresh_count = 0
+        self._config = None
 
-    def get_current_game(self, now: Optional[datetime] = None) -> Optional[GameSnapshot]:
+    def get_current_game(self, current_time: datetime) -> Optional[GameSnapshot]:
         """Return configured current game."""
         return self.current_game
 
+    def configure(self, config: DeviceConfiguration) -> None:
+        """Configure the provider with device settings."""
+        self._config = config
+
     def refresh(self) -> bool:
-        """Track refresh calls."""
+        """Track refresh calls - helper method."""
         self.refresh_count += 1
         return self.available
 
     def is_available(self) -> bool:
-        """Return configured availability."""
+        """Return configured availability - helper method."""
         return self.available
 
     def set_current_game(self, game: GameSnapshot):

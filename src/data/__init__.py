@@ -4,7 +4,6 @@ Data layer components for game data management.
 
 from .cache import CacheManager, CacheStrategy, MultiLevelCache
 from .providers import (
-    GameProvider,
     LeagueAggregatorProvider,
     DemoProvider,
     SingleLeagueProvider,
@@ -17,8 +16,7 @@ __all__ = [
     "CacheStrategy",
     "MultiLevelCache",
 
-    # Providers
-    "GameProvider",
+    # Provider Implementations (GameProvider interface is in src.core.interfaces)
     "LeagueAggregatorProvider",
     "DemoProvider",
     "SingleLeagueProvider",

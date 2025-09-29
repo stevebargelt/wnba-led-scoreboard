@@ -4,8 +4,8 @@ import unittest
 from datetime import datetime, date, timedelta
 from unittest.mock import Mock, MagicMock, patch
 
+from src.core.interfaces import GameProvider
 from src.data.providers import (
-    GameProvider,
     LeagueAggregatorProvider,
     DemoProvider,
     SingleLeagueProvider,
@@ -14,6 +14,7 @@ from src.data.providers import (
 from src.model.game import GameSnapshot, GameState, TeamInfo
 from src.sports.models.sport_config import SportConfig
 from src.sports.models.league_config import LeagueConfig
+from src.config.supabase_config_loader import DeviceConfiguration
 
 
 class TestGameProviderInterface(unittest.TestCase):
@@ -38,28 +39,25 @@ class TestLeagueAggregatorProvider(unittest.TestCase):
         """Test successful game retrieval."""
         mock_game = self._create_mock_game()
         self.mock_aggregator.get_current_game.return_value = mock_game
+        current_time = datetime.now()
 
-        game = self.provider.get_current_game()
-
-        self.assertEqual(game, mock_game)
-        self.mock_aggregator.get_current_game.assert_called_once()
-
-    def test_get_current_game_with_time(self):
-        """Test game retrieval with specific time."""
-        mock_game = self._create_mock_game()
-        self.mock_aggregator.get_current_game.return_value = mock_game
-        now = datetime.now()
-
-        game = self.provider.get_current_game(now)
+        game = self.provider.get_current_game(current_time)
 
         self.assertEqual(game, mock_game)
-        self.mock_aggregator.get_current_game.assert_called_once_with(now)
+        self.mock_aggregator.get_current_game.assert_called_once_with(current_time)
+
+    def test_configure(self):
+        """Test configuration method."""
+        mock_config = Mock(spec=DeviceConfiguration)
+        self.provider.configure(mock_config)
+        self.assertEqual(self.provider._config, mock_config)
 
     def test_get_current_game_error_handling(self):
         """Test error handling in game retrieval."""
         self.mock_aggregator.get_current_game.side_effect = Exception("API Error")
+        current_time = datetime.now()
 
-        game = self.provider.get_current_game()
+        game = self.provider.get_current_game(current_time)
 
         self.assertIsNone(game)
 
@@ -119,18 +117,20 @@ class TestDemoProvider(unittest.TestCase):
             Mock(spec=GameSnapshot)
         ]
         provider = DemoProvider(games)
+        current_time = datetime.now()
 
         # Should cycle through games
-        self.assertEqual(provider.get_current_game(), games[0])
-        self.assertEqual(provider.get_current_game(), games[1])
-        self.assertEqual(provider.get_current_game(), games[2])
-        self.assertEqual(provider.get_current_game(), games[0])  # Back to start
+        self.assertEqual(provider.get_current_game(current_time), games[0])
+        self.assertEqual(provider.get_current_game(current_time), games[1])
+        self.assertEqual(provider.get_current_game(current_time), games[2])
+        self.assertEqual(provider.get_current_game(current_time), games[0])  # Back to start
 
     def test_with_generated_games(self):
         """Test demo provider with generated games."""
         provider = DemoProvider()
+        current_time = datetime.now()
 
-        game = provider.get_current_game()
+        game = provider.get_current_game(current_time)
 
         self.assertIsNotNone(game)
         self.assertIsInstance(game, GameSnapshot)
@@ -164,37 +164,38 @@ class TestSingleLeagueProvider(unittest.TestCase):
             self._create_game(GameState.FINAL)
         ]
         self.mock_client.fetch_games.return_value = games
+        current_time = datetime.now()
 
-        game = self.provider.get_current_game()
+        game = self.provider.get_current_game(current_time)
 
         self.assertEqual(game.state, GameState.LIVE)
 
     def test_get_current_game_upcoming_selection(self):
         """Test selection of closest upcoming game."""
-        now = datetime.now()
+        current_time = datetime.now()
         games = [
-            self._create_game(GameState.PRE, now + timedelta(hours=3)),
-            self._create_game(GameState.PRE, now + timedelta(hours=1)),
-            self._create_game(GameState.PRE, now + timedelta(hours=5))
+            self._create_game(GameState.PRE, current_time + timedelta(hours=3)),
+            self._create_game(GameState.PRE, current_time + timedelta(hours=1)),
+            self._create_game(GameState.PRE, current_time + timedelta(hours=5))
         ]
         self.mock_client.fetch_games.return_value = games
 
-        game = self.provider.get_current_game(now)
+        game = self.provider.get_current_game(current_time)
 
         # Should select the game 1 hour from now
         self.assertEqual(game, games[1])
 
     def test_get_current_game_recent_final(self):
         """Test selection of most recent final game."""
-        now = datetime.now()
+        current_time = datetime.now()
         games = [
-            self._create_game(GameState.FINAL, now - timedelta(hours=3)),
-            self._create_game(GameState.FINAL, now - timedelta(hours=1)),
-            self._create_game(GameState.FINAL, now - timedelta(hours=5))
+            self._create_game(GameState.FINAL, current_time - timedelta(hours=3)),
+            self._create_game(GameState.FINAL, current_time - timedelta(hours=1)),
+            self._create_game(GameState.FINAL, current_time - timedelta(hours=5))
         ]
         self.mock_client.fetch_games.return_value = games
 
-        game = self.provider.get_current_game(now)
+        game = self.provider.get_current_game(current_time)
 
         # Should select the game 1 hour ago (most recent)
         self.assertEqual(game, games[1])
@@ -232,8 +233,9 @@ class TestSingleLeagueProvider(unittest.TestCase):
         """Test that refresh is called when cache is empty."""
         game = self._create_game(GameState.LIVE)
         self.mock_client.fetch_games.return_value = [game]
+        current_time = datetime.now()
 
-        result = self.provider.get_current_game()
+        result = self.provider.get_current_game(current_time)
 
         self.mock_client.fetch_games.assert_called_once()
         self.assertEqual(result, game)
@@ -265,15 +267,21 @@ class TestMockProvider(unittest.TestCase):
         """Test mock provider basic operations."""
         provider = MockProvider()
         mock_game = Mock(spec=GameSnapshot)
+        current_time = datetime.now()
 
         # Test initial state
-        self.assertIsNone(provider.get_current_game())
+        self.assertIsNone(provider.get_current_game(current_time))
         self.assertTrue(provider.is_available())
         self.assertEqual(provider.refresh_count, 0)
 
         # Test setting game
         provider.set_current_game(mock_game)
-        self.assertEqual(provider.get_current_game(), mock_game)
+        self.assertEqual(provider.get_current_game(current_time), mock_game)
+
+        # Test configuration
+        mock_config = Mock(spec=DeviceConfiguration)
+        provider.configure(mock_config)
+        self.assertEqual(provider._config, mock_config)
 
         # Test refresh
         self.assertTrue(provider.refresh())
