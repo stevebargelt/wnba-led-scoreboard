@@ -6,6 +6,10 @@ cache/
 *.pyc
 *.pyo
 .DS_Store
+
+# Logs
+logs/
+*.log
 web-admin/node_modules/
 web-admin/.next/
 web-admin/.env.local
@@ -26,11 +30,14 @@ assets/
 !assets/fonts/pixel/*.ttf
 !assets/fonts/pixel/*.otf
 
-# Test coverage and reports (don’t track generated artifacts)
+# Test coverage and reports (don't track generated artifacts)
 coverage/
 **/coverage/
 **/lcov-report/
 web-admin/coverage/
+coverage*.html
+coverage*.xml
+*.coverage
 
 # Supabase CLI temp files
 supabase/**/.temp/
