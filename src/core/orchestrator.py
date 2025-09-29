@@ -252,7 +252,7 @@ class ApplicationOrchestrator:
         return {
             'game_snapshot': snapshot,
             'current_time': now_local,
-            'state': 'idle' if snapshot is None else str(snapshot.state).lower(),
+            'state': 'idle' if snapshot is None else snapshot.state.name.lower(),
             'favorite_teams': favorite_teams,
             'device_config': self.device_config,
         }
