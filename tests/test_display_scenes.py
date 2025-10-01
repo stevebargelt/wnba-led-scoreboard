@@ -27,10 +27,6 @@ class TestScene(Scene):
         """Get scene name."""
         return "test"
 
-    def get_priority(self):
-        """Get scene priority."""
-        return 5
-
 
 class TestSceneRegistry(unittest.TestCase):
     """Test scene registry functionality."""
@@ -115,7 +111,6 @@ class TestBuiltinScenes(unittest.TestCase):
         )
 
         self.assertEqual(scene.get_name(), "idle")
-        self.assertEqual(scene.get_priority(), 0)
 
     @patch('src.render.scenes.pregame.draw_pregame')
     def test_pregame_scene(self, mock_draw):
@@ -133,7 +128,6 @@ class TestBuiltinScenes(unittest.TestCase):
             self.font_small, self.font_large, logo_variant="small"
         )
         self.assertEqual(scene.get_name(), "pregame")
-        self.assertEqual(scene.get_priority(), 10)
 
     @patch('src.render.scenes.live.draw_live')
     def test_live_scene(self, mock_draw):
@@ -151,7 +145,6 @@ class TestBuiltinScenes(unittest.TestCase):
             self.font_small, self.font_large, logo_variant="small"
         )
         self.assertEqual(scene.get_name(), "live")
-        self.assertEqual(scene.get_priority(), 20)
 
     @patch('src.render.scenes.live_big.draw_live_big')
     def test_live_big_scene(self, mock_draw):
@@ -169,7 +162,6 @@ class TestBuiltinScenes(unittest.TestCase):
             self.font_small, self.font_large, logo_variant="banner"
         )
         self.assertEqual(scene.get_name(), "live_big")
-        self.assertEqual(scene.get_priority(), 20)
 
     @patch('src.render.scenes.final.draw_final')
     def test_final_scene(self, mock_draw):
@@ -187,7 +179,6 @@ class TestBuiltinScenes(unittest.TestCase):
             self.font_small, self.font_large, logo_variant="small"
         )
         self.assertEqual(scene.get_name(), "final")
-        self.assertEqual(scene.get_priority(), 15)
 
     def _create_mock_snapshot(self, state: GameState) -> GameSnapshot:
         """Create mock game snapshot."""
@@ -294,9 +285,6 @@ class TestSceneManager(unittest.TestCase):
 
             def get_name(self):
                 return "error"
-
-            def get_priority(self):
-                return 0
 
         self.registry.register(ErrorScene, "error")
 

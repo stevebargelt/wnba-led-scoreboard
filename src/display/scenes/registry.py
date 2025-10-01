@@ -44,11 +44,6 @@ class Scene(ABC):
         """Get the scene name."""
         pass
 
-    @abstractmethod
-    def get_priority(self) -> int:
-        """Get scene priority (higher = more important)."""
-        pass
-
 
 class SceneRegistry:
     """Registry for managing available scenes."""

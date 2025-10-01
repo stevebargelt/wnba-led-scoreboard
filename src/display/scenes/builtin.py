@@ -32,10 +32,6 @@ class IdleScene(Scene):
         """Get scene name."""
         return "idle"
 
-    def get_priority(self) -> int:
-        """Get scene priority."""
-        return 0
-
 
 class PregameScene(Scene):
     """Scene displayed before game starts."""
@@ -60,10 +56,6 @@ class PregameScene(Scene):
     def get_name(self) -> str:
         """Get scene name."""
         return "pregame"
-
-    def get_priority(self) -> int:
-        """Get scene priority."""
-        return 10
 
 
 class LiveScene(Scene):
@@ -90,10 +82,6 @@ class LiveScene(Scene):
         """Get scene name."""
         return "live"
 
-    def get_priority(self) -> int:
-        """Get scene priority."""
-        return 20
-
 
 class LiveBigScene(Scene):
     """Scene displayed during live game with big logos."""
@@ -117,10 +105,6 @@ class LiveBigScene(Scene):
     def get_name(self) -> str:
         """Get scene name."""
         return "live_big"
-
-    def get_priority(self) -> int:
-        """Get scene priority."""
-        return 20
 
 
 class FinalScene(Scene):
@@ -146,7 +130,3 @@ class FinalScene(Scene):
     def get_name(self) -> str:
         """Get scene name."""
         return "final"
-
-    def get_priority(self) -> int:
-        """Get scene priority."""
-        return 15
