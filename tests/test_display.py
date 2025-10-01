@@ -140,10 +140,12 @@ class TestBaseDisplay(unittest.TestCase):
 
     def test_update_configuration_dimension_change_error(self):
         """Test error when updating configuration with different dimensions."""
+        from src.core.exceptions import ConfigurationError
+
         new_config = self._create_mock_device_config()
         new_config.matrix_config.width = 128  # Different width
 
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ConfigurationError) as context:
             self.display.update_configuration(new_config)
 
         self.assertIn("different dimensions", str(context.exception))

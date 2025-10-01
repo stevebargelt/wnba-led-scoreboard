@@ -11,6 +11,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from src.config.supabase_config_loader import DeviceConfiguration
 from src.core.interfaces import DisplayManager
+from src.core.exceptions import ConfigurationError
 from src.model.game import GameSnapshot, GameState
 from src.display.scenes import SceneManager, SceneRegistry
 from src.render.fonts import get_font_manager
@@ -128,7 +129,7 @@ class BaseDisplay(DisplayManager):
 
         if (new_display_config.width != self.width or
             new_display_config.height != self.height):
-            raise ValueError("Cannot update configuration with different dimensions")
+            raise ConfigurationError("Cannot update configuration with different dimensions")
 
         self.config = config
         self.display_config = new_display_config
