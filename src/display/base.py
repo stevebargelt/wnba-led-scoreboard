@@ -13,6 +13,7 @@ from src.config.supabase_config_loader import DeviceConfiguration
 from src.core.interfaces import DisplayManager
 from src.model.game import GameSnapshot, GameState
 from src.display.scenes import SceneManager, SceneRegistry
+from src.render.fonts import get_font_manager
 
 
 @dataclass
@@ -64,8 +65,9 @@ class BaseDisplay(DisplayManager):
         self._buffer = Image.new("RGB", (self.width, self.height))
         self._draw = ImageDraw.Draw(self._buffer)
 
-        self._font_small = self._load_font(size=8)
-        self._font_large = self._load_font(size=12)
+        font_manager = get_font_manager()
+        self._font_small = font_manager.get_font("small")
+        self._font_large = font_manager.get_font("default")
 
         self._scene_manager = SceneManager()
         self._scene_manager.update_context(
@@ -84,13 +86,6 @@ class BaseDisplay(DisplayManager):
     def _flush_display(self) -> None:
         """Flush buffer to the specific display implementation."""
         pass
-
-    def _load_font(self, size: int) -> ImageFont.FreeTypeFont:
-        """Load font for rendering."""
-        try:
-            return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", size=size)
-        except Exception:
-            return ImageFont.load_default()
 
     def clear(self, color: Tuple[int, int, int] = (0, 0, 0)) -> None:
         """Clear the display buffer."""
