@@ -94,12 +94,22 @@ Run in order in Supabase SQL Editor.
 - **Validation Models** (`src/config/models.py`): Validated configuration with constraints
 - **Precedence System**: Runtime > Environment > Supabase > Defaults
 
-### Scoreboard Components
+### Data Layer
 - **SupabaseConfigLoader** (`src/config/supabase_config_loader.py`): Direct DB polling
 - **LeagueAggregator** (`src/sports/league_aggregator.py`): Multi-league game selection
 - **League Clients** (`src/sports/leagues/`): API integrations for each sport
-- **Renderer** (`src/render/`): LED matrix scenes (pregame/live/final)
-- **Resilience** (`src/runtime/`): Circuit breaker, caching, adaptive refresh
+- **ResilientHTTPClient** (`src/data/resilient_client.py`): Circuit breaker, caching, adaptive refresh
+- **CacheManager** (`src/data/cache.py`): Centralized multi-layer caching
+
+### Display Layer
+- **DisplayManager** (`src/display/`): Abstraction for different output targets
+  - **MatrixDisplay**: Hardware RGB LED matrix (Raspberry Pi)
+  - **SimulatorDisplay**: PNG file output for development
+  - **MockDisplay**: Testing implementation
+- **SceneManager** (`src/display/scenes/manager.py`): Scene selection and rendering coordination
+- **Scene Registry** (`src/display/scenes/registry.py`): Pluggable scene system
+- **Built-in Scenes** (`src/display/scenes/builtin.py`): Idle, Pregame, Live, LiveBig, Final
+- **Legacy Renderer** (`src/render/`): Original rendering implementation (being phased out)
 
 ### Web Admin (`web-admin/`)
 - **Authentication**: Supabase Auth integration
@@ -110,17 +120,41 @@ Run in order in Supabase SQL Editor.
 ## Project Structure
 ```
 .
-├── app.py                          # Main scoreboard application
+├── app.py                          # Main application (76 lines!)
 ├── src/                           # Python source code
-│   ├── config/                    # Configuration management
-│   │   └── supabase_config_loader.py # Direct DB polling
+│   ├── core/                      # Core infrastructure (Phase 1 refactor)
+│   │   ├── orchestrator.py        # Main application loop coordination
+│   │   ├── container.py           # Dependency injection
+│   │   ├── bootstrap.py           # Service initialization
+│   │   ├── interfaces.py          # Abstract base classes
+│   │   ├── providers.py           # Game/config provider implementations
+│   │   ├── options.py             # Runtime options
+│   │   ├── logging.py             # Structured logging
+│   │   └── exceptions.py          # Exception hierarchy
+│   ├── config/                    # Configuration management (Phase 2 refactor)
+│   │   ├── provider.py            # Unified configuration provider
+│   │   ├── models.py              # Pydantic validation models
+│   │   └── supabase_config_loader.py # Supabase integration
+│   ├── data/                      # Data layer (Phase 3 refactor)
+│   │   ├── resilient_client.py    # Circuit breaker HTTP client
+│   │   ├── cache.py               # Centralized caching
+│   │   └── providers.py           # Game data providers
 │   ├── sports/                    # Sports/leagues architecture
 │   │   ├── leagues/               # League-specific API clients
 │   │   └── league_aggregator.py   # Multi-league orchestration
-│   ├── data/                      # ESPN API clients with resilience
+│   ├── display/                   # Display abstraction (Phase 4 refactor)
+│   │   ├── base.py                # Base display implementation
+│   │   ├── matrix.py              # Hardware RGB matrix
+│   │   ├── simulator.py           # PNG file output
+│   │   ├── mock.py                # Testing display
+│   │   └── scenes/                # Scene management system
+│   │       ├── manager.py         # Scene selection/rendering
+│   │       ├── registry.py        # Scene registry
+│   │       └── builtin.py         # Built-in scenes
 │   ├── model/                     # Game data models
-│   ├── render/                    # LED display rendering
-│   └── runtime/                   # Adaptive refresh, hot-reload
+│   ├── render/                    # Legacy rendering (being phased out)
+│   └── boards/                    # Board management system
+├── tests/                         # Test suite (270+ tests!)
 ├── web-admin/                     # Next.js admin interface
 │   ├── src/components/            # React components
 │   ├── src/lib/                   # Utilities and Supabase client
@@ -149,10 +183,19 @@ Run in order in Supabase SQL Editor.
 - **Environment Overrides**: `.env` file can override any setting
 - **Hot Reload**: SIGHUP signal triggers configuration reload
 
-### LED Display Rendering
-- **Hardware Integration**: RGB matrix via `rgbmatrix` library (Pi only)
-- **Simulation Mode**: Renders to `out/frame.png` for development
-- **Multiple Layouts**: Stacked scores or big-logos mode
+### Display System Architecture
+- **Display Abstraction**: Three implementations via DisplayManager interface
+  - **MatrixDisplay**: Hardware RGB LED matrix (requires `rgbmatrix` library on Pi)
+  - **SimulatorDisplay**: Outputs to `out/frame.png` for development
+  - **MockDisplay**: Testing implementation with inspection capabilities
+- **Scene Management**: Pluggable scene system with automatic selection based on game state
+  - Idle → No active games
+  - Pregame → Before game starts
+  - Live → During game (stacked layout)
+  - LiveBig → During game (big-logos layout)
+  - Final → After game ends
+- **Font Management**: Configurable pixel fonts via `FontManager` (config/fonts.json)
+- **Multiple Layouts**: Stacked scores or big-logos mode via configuration
 - **Asset Management**: Auto-fetched team logos with size variants
 
 
@@ -200,9 +243,11 @@ Run in order in Supabase SQL Editor.
 
 ### Testing
 ```bash
-# Python unit tests (180+ tests)
+# Python unit tests (270+ tests!)
 python -m unittest discover tests
 python -m unittest tests.test_core_container  # Specific module
+python -m unittest tests.test_display         # Display layer tests
+python -m unittest tests.test_display_scenes  # Scene system tests
 python -m coverage run -m unittest discover tests  # With coverage
 python -m coverage report
 
@@ -297,6 +342,19 @@ BRIGHTNESS=75                # LED brightness (1-100)
 ## Always Do Section
 Always use conventional commits https://www.conventionalcommits.org/en/v1.0.0/ and https://gitmoji.dev when creating branches, commit messages, pr messages
 
+## Refactoring Status
+
+The codebase has undergone a comprehensive 5-phase refactoring (see `plans/refactor-python.md`):
+
+- ✅ **Phase 1: Core Infrastructure** - ApplicationOrchestrator, DI container, logging (app.py reduced to 76 lines!)
+- ✅ **Phase 2: Configuration Management** - Unified config provider with validation
+- ✅ **Phase 3: Data Layer** - Abstract interfaces, resilient HTTP client, caching
+- ✅ **Phase 4: Display Layer** - Display abstraction, scene management system
+- ✅ **Phase 5: Testing Infrastructure** - 270+ tests with comprehensive coverage
+- ⏭️ **Phase 6: Error Handling** - Already well-implemented with exception hierarchy and circuit breakers
+- 🔜 **Phase 7: Performance Optimization** - Future enhancement opportunity
+
 ## Memories
 - Demo mode is network connected and also calls ESPN/NHL / sport endpoints.
 - No. It's unacceptable to leave failing tests.
+- The refactoring is essentially complete - focus on real issues and features now.
