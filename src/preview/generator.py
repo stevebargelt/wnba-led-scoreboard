@@ -6,11 +6,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from src.config.models import DeviceConfiguration
-from src.config.supabase_config_loader import SupabaseConfigLoader
+from src.config.supabase_config_loader import DeviceConfiguration, SupabaseConfigLoader
 from src.display.simulator import SimulatorDisplay
 from src.display.scenes.manager import SceneManager
-from src.model.game import GameSnapshot, GameState, Team
+from src.model.game import GameSnapshot, GameState, TeamInfo
 from src.render.fonts import FontManager
 from src.core.logging import get_logger
 
@@ -37,13 +36,13 @@ class PreviewGenerator:
         display = SimulatorDisplay(self.config, str(self.output_dir))
         scene_manager = SceneManager()
         scene_manager.update_context(
-            live_layout=self.config.render.live_layout,
-            logo_variant=self.config.render.logo_variant
+            live_layout=self.config.render_config.live_layout,
+            logo_variant=self.config.render_config.logo_variant
         )
 
         font_mgr = FontManager()
-        font_small = font_mgr.get_font("4x6", 6)
-        font_large = font_mgr.get_font("5x8", 8)
+        font_small = font_mgr.get_font("small")
+        font_large = font_mgr.get_font("default")
 
         buffer = display.get_buffer()
         draw = display.get_draw()
@@ -73,13 +72,13 @@ class PreviewGenerator:
         display = SimulatorDisplay(self.config, str(self.output_dir))
         scene_manager = SceneManager()
         scene_manager.update_context(
-            live_layout=self.config.render.live_layout,
-            logo_variant=self.config.render.logo_variant
+            live_layout=self.config.render_config.live_layout,
+            logo_variant=self.config.render_config.logo_variant
         )
 
         font_mgr = FontManager()
-        font_small = font_mgr.get_font("4x6", 6)
-        font_large = font_mgr.get_font("5x8", 8)
+        font_small = font_mgr.get_font("small")
+        font_large = font_mgr.get_font("default")
 
         snapshot = self._create_demo_pregame_snapshot() if use_demo else None
 
@@ -113,12 +112,12 @@ class PreviewGenerator:
         scene_manager = SceneManager()
         scene_manager.update_context(
             live_layout="big-logos" if big_logos else "stacked",
-            logo_variant=self.config.render.logo_variant
+            logo_variant=self.config.render_config.logo_variant
         )
 
         font_mgr = FontManager()
-        font_small = font_mgr.get_font("4x6", 6)
-        font_large = font_mgr.get_font("5x8", 8)
+        font_small = font_mgr.get_font("small")
+        font_large = font_mgr.get_font("default")
 
         snapshot = self._create_demo_live_snapshot() if use_demo else None
 
@@ -150,13 +149,13 @@ class PreviewGenerator:
         display = SimulatorDisplay(self.config, str(self.output_dir))
         scene_manager = SceneManager()
         scene_manager.update_context(
-            live_layout=self.config.render.live_layout,
-            logo_variant=self.config.render.logo_variant
+            live_layout=self.config.render_config.live_layout,
+            logo_variant=self.config.render_config.logo_variant
         )
 
         font_mgr = FontManager()
-        font_small = font_mgr.get_font("4x6", 6)
-        font_large = font_mgr.get_font("5x8", 8)
+        font_small = font_mgr.get_font("small")
+        font_large = font_mgr.get_font("default")
 
         snapshot = self._create_demo_final_snapshot() if use_demo else None
 
@@ -187,16 +186,16 @@ class PreviewGenerator:
             game_id="demo-pregame",
             state=GameState.PRE,
             game_time_local=datetime.now() + timedelta(hours=2),
-            home=Team(
+            home=TeamInfo(
                 id="1",
                 name="Mercury",
-                abbreviation="PHX",
+                abbr="PHX",
                 score=0
             ),
-            away=Team(
+            away=TeamInfo(
                 id="2",
                 name="Sparks",
-                abbreviation="LA",
+                abbr="LA",
                 score=0
             ),
             period=1,
@@ -211,16 +210,16 @@ class PreviewGenerator:
             game_id="demo-live",
             state=GameState.LIVE,
             game_time_local=datetime.now(),
-            home=Team(
+            home=TeamInfo(
                 id="1",
                 name="Mercury",
-                abbreviation="PHX",
+                abbr="PHX",
                 score=72
             ),
-            away=Team(
+            away=TeamInfo(
                 id="2",
                 name="Sparks",
-                abbreviation="LA",
+                abbr="LA",
                 score=68
             ),
             period=3,
@@ -235,16 +234,16 @@ class PreviewGenerator:
             game_id="demo-final",
             state=GameState.FINAL,
             game_time_local=datetime.now(),
-            home=Team(
+            home=TeamInfo(
                 id="1",
                 name="Mercury",
-                abbreviation="PHX",
+                abbr="PHX",
                 score=89
             ),
-            away=Team(
+            away=TeamInfo(
                 id="2",
                 name="Sparks",
-                abbreviation="LA",
+                abbr="LA",
                 score=82
             ),
             period=4,

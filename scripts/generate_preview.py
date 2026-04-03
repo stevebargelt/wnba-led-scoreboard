@@ -8,7 +8,7 @@ import json
 import sys
 from pathlib import Path
 
-from src.config.models import DeviceConfiguration
+from src.config.supabase_config_loader import DeviceConfiguration
 from src.preview.generator import PreviewGenerator
 
 

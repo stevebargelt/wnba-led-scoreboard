@@ -36,6 +36,59 @@ class DeviceConfiguration:
     last_updated: datetime
     tz: Optional[ZoneInfo] = None
 
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'DeviceConfiguration':
+        """Create DeviceConfiguration from dictionary."""
+        from dateutil import parser as date_parser
+
+        matrix_data = data.get('matrix_config', {})
+        matrix_config = MatrixConfig(
+            width=matrix_data.get('width', 128),
+            height=matrix_data.get('height', 64),
+            brightness=matrix_data.get('brightness', 80)
+        )
+
+        render_data = data.get('render_config', {})
+        render_config = RenderConfig(
+            live_layout=render_data.get('live_layout', 'stacked'),
+            logo_variant=render_data.get('logo_variant', 'mini')
+        )
+
+        refresh_data = data.get('refresh_config', {})
+        refresh_config = RefreshConfig(
+            pregame_sec=refresh_data.get('pregame_sec', 30),
+            ingame_sec=refresh_data.get('ingame_sec', 5),
+            final_sec=refresh_data.get('final_sec', 60)
+        )
+
+        timezone = data.get('timezone', 'America/Los_Angeles')
+        try:
+            tz = ZoneInfo(timezone)
+        except Exception:
+            tz = ZoneInfo('America/Los_Angeles')
+
+        last_updated_str = data.get('last_updated')
+        if isinstance(last_updated_str, str):
+            last_updated = date_parser.parse(last_updated_str)
+        elif isinstance(last_updated_str, datetime):
+            last_updated = last_updated_str
+        else:
+            last_updated = datetime.now()
+
+        return cls(
+            device_id=data.get('device_id', 'unknown'),
+            timezone=timezone,
+            enabled=data.get('enabled', True),
+            matrix_config=matrix_config,
+            render_config=render_config,
+            refresh_config=refresh_config,
+            enabled_leagues=data.get('enabled_leagues', ['wnba']),
+            league_priorities=data.get('league_priorities', ['wnba']),
+            favorite_teams=data.get('favorite_teams', {}),
+            last_updated=last_updated,
+            tz=tz
+        )
+
 
 class SupabaseConfigLoader:
     """
