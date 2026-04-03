@@ -12,6 +12,8 @@ from src.display.scenes.manager import SceneManager
 from src.model.game import GameSnapshot, GameState, TeamInfo
 from src.render.fonts import FontManager
 from src.core.logging import get_logger
+from src.sports.definitions.basketball import BASKETBALL_SPORT
+from src.sports.leagues.wnba import WNBA_LEAGUE
 
 logger = get_logger(__name__)
 
@@ -181,11 +183,16 @@ class PreviewGenerator:
         """Create demo pregame game data."""
         from datetime import timedelta
 
+        start_time = datetime.now() + timedelta(hours=2)
+        period = 1
+        period_name = BASKETBALL_SPORT.get_period_name(period)
+
         return GameSnapshot(
-            sport="wnba",
-            game_id="demo-pregame",
+            sport=BASKETBALL_SPORT,
+            league=WNBA_LEAGUE,
+            event_id="demo-pregame",
             state=GameState.PRE,
-            game_time_local=datetime.now() + timedelta(hours=2),
+            start_time_local=start_time,
             home=TeamInfo(
                 id="1",
                 name="Mercury",
@@ -198,18 +205,24 @@ class PreviewGenerator:
                 abbr="LA",
                 score=0
             ),
-            period=1,
-            clock="",
-            status_text="7:00 PM ET"
+            current_period=period,
+            period_name=period_name,
+            display_clock="",
+            seconds_to_start=7200,
+            status_detail="7:00 PM ET"
         )
 
     def _create_demo_live_snapshot(self) -> GameSnapshot:
         """Create demo live game data."""
+        period = 3
+        period_name = BASKETBALL_SPORT.get_period_name(period)
+
         return GameSnapshot(
-            sport="wnba",
-            game_id="demo-live",
+            sport=BASKETBALL_SPORT,
+            league=WNBA_LEAGUE,
+            event_id="demo-live",
             state=GameState.LIVE,
-            game_time_local=datetime.now(),
+            start_time_local=datetime.now(),
             home=TeamInfo(
                 id="1",
                 name="Mercury",
@@ -222,18 +235,24 @@ class PreviewGenerator:
                 abbr="LA",
                 score=68
             ),
-            period=3,
-            clock="5:42",
-            status_text="Q3 5:42"
+            current_period=period,
+            period_name=period_name,
+            display_clock="5:42",
+            seconds_to_start=-1,
+            status_detail=f"{period_name} 5:42"
         )
 
     def _create_demo_final_snapshot(self) -> GameSnapshot:
         """Create demo final game data."""
+        period = 4
+        period_name = BASKETBALL_SPORT.get_period_name(period)
+
         return GameSnapshot(
-            sport="wnba",
-            game_id="demo-final",
+            sport=BASKETBALL_SPORT,
+            league=WNBA_LEAGUE,
+            event_id="demo-final",
             state=GameState.FINAL,
-            game_time_local=datetime.now(),
+            start_time_local=datetime.now(),
             home=TeamInfo(
                 id="1",
                 name="Mercury",
@@ -246,7 +265,9 @@ class PreviewGenerator:
                 abbr="LA",
                 score=82
             ),
-            period=4,
-            clock="",
-            status_text="Final"
+            current_period=period,
+            period_name=period_name,
+            display_clock="",
+            seconds_to_start=-1,
+            status_detail="Final"
         )
