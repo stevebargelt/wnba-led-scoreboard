@@ -19,6 +19,7 @@ import {
 } from '../../components/ui'
 import { SportManagement } from '../../components/sports/SportManagement'
 import { LiveGameMonitor } from '../../components/sports/LiveGameMonitor'
+import { DisplayPreview } from '../../components/preview/DisplayPreview'
 
 // Removed edge function endpoints - now using direct database writes
 
@@ -321,9 +322,10 @@ export default function DevicePage() {
 
         {/* Tabbed Interface */}
         <Tabs defaultValue="sports" className="w-full">
-          <TabsList className="grid grid-cols-3 w-full">
+          <TabsList className="grid grid-cols-4 w-full">
             <TabsTrigger value="sports">Sports</TabsTrigger>
             <TabsTrigger value="favorites">Favorite Teams</TabsTrigger>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
             <TabsTrigger value="config">Config</TabsTrigger>
             {/* Removed Device Actions, Token, and Events tabs - no longer needed */}
           </TabsList>
@@ -347,6 +349,10 @@ export default function DevicePage() {
               onConfigChange={handleMultiSportConfigChange}
               initialConfig={multiSportConfig}
             />
+          </TabsContent>
+
+          <TabsContent value="preview">
+            <DisplayPreview deviceId={id as string} />
           </TabsContent>
 
           {/* Removed Device Actions and Token tabs content */}

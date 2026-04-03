@@ -1,0 +1,253 @@
+"""
+Preview generator for web admin interface.
+"""
+
+from datetime import datetime
+from pathlib import Path
+from typing import Optional
+
+from src.config.models import DeviceConfiguration
+from src.config.supabase_config_loader import SupabaseConfigLoader
+from src.display.simulator import SimulatorDisplay
+from src.display.scenes.manager import SceneManager
+from src.model.game import GameSnapshot, GameState, Team
+from src.render.fonts import FontManager
+from src.core.logging import get_logger
+
+logger = get_logger(__name__)
+
+
+class PreviewGenerator:
+    """Generates preview images of scoreboard displays."""
+
+    def __init__(self, config: DeviceConfiguration, output_dir: str = "out/preview"):
+        """
+        Initialize preview generator.
+
+        Args:
+            config: Device configuration
+            output_dir: Directory to save preview images
+        """
+        self.config = config
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+    def generate_idle_scene(self) -> Path:
+        """Generate preview of idle scene."""
+        display = SimulatorDisplay(self.config, str(self.output_dir))
+        scene_manager = SceneManager()
+        scene_manager.update_context(
+            live_layout=self.config.render.live_layout,
+            logo_variant=self.config.render.logo_variant
+        )
+
+        font_mgr = FontManager()
+        font_small = font_mgr.get_font("4x6", 6)
+        font_large = font_mgr.get_font("5x8", 8)
+
+        buffer = display.get_buffer()
+        draw = display.get_draw()
+
+        scene_manager.render_scene(
+            buffer=buffer,
+            draw=draw,
+            snapshot=None,
+            current_time=datetime.now(),
+            font_small=font_small,
+            font_large=font_large
+        )
+
+        display.flush()
+        path = display.get_last_frame_path()
+        display.close()
+
+        return path
+
+    def generate_pregame_scene(self, use_demo: bool = True) -> Path:
+        """
+        Generate preview of pregame scene.
+
+        Args:
+            use_demo: Use demo game data
+        """
+        display = SimulatorDisplay(self.config, str(self.output_dir))
+        scene_manager = SceneManager()
+        scene_manager.update_context(
+            live_layout=self.config.render.live_layout,
+            logo_variant=self.config.render.logo_variant
+        )
+
+        font_mgr = FontManager()
+        font_small = font_mgr.get_font("4x6", 6)
+        font_large = font_mgr.get_font("5x8", 8)
+
+        snapshot = self._create_demo_pregame_snapshot() if use_demo else None
+
+        buffer = display.get_buffer()
+        draw = display.get_draw()
+
+        scene_manager.render_scene(
+            buffer=buffer,
+            draw=draw,
+            snapshot=snapshot,
+            current_time=datetime.now(),
+            font_small=font_small,
+            font_large=font_large
+        )
+
+        display.flush()
+        path = display.get_last_frame_path()
+        display.close()
+
+        return path
+
+    def generate_live_scene(self, use_demo: bool = True, big_logos: bool = False) -> Path:
+        """
+        Generate preview of live game scene.
+
+        Args:
+            use_demo: Use demo game data
+            big_logos: Use big-logos layout
+        """
+        display = SimulatorDisplay(self.config, str(self.output_dir))
+        scene_manager = SceneManager()
+        scene_manager.update_context(
+            live_layout="big-logos" if big_logos else "stacked",
+            logo_variant=self.config.render.logo_variant
+        )
+
+        font_mgr = FontManager()
+        font_small = font_mgr.get_font("4x6", 6)
+        font_large = font_mgr.get_font("5x8", 8)
+
+        snapshot = self._create_demo_live_snapshot() if use_demo else None
+
+        buffer = display.get_buffer()
+        draw = display.get_draw()
+
+        scene_manager.render_scene(
+            buffer=buffer,
+            draw=draw,
+            snapshot=snapshot,
+            current_time=datetime.now(),
+            font_small=font_small,
+            font_large=font_large
+        )
+
+        display.flush()
+        path = display.get_last_frame_path()
+        display.close()
+
+        return path
+
+    def generate_final_scene(self, use_demo: bool = True) -> Path:
+        """
+        Generate preview of final scene.
+
+        Args:
+            use_demo: Use demo game data
+        """
+        display = SimulatorDisplay(self.config, str(self.output_dir))
+        scene_manager = SceneManager()
+        scene_manager.update_context(
+            live_layout=self.config.render.live_layout,
+            logo_variant=self.config.render.logo_variant
+        )
+
+        font_mgr = FontManager()
+        font_small = font_mgr.get_font("4x6", 6)
+        font_large = font_mgr.get_font("5x8", 8)
+
+        snapshot = self._create_demo_final_snapshot() if use_demo else None
+
+        buffer = display.get_buffer()
+        draw = display.get_draw()
+
+        scene_manager.render_scene(
+            buffer=buffer,
+            draw=draw,
+            snapshot=snapshot,
+            current_time=datetime.now(),
+            font_small=font_small,
+            font_large=font_large
+        )
+
+        display.flush()
+        path = display.get_last_frame_path()
+        display.close()
+
+        return path
+
+    def _create_demo_pregame_snapshot(self) -> GameSnapshot:
+        """Create demo pregame game data."""
+        from datetime import timedelta
+
+        return GameSnapshot(
+            sport="wnba",
+            game_id="demo-pregame",
+            state=GameState.PRE,
+            game_time_local=datetime.now() + timedelta(hours=2),
+            home=Team(
+                id="1",
+                name="Mercury",
+                abbreviation="PHX",
+                score=0
+            ),
+            away=Team(
+                id="2",
+                name="Sparks",
+                abbreviation="LA",
+                score=0
+            ),
+            period=1,
+            clock="",
+            status_text="7:00 PM ET"
+        )
+
+    def _create_demo_live_snapshot(self) -> GameSnapshot:
+        """Create demo live game data."""
+        return GameSnapshot(
+            sport="wnba",
+            game_id="demo-live",
+            state=GameState.LIVE,
+            game_time_local=datetime.now(),
+            home=Team(
+                id="1",
+                name="Mercury",
+                abbreviation="PHX",
+                score=72
+            ),
+            away=Team(
+                id="2",
+                name="Sparks",
+                abbreviation="LA",
+                score=68
+            ),
+            period=3,
+            clock="5:42",
+            status_text="Q3 5:42"
+        )
+
+    def _create_demo_final_snapshot(self) -> GameSnapshot:
+        """Create demo final game data."""
+        return GameSnapshot(
+            sport="wnba",
+            game_id="demo-final",
+            state=GameState.FINAL,
+            game_time_local=datetime.now(),
+            home=Team(
+                id="1",
+                name="Mercury",
+                abbreviation="PHX",
+                score=89
+            ),
+            away=Team(
+                id="2",
+                name="Sparks",
+                abbreviation="LA",
+                score=82
+            ),
+            period=4,
+            clock="",
+            status_text="Final"
+        )
