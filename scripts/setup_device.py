@@ -37,7 +37,7 @@ def setup_device():
             print(f"✅ Device already exists:")
             print(f"   ID: {device['id']}")
             print(f"   Name: {device.get('name', 'N/A')}")
-            print(f"   Owner: {device.get('owner_id', 'N/A')}")
+            print(f"   User ID: {device.get('user_id', 'N/A')}")
             print(f"   Created: {device.get('created_at', 'N/A')}")
             return True
         else:
@@ -47,7 +47,7 @@ def setup_device():
             new_device = {
                 "id": device_id,
                 "name": "LED Scoreboard Device",
-                "owner_id": None,
+                "user_id": None,
             }
 
             try:
@@ -57,10 +57,10 @@ def setup_device():
             except Exception as e:
                 print(f"❌ Error creating device: {e}")
                 print("\nNote: You may need to:")
-                print("  1. Set owner_id to a valid auth.users.id")
+                print("  1. Set user_id to a valid auth.users.id")
                 print("  2. Ensure RLS policies allow device creation")
                 print("  3. Create device manually via SQL Editor:")
-                print(f"\n  INSERT INTO devices (id, name, owner_id)")
+                print(f"\n  INSERT INTO devices (id, name, user_id)")
                 print(f"  VALUES ('{device_id}', 'LED Scoreboard', NULL);")
                 return False
 
