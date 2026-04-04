@@ -25,7 +25,7 @@ class IdleScene(Scene):
         **kwargs: Any
     ) -> None:
         """Draw idle scene."""
-        msg = current_time.strftime("%a %m/%d — No games")
+        msg = current_time.strftime("%a %m/%d - No games")
         draw.text((1, 1), msg[:20], fill=(180, 180, 180), font=font_small)
 
     def get_name(self) -> str:
