@@ -32,9 +32,10 @@ log "Backup created: $BACKUP_PATH.commit (commit: $CURRENT_COMMIT)"
 log "Fetching latest changes from origin"
 git fetch origin
 
-log "Pulling latest code from main branch"
+CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+log "Pulling latest code from $CURRENT_BRANCH branch"
 PREVIOUS_COMMIT=$(git rev-parse HEAD)
-git pull origin main
+git pull origin "$CURRENT_BRANCH"
 
 NEW_COMMIT=$(git rev-parse HEAD)
 if [ "$PREVIOUS_COMMIT" = "$NEW_COMMIT" ]; then

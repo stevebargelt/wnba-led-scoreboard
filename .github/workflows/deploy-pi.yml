@@ -3,13 +3,13 @@ name: Deploy to Raspberry Pi
 on:
   push:
     branches:
-      - develop
+      - development
   workflow_dispatch:
     inputs:
       branch:
-        description: 'Branch to deploy (default: develop)'
+        description: 'Branch to deploy (default: development)'
         required: false
-        default: 'develop'
+        default: 'development'
       skip_tests:
         description: 'Skip test suite (not recommended)'
         required: false
@@ -26,7 +26,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.branch || 'develop' }}
+        ref: ${{ inputs.branch || 'development' }}
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -57,7 +57,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.branch || 'develop' }}
+        ref: ${{ inputs.branch || 'development' }}
 
     - name: Connect to Tailscale
       uses: tailscale/github-action@v2
@@ -94,7 +94,7 @@ jobs:
       run: |
         if [ "${{ steps.deploy.outcome }}" = "success" ]; then
           echo "✅ Deployment successful!"
-          echo "Branch: ${{ inputs.branch || 'develop' }}"
+          echo "Branch: ${{ inputs.branch || 'development' }}"
           echo "Commit: ${{ github.sha }}"
           exit 0
         else
