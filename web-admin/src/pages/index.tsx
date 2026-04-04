@@ -48,7 +48,7 @@ export default function Home() {
     }
     const { data, error } = await supabase
       .from('devices')
-      .insert({ name: newDeviceName, owner_user_id: userData.user.id })
+      .insert({ name: newDeviceName, user_id: userData.user.id })
       .select('id,name')
       .single()
     if (error) setMessage(error.message)

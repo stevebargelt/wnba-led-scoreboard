@@ -34,7 +34,7 @@ export default function RegisterDevice() {
 
       const { data, error } = await supabase
         .from('devices')
-        .insert({ name, owner_user_id: userData.user.id })
+        .insert({ name, user_id: userData.user.id })
         .select('id')
         .single()
 
