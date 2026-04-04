@@ -25,9 +25,14 @@ BEGIN
             d.name,
             d.last_seen_ts,
             dc.timezone,
-            dc.matrix_config,
-            dc.render_config,
-            dc.refresh_config,
+            dc.brightness,
+            dc.matrix_width,
+            dc.matrix_height,
+            dc.refresh_pregame_sec,
+            dc.refresh_ingame_sec,
+            dc.refresh_final_sec,
+            dc.live_display_layout,
+            dc.display_config,
             dc.priority_config
         FROM devices d
         LEFT JOIN device_config dc ON dc.device_id = d.id
@@ -68,20 +73,20 @@ BEGIN
         'device_id', device_data.id,
         'device_name', device_data.name,
         'timezone', COALESCE(device_data.timezone, 'America/Los_Angeles'),
-        'matrix_config', COALESCE(device_data.matrix_config::json, json_build_object(
-            'width', 128,
-            'height', 64,
-            'brightness', 100
-        )),
-        'refresh_config', COALESCE(device_data.refresh_config::json, json_build_object(
-            'pregame_sec', 600,
-            'ingame_sec', 120,
-            'final_sec', 900
-        )),
-        'render_config', COALESCE(device_data.render_config::json, json_build_object(
-            'live_layout', 'stacked',
-            'logo_variant', 'mini'
-        )),
+        'matrix_config', json_build_object(
+            'width', COALESCE(device_data.matrix_width, 128),
+            'height', COALESCE(device_data.matrix_height, 64),
+            'brightness', COALESCE(device_data.brightness, 100)
+        ),
+        'refresh_config', json_build_object(
+            'pregame_sec', COALESCE(device_data.refresh_pregame_sec, 600),
+            'ingame_sec', COALESCE(device_data.refresh_ingame_sec, 120),
+            'final_sec', COALESCE(device_data.refresh_final_sec, 900)
+        ),
+        'render_config', json_build_object(
+            'live_layout', COALESCE(device_data.live_display_layout, 'stacked'),
+            'logo_variant', COALESCE(device_data.display_config->>'logo_variant', 'mini')
+        ),
         'enabled_leagues', COALESCE(enabled_leagues.leagues, '[]'::json),
         'favorite_teams', COALESCE(
             (SELECT json_object_agg(league_code, teams) FROM favorite_teams),

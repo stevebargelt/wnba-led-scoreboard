@@ -68,6 +68,14 @@ class FontManager:
             font = ImageFont.truetype(font_path, size=font_size)
             self._fonts[cache_key] = font
             return font
+        except ImportError as e:
+            # FreeType not available (PIL compiled without FreeType support)
+            if '_imagingft' in str(e):
+                print(f"[FontManager] PIL FreeType module not available. "
+                      f"Install Pillow with FreeType support: pip install --force-reinstall pillow")
+            else:
+                print(f"[FontManager] Import error loading {font_path}: {e}")
+            # Fall through to default font
         except Exception as e:
             print(f"[FontManager] Failed to load {font_path}: {e}")
             # Try fallback fonts
@@ -83,8 +91,9 @@ class FontManager:
                 except:
                     continue
 
-            # Last resort: default font
-            return ImageFont.load_default()
+        # Last resort: default font (bitmap font, doesn't require FreeType)
+        print(f"[FontManager] Using PIL default bitmap font for '{name}'")
+        return ImageFont.load_default()
 
     def get_period_font(self) -> ImageFont.FreeTypeFont:
         """Get font specifically for period display."""

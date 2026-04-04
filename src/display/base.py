@@ -114,6 +114,14 @@ class BaseDisplay(DisplayManager):
         """Flush the display buffer to hardware/output."""
         self._flush_display()
 
+    def get_buffer(self) -> Image.Image:
+        """Get the internal PIL Image buffer."""
+        return self._buffer
+
+    def get_draw(self) -> ImageDraw.ImageDraw:
+        """Get the internal PIL ImageDraw context."""
+        return self._draw
+
     def close(self) -> None:
         """Clean up display resources."""
         pass
