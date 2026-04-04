@@ -5,8 +5,12 @@ CLI script to generate preview images for web admin.
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
+
+from dotenv import load_dotenv
+from supabase import create_client
 
 from src.config.supabase_config_loader import DeviceConfiguration
 from src.preview.generator import PreviewGenerator
@@ -33,8 +37,13 @@ def main():
         else:
             from src.config.supabase_config_loader import SupabaseConfigLoader
 
-            loader = SupabaseConfigLoader()
-            config = loader.load_configuration(args.device_id)
+            load_dotenv()
+            service_client = create_client(
+                os.getenv('SUPABASE_URL'),
+                os.getenv('SUPABASE_SERVICE_ROLE_KEY')
+            )
+            loader = SupabaseConfigLoader(args.device_id, service_client)
+            config = loader.load_full_config()
             if not config:
                 print(json.dumps({"error": "Device not found"}))
                 sys.exit(1)
