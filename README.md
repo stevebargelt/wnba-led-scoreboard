@@ -276,6 +276,39 @@ python app.py --demo       # Demo with fake games
 ```
 
 ### Production (Raspberry Pi)
+
+#### Automated CI/CD Deployment
+
+The project includes automated deployment to a Raspberry Pi test device using **Tailscale SSH** and **GitHub Actions**.
+
+**Features:**
+- ✅ Auto-deploy on push to `develop` branch
+- ✅ Manual deployment via workflow dispatch
+- ✅ Automatic health checks and rollback on failure
+- ✅ Secure deployment over Tailscale mesh network
+
+**Quick Start:**
+1. Set up Tailscale on your Raspberry Pi
+2. Configure GitHub Secrets (see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md))
+3. Push to `develop` branch to trigger deployment
+
+**Manual Deployment:**
+```bash
+# Deploy develop branch
+gh workflow run deploy-pi.yml
+
+# Deploy specific branch
+gh workflow run deploy-pi.yml -f branch=main
+```
+
+**📚 Full Documentation:** See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for:
+- Initial setup instructions
+- GitHub Secrets configuration
+- Troubleshooting guide
+- Manual deployment procedures
+- Rollback procedures
+
+#### Direct Execution
 ```bash
 sudo -E python app.py      # Run with hardware
 ```
@@ -442,6 +475,7 @@ MIT License - see LICENSE file for details
 
 ## 📚 Additional Resources
 
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) - Raspberry Pi CI/CD deployment guide
 - [CLAUDE.md](CLAUDE.md) - AI assistant guidelines for development
 - [Hardware Setup Guide](https://github.com/hzeller/rpi-rgb-led-matrix)
 - [Supabase Documentation](https://supabase.com/docs)
