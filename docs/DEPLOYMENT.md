@@ -132,6 +132,50 @@ echo "ssh-ed25519 AAAA... deploy-key" >> ~/.ssh/authorized_keys
 2. Create a new OAuth client with:
    - **Description**: GitHub Actions CI/CD
    - **Tags**: `tag:ci`
+
+#### OAuth Scopes Required
+
+When creating the OAuth client, select ONLY:
+- ✅ **devices:write (core)** - Allows creating ephemeral devices
+
+DO NOT select:
+- ❌ devices:write:posture attributes (not needed)
+- ❌ devices:write:routes (not needed)
+- ❌ devices:write:device invites (not needed)
+
+#### ACL Configuration Required
+
+The OAuth client alone is insufficient - ACLs must also be configured.
+
+Add the following to your Tailscale ACL configuration (Admin Console → Access Controls):
+
+```json
+{
+  "tagOwners": {
+    "tag:ci": ["autogroup:admin"]
+  },
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["tag:ci"],
+      "dst": ["*:*"]
+    }
+  ]
+}
+```
+
+This configuration:
+- Allows admins to create devices with the `tag:ci` tag
+- Grants devices with `tag:ci` access to all network resources
+
+#### Verification Steps
+
+After setting up the OAuth client and ACLs:
+
+1. **Verify OAuth scopes**: Check that the OAuth client shows only `devices:write` scope in the Tailscale admin console
+2. **Verify ACL configuration**: Confirm `tag:ci` appears in the ACL `tagOwners` section
+3. **Test workflow**: Run a test deployment to ensure the workflow can create ephemeral devices
+
 3. Copy the Client ID and Client Secret to GitHub Secrets
 
 ### Step 4: Test SSH Connection
