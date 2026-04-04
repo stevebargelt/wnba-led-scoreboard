@@ -86,15 +86,7 @@ This guide covers automated and manual deployment of the WNBA LED Scoreboard to 
 
 ### On GitHub
 
-Required secrets (Settings → Secrets and variables → Actions):
-
-| Secret Name | Description | Example |
-|-------------|-------------|---------|
-| `PI_SSH_KEY` | Private SSH key for deployment | `-----BEGIN OPENSSH PRIVATE KEY-----...` |
-| `PI_SSH_USER` | SSH username on Pi | `pi` |
-| `PI_TAILSCALE_HOST` | Tailscale hostname of Pi | `raspberrypi.tailnet-name.ts.net` |
-| `TAILSCALE_OAUTH_CLIENT_ID` | Tailscale OAuth client ID | `k12345...` |
-| `TAILSCALE_OAUTH_SECRET` | Tailscale OAuth secret | `tskey-client-...` |
+You'll need to configure GitHub Actions secrets after completing the initial setup steps below. The secrets are created during setup and then added to GitHub in Step 5.
 
 ## Initial Setup
 
@@ -190,9 +182,28 @@ If this works, GitHub Actions will work too.
 
 ### Step 5: Add Secrets to GitHub
 
+Now that you have generated all the required values, add them to GitHub Actions secrets.
+
 1. Go to repository Settings → Secrets and variables → Actions
 2. Click "New repository secret"
-3. Add each secret from the table above
+3. Add each of the following secrets:
+
+| Secret Name | Description | Where to Find |
+|-------------|-------------|---------------|
+| `PI_SSH_KEY` | Private SSH key for deployment | Contents of `~/.ssh/pi_deploy_key` (from Step 1) |
+| `PI_SSH_USER` | SSH username on Pi | Your Pi username (typically `pi`) |
+| `PI_TAILSCALE_HOST` | Tailscale hostname of Pi | From `sudo tailscale status` on Pi (e.g., `raspberrypi.tailnet-name.ts.net`) |
+| `TAILSCALE_OAUTH_CLIENT_ID` | Tailscale OAuth client ID | From Tailscale OAuth client (Step 3) |
+| `TAILSCALE_OAUTH_SECRET` | Tailscale OAuth secret | From Tailscale OAuth client (Step 3) |
+
+**Adding the SSH private key:**
+
+```bash
+# Copy the entire private key including headers
+cat ~/.ssh/pi_deploy_key
+```
+
+Copy the complete output (including `-----BEGIN OPENSSH PRIVATE KEY-----` and `-----END OPENSSH PRIVATE KEY-----`) and paste it as the value for `PI_SSH_KEY`.
 
 ## Automated Deployment
 
