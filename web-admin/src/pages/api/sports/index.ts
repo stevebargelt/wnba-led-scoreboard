@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import fs from 'fs/promises'
 import path from 'path'
 
-// Server-side: use service role if available to read sport_teams regardless of session
+// Server-side: use service role if available to read league_teams regardless of session
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -23,9 +23,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         auth: { autoRefreshToken: false, persistSession: false },
       })
       const resp = await admin
-        .from('sport_teams')
+        .from('league_teams')
         .select(
-          'sport, external_id, name, display_name, abbreviation, conference, division, is_active'
+          'team_id, name, abbreviation, conference, division, is_active, leagues(code)'
         )
         .eq('is_active', true)
       data = resp.data
@@ -41,9 +41,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         auth: { autoRefreshToken: false, persistSession: false },
       })
       const resp = await userClient
-        .from('sport_teams')
+        .from('league_teams')
         .select(
-          'sport, external_id, name, display_name, abbreviation, conference, division, is_active'
+          'team_id, name, abbreviation, conference, division, is_active, leagues(code)'
         )
         .eq('is_active', true)
       data = resp.data
@@ -61,11 +61,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (data && data.length > 0) {
       for (const row of data) {
-        const sport = String(row.sport)
+        const sport = String(row.leagues?.code || '')
         if (!grouped[sport]) continue
         grouped[sport].push({
-          id: row.external_id,
-          name: row.display_name || row.name,
+          id: row.team_id,
+          name: row.name,
           abbreviation: row.abbreviation,
           conference: row.conference,
           division: row.division,
