@@ -1,5 +1,7 @@
 # WNBA LED Scoreboard Web Admin
 
+![E2E Tests](https://github.com/stevebargelt/wnba-led-scoreboard/actions/workflows/e2e-tests.yml/badge.svg)
+
 A modern, cloud-first web administration interface for managing WNBA LED scoreboards built with Next.js, TypeScript, and Supabase.
 
 ## 🚀 Features
