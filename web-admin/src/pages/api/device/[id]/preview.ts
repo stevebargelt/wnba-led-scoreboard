@@ -47,6 +47,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'GET') {
+    // Detect serverless environment (Vercel, Netlify, etc.)
+    if (process.env.VERCEL || process.env.NETLIFY) {
+      return res.status(503).json({
+        error: 'Preview generation not available on serverless deployment',
+        reason: 'serverless',
+        details:
+          'Preview generation requires Python runtime and file system access. ' +
+          'For previews, deploy the web admin on a server with Python 3.8+ installed, ' +
+          'or use a self-hosted environment. The preview feature will work on Railway, ' +
+          'Render, or any VM-based hosting.',
+      })
+    }
+
     try {
       const scene = (req.query.scene as string) || 'live'
       const validScenes = ['idle', 'pregame', 'live', 'live_big', 'final']
