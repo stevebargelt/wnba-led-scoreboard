@@ -5,26 +5,31 @@ End-to-end testing infrastructure for the WNBA LED Scoreboard web admin interfac
 ## Running Tests Locally
 
 ### Run all tests
+
 ```bash
 npm run test:e2e
 ```
 
 ### Run tests in UI mode (interactive)
+
 ```bash
 npm run test:e2e:ui
 ```
 
 ### Run tests in debug mode
+
 ```bash
 npm run test:e2e:debug
 ```
 
 ### Run specific test file
+
 ```bash
 npx playwright test auth.spec.ts
 ```
 
 ### Run tests in headed mode (see browser)
+
 ```bash
 npx playwright test --headed
 ```
@@ -32,18 +37,33 @@ npx playwright test --headed
 ## Prerequisites
 
 1. Install dependencies:
+
    ```bash
    npm ci
    ```
 
 2. Install Playwright browsers:
+
    ```bash
    npx playwright install chromium
    ```
 
 3. Set up environment variables:
-   - Copy `.env.example` to `.env.local`
-   - Configure Supabase credentials
+
+   Create a `.env.local` file with the following variables:
+
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   TEST_USER_EMAIL=test@example.com
+   TEST_USER_PASSWORD=test-password
+   ```
+
+4. Set up test data:
+   - Create a test user in Supabase Auth with the credentials above
+   - Create at least one device owned by the test user
+   - Ensure the device has valid configuration (device_config, device_leagues, etc.)
 
 ## Project Structure
 
@@ -61,6 +81,7 @@ tests/e2e/
 ## Writing New Tests
 
 ### Basic test structure
+
 ```typescript
 import { test, expect } from '@playwright/test'
 
@@ -73,19 +94,23 @@ test.describe('Feature Name', () => {
 ```
 
 ### Using authenticated fixtures
+
 ```typescript
-import { test } from './fixtures/auth'
+import { test, expect } from './fixtures/auth'
 
 test.describe('Authenticated Feature', () => {
-  test('should access protected page', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/dashboard')
-    // Test authenticated functionality
+  test('should access protected page', async ({ authenticatedPage, testDeviceId }) => {
+    // authenticatedPage is automatically logged in with test user credentials
+    await authenticatedPage.goto(`/device/${testDeviceId}`)
+    // testDeviceId is dynamically fetched from the authenticated user's devices
   })
 })
 ```
 
 ### Page Object Model
+
 For complex pages, create page objects in `fixtures/`:
+
 ```typescript
 export class DashboardPage {
   constructor(private page: Page) {}
@@ -103,22 +128,27 @@ export class DashboardPage {
 ## Debugging Tests
 
 ### Debug specific test
+
 ```bash
 npx playwright test --debug auth.spec.ts
 ```
 
 ### Debug with specific browser
+
 ```bash
 npx playwright test --debug --project=chromium
 ```
 
 ### View test traces
+
 After a test failure with trace enabled:
+
 ```bash
 npx playwright show-trace test-results/trace.zip
 ```
 
 ### Enable verbose logging
+
 ```bash
 DEBUG=pw:api npx playwright test
 ```
@@ -126,46 +156,58 @@ DEBUG=pw:api npx playwright test
 ## CI Integration
 
 Tests run automatically in CI with:
+
 - 2 retries on failure
 - Single worker (no parallelization)
 - Chromium only
 - HTML reports uploaded as artifacts
 
 ### Environment Variables
+
 Set in CI:
+
 - `CI=true` - Enables CI mode
 - `PLAYWRIGHT_BASE_URL` - Base URL for tests (optional)
 
 ## Best Practices
 
 ### Test Independence
+
 Each test should:
+
 - Set up its own data
 - Clean up after itself
 - Not depend on other tests
 
 ### Selectors
+
 Prefer in order:
+
 1. `data-testid` attributes
 2. Role-based selectors (`getByRole`)
 3. Text content (`getByText`)
 4. CSS selectors (last resort)
 
 Example:
+
 ```typescript
 await page.getByRole('button', { name: 'Submit' }).click()
 await page.getByTestId('device-name-input').fill('Test Device')
 ```
 
 ### Assertions
+
 Use Playwright's auto-waiting assertions:
+
 ```typescript
 await expect(page.getByText('Success')).toBeVisible()
 await expect(page.locator('.error')).toHaveCount(0)
 ```
 
 ### Screenshots
+
 Screenshots are automatically captured on failure. Manual capture:
+
 ```typescript
 await page.screenshot({ path: 'screenshot.png' })
 ```
@@ -173,6 +215,7 @@ await page.screenshot({ path: 'screenshot.png' })
 ## Configuration
 
 Edit `playwright.config.ts` to:
+
 - Add more browsers/devices
 - Adjust timeout values
 - Change test directory
@@ -182,7 +225,9 @@ Edit `playwright.config.ts` to:
 ## Troubleshooting
 
 ### Tests timing out
+
 Increase timeout in test:
+
 ```typescript
 test('slow test', async ({ page }) => {
   test.setTimeout(60000) // 60 seconds
@@ -191,13 +236,17 @@ test('slow test', async ({ page }) => {
 ```
 
 ### Browser not found
+
 Reinstall browsers:
+
 ```bash
 npx playwright install --force
 ```
 
 ### Port already in use
+
 Change port in `playwright.config.ts`:
+
 ```typescript
 webServer: {
   command: 'npm run dev -- -p 3001',
@@ -206,6 +255,7 @@ webServer: {
 ```
 
 ### Flaky tests
+
 - Add explicit waits: `await page.waitForLoadState('networkidle')`
 - Use `toPass` for retrying assertions
 - Check for race conditions
