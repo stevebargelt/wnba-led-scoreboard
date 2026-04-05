@@ -13,7 +13,8 @@ import sys
 from pathlib import Path
 import tempfile
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent.parent))
+# From web-admin/api/device/[id]/ go up 4 levels to reach rig root
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent))
 
 from supabase import create_client
 from src.config.supabase_config_loader import SupabaseConfigLoader, DeviceConfiguration
