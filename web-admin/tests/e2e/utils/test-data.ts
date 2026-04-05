@@ -2,7 +2,7 @@ export const TEST_DEVICE = {
   id: '00000000-0000-0000-0000-000000000001',
   name: 'Test Device',
   description: 'Device for E2E testing',
-};
+}
 
 export const TEST_LEAGUES = [
   {
@@ -15,7 +15,7 @@ export const TEST_LEAGUES = [
     league_key: 'nhl',
     enabled: false,
   },
-];
+]
 
 export const TEST_FAVORITE_TEAMS = [
   {
@@ -28,7 +28,7 @@ export const TEST_FAVORITE_TEAMS = [
     team_name: 'Seattle Storm',
     league_key: 'wnba',
   },
-];
+]
 
 export const TEST_CONFIG = {
   brightness: 75,
@@ -38,4 +38,4 @@ export const TEST_CONFIG = {
   rotation_seconds: 10,
   pregame_offset_hours: 2,
   postgame_display_hours: 4,
-};
+}
