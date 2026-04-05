@@ -270,6 +270,32 @@ If Supabase is unavailable, create `config/favorites.json`:
 ## 🚀 Deployment Options
 
 ### Development
+
+#### Development Prerequisites
+
+Additional tools required for development and deployment verification:
+
+- **Vercel CLI**: For deployment verification
+  ```bash
+  npm install -g vercel
+  ```
+- **GitHub CLI (`gh`)**: For deployment status checking
+  ```bash
+  # macOS
+  brew install gh
+  # Ubuntu/Debian
+  sudo apt install gh
+  ```
+- **jq**: For JSON parsing in scripts
+  ```bash
+  # macOS
+  brew install jq
+  # Ubuntu/Debian
+  sudo apt-get install jq
+  ```
+
+#### Running the Application
+
 ```bash
 python app.py --sim        # Simulation mode
 python app.py --demo       # Demo with fake games
