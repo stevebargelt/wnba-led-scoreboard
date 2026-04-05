@@ -12,6 +12,7 @@ import os
 import sys
 from pathlib import Path
 import tempfile
+import uuid
 
 # From web-admin/api/device/[id]/ go up 5 levels to reach rig root
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
@@ -30,6 +31,12 @@ class handler(BaseHTTPRequestHandler):
 
             if not device_id:
                 self._send_error(400, 'Device ID is required')
+                return
+
+            try:
+                uuid.UUID(device_id)
+            except (ValueError, AttributeError):
+                self._send_error(400, f'Invalid device ID format: {device_id}')
                 return
 
             auth_header = self.headers.get('Authorization', '')
