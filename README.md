@@ -355,7 +355,43 @@ python app.py --demo --sim
 
 # Web admin tests
 cd web-admin && npm test
+
+# Web admin E2E tests
+cd web-admin && npm run test:e2e           # Run all E2E tests
+cd web-admin && npm run test:e2e:headed    # Run with visible browser
+cd web-admin && npm run test:e2e:ui        # Run with Playwright UI mode
+cd web-admin && npm run test:e2e:debug     # Debug mode
 ```
+
+### Continuous Integration
+
+E2E tests run automatically on every pull request via GitHub Actions:
+
+```yaml
+# .github/workflows/e2e-tests.yml
+- Runs on: pull_request, push to main
+- Tests: All Playwright E2E tests
+- Browser: Chromium only (optimized for speed)
+- Artifacts: Screenshots and videos on failure
+- Target: < 5 min total runtime
+```
+
+To set up E2E tests in CI, configure the following GitHub Secrets (Settings → Secrets and variables → Actions):
+
+| Secret Name | Description | Example |
+|-------------|-------------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://your-project.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `TEST_USER_EMAIL` | Test user email for auth tests | `test@example.com` |
+| `TEST_USER_PASSWORD` | Test user password | `SecurePassword123!` |
+
+**Branch Protection**: To require E2E tests to pass before merging:
+1. Go to repository Settings → Branches
+2. Add branch protection rule for `main`
+3. Enable "Require status checks to pass before merging"
+4. Select "Playwright E2E Tests" workflow
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#e2e-tests-ci-setup) for detailed setup instructions.
 
 ---
 

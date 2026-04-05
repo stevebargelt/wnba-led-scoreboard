@@ -518,9 +518,244 @@ If OAuth credentials expire:
    - Disable password authentication (key-only)
    - Run `sudo apt update && sudo apt upgrade` regularly
 
+## E2E Tests CI Setup
+
+The project includes automated end-to-end tests using Playwright that run on every pull request and push to main.
+
+### Overview
+
+E2E tests verify the web admin interface works correctly by:
+- Testing authentication flows
+- Verifying device configuration pages
+- Testing team management features
+- Generating preview images
+- Running smoke tests on critical paths
+
+### Prerequisites
+
+Before E2E tests can run in CI, you need:
+
+1. **Supabase Project**: A Supabase project with the database schema set up
+2. **Test User Account**: A test user created in Supabase Auth
+3. **GitHub Secrets Configured**: Required secrets added to repository
+
+### GitHub Secrets Setup
+
+Add the following secrets to your GitHub repository (Settings → Secrets and variables → Actions → New repository secret):
+
+| Secret Name | Description | Where to Find |
+|-------------|-------------|---------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | Supabase Project Settings → API → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous key | Supabase Project Settings → API → Project API keys → `anon` `public` |
+| `TEST_USER_EMAIL` | Test user email | Email used to create test account (Step 1 below) |
+| `TEST_USER_PASSWORD` | Test user password | Password used to create test account (Step 1 below) |
+
+### Step 1: Create Test User Account
+
+In your Supabase project:
+
+1. Go to Authentication → Users
+2. Click "Add user" → "Create new user"
+3. Enter test credentials:
+   - Email: `test@example.com` (or your preferred test email)
+   - Password: Generate a secure password (save this for GitHub Secrets)
+   - Auto Confirm User: ✅ Enabled
+4. Click "Create user"
+5. Note the user's UUID (you may need it for test data setup)
+
+**Important**: Use a dedicated test account, not a production user.
+
+### Step 2: Create Test Device
+
+The test user needs at least one device to configure during tests:
+
+**Option A: Via Web Admin UI**
+1. Log in to web admin as test user
+2. Navigate to device management
+3. Create a test device
+4. Note the device ID
+
+**Option B: Via Supabase SQL Editor**
+
+```sql
+-- Insert test device owned by test user
+INSERT INTO devices (id, user_id, name, location)
+VALUES (
+  gen_random_uuid(),
+  'test-user-uuid-from-step-1',
+  'Test Device',
+  'CI Environment'
+);
+```
+
+### Step 3: Configure GitHub Secrets
+
+Add each secret to GitHub:
+
+```bash
+# Example values (use your actual values)
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+TEST_USER_EMAIL=test@example.com
+TEST_USER_PASSWORD=SecureTestPassword123!
+```
+
+### Step 4: Verify Workflow Runs
+
+After adding secrets, test the workflow:
+
+1. Create a test branch and make a small change to `web-admin/**`
+2. Push the branch and create a pull request
+3. GitHub Actions should automatically run the E2E tests
+4. Check the workflow run in the Actions tab
+
+Expected workflow behavior:
+- ✅ Installs dependencies and Playwright browsers
+- ✅ Starts Next.js dev server on port 3000
+- ✅ Runs all E2E tests in chromium
+- ✅ Uploads test results/screenshots on failure
+- ✅ Completes in under 5 minutes
+
+### Workflow Configuration
+
+The E2E tests workflow (`.github/workflows/e2e-tests.yml`) includes several optimizations:
+
+**Speed Optimizations:**
+- Caches `node_modules` via `cache: 'npm'`
+- Only installs chromium browser (not all 3)
+- Runs tests in parallel via `fullyParallel: true` in playwright.config.ts
+- Has 10-minute timeout to catch hanging tests
+- Skips tests for non-web-admin changes
+
+**Reliability Features:**
+- Retries failed tests twice in CI (`retries: 2`)
+- Captures screenshots on failure
+- Captures videos on failure
+- Uploads artifacts for 7 days
+- Uses `forbidOnly: true` to prevent accidental `.only()` commits
+
+### Supabase Test Database Options
+
+You have two options for the Supabase database used in E2E tests:
+
+**Option 1: Shared Test Project (Recommended)**
+- Use the same Supabase project as development
+- Tests use a dedicated test user account
+- Simpler setup, no additional Supabase project needed
+- Test data is isolated to test user via RLS policies
+- **Caution**: Tests may create/modify data
+
+**Option 2: Separate Test Project**
+- Create a dedicated Supabase project for E2E tests
+- Complete isolation from development data
+- Requires maintaining duplicate schema migrations
+- Higher cost (additional Supabase project)
+- Better for production-level CI
+
+For most use cases, **Option 1** is sufficient because:
+- RLS policies isolate test user data
+- Tests clean up after themselves
+- No risk of affecting other users' data
+
+### Branch Protection Rules
+
+To require E2E tests to pass before merging:
+
+1. Go to repository **Settings → Branches**
+2. Click **Add branch protection rule**
+3. Branch name pattern: `main`
+4. Enable **"Require status checks to pass before merging"**
+5. Search for and select: **"Playwright E2E Tests"**
+6. Enable **"Require branches to be up to date before merging"** (recommended)
+7. Click **Create** or **Save changes**
+
+This ensures:
+- All PRs must have passing E2E tests before merge
+- No direct pushes to main bypass E2E tests
+- Broken changes cannot be merged
+
+### Troubleshooting
+
+#### Tests Fail: Authentication Errors
+
+**Symptom**: Tests fail with "Invalid login credentials" or auth errors
+
+**Causes**:
+- Test user not created in Supabase Auth
+- Incorrect `TEST_USER_EMAIL` or `TEST_USER_PASSWORD` secrets
+- Test user not confirmed (Auto Confirm User disabled)
+
+**Solutions**:
+1. Verify test user exists in Supabase Auth
+2. Check secrets match the test user credentials
+3. Ensure "Auto Confirm User" was enabled
+
+#### Tests Fail: Supabase Connection Errors
+
+**Symptom**: Tests fail with "Failed to fetch" or connection timeout
+
+**Causes**:
+- Incorrect `NEXT_PUBLIC_SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Supabase project paused/disabled
+- Network issues in GitHub Actions runner
+
+**Solutions**:
+1. Verify secrets match Supabase Project Settings → API
+2. Check Supabase project is active (not paused)
+3. Test the endpoint manually: `curl https://your-project.supabase.co/rest/v1/`
+
+#### Tests Timeout or Hang
+
+**Symptom**: Workflow times out at 10 minutes
+
+**Causes**:
+- Next.js dev server failed to start
+- Tests waiting for elements that never appear
+- Network requests hanging
+
+**Solutions**:
+1. Check workflow logs for dev server startup errors
+2. Run tests locally: `cd web-admin && npm run test:e2e`
+3. Increase `timeout` in individual test files if needed
+4. Check for infinite loading states in UI
+
+#### Workflow Not Triggering
+
+**Symptom**: E2E tests workflow doesn't run on PR
+
+**Causes**:
+- Changes outside `web-admin/**` directory
+- Workflow file path filter excludes the changes
+- Workflow disabled in Actions settings
+
+**Solutions**:
+1. Check if PR changes affect `web-admin/**` or `.github/workflows/e2e-tests.yml`
+2. Manually trigger workflow via Actions tab → E2E Tests → Run workflow
+3. Verify workflow is enabled in Settings → Actions
+
+### Cost Considerations
+
+Running E2E tests in CI incurs minimal costs:
+
+**GitHub Actions:**
+- Free for public repositories
+- 2,000 minutes/month free for private repos
+- E2E tests run ~3-5 minutes per run
+- Estimate: 400-600 test runs per month within free tier
+
+**Supabase:**
+- Free tier includes 500MB database, 50,000 monthly active users
+- Test runs create minimal data (<1KB per run)
+- Shared test project has no additional cost
+- Separate test project: $25/month for Pro plan
+
+**Recommendation**: Use shared Supabase project and GitHub's free tier unless you exceed limits.
+
 ## Additional Resources
 
 - [Tailscale GitHub Action](https://github.com/tailscale/github-action)
 - [Tailscale SSH Guide](https://tailscale.com/kb/1193/tailscale-ssh/)
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)
 - [Systemd Service Management](https://www.freedesktop.org/software/systemd/man/systemctl.html)
+- [Playwright Documentation](https://playwright.dev/docs/intro)
+- [Playwright GitHub Actions Guide](https://playwright.dev/docs/ci-intro)
