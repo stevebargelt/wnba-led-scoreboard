@@ -14,45 +14,48 @@ export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [selectedScene, setSelectedScene] = useState<SceneType>('live')
 
-  const generatePreview = useCallback(async (scene: SceneType) => {
-    setLoading(true)
-    setError(null)
+  const generatePreview = useCallback(
+    async (scene: SceneType) => {
+      setLoading(true)
+      setError(null)
 
-    try {
-      const { data: sess } = await supabase.auth.getSession()
-      const jwt = sess.session?.access_token
+      try {
+        const { data: sess } = await supabase.auth.getSession()
+        const jwt = sess.session?.access_token
 
-      if (!jwt) {
-        setError('Not authenticated')
+        if (!jwt) {
+          setError('Not authenticated')
+          setLoading(false)
+          return
+        }
+
+        const resp = await fetch(`/api/device/${deviceId}/preview?scene=${scene}`, {
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+          },
+        })
+
+        if (!resp.ok) {
+          const body = await resp.json()
+          throw new Error(body.error || 'Failed to generate preview')
+        }
+
+        const blob = await resp.blob()
+        const url = URL.createObjectURL(blob)
+
+        if (previewUrl) {
+          URL.revokeObjectURL(previewUrl)
+        }
+
+        setPreviewUrl(url)
+      } catch (e: any) {
+        setError(e.message)
+      } finally {
         setLoading(false)
-        return
       }
-
-      const resp = await fetch(`/api/device/${deviceId}/preview?scene=${scene}`, {
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-        },
-      })
-
-      if (!resp.ok) {
-        const body = await resp.json()
-        throw new Error(body.error || 'Failed to generate preview')
-      }
-
-      const blob = await resp.blob()
-      const url = URL.createObjectURL(blob)
-
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl)
-      }
-
-      setPreviewUrl(url)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
-  }, [deviceId, previewUrl])
+    },
+    [deviceId, previewUrl]
+  )
 
   useEffect(() => {
     generatePreview(selectedScene)
@@ -91,7 +94,9 @@ export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
                   onClick={() => handleSceneChange(scene)}
                   disabled={loading}
                 >
-                  {scene === 'live_big' ? 'Big Logos' : scene.charAt(0).toUpperCase() + scene.slice(1)}
+                  {scene === 'live_big'
+                    ? 'Big Logos'
+                    : scene.charAt(0).toUpperCase() + scene.slice(1)}
                 </Button>
               ))}
             </div>
