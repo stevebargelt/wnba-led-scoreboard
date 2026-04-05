@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "src/pages/api/device/*/preview.py": {
+      "runtime": "python3.9"
+    }
+  }
+}
