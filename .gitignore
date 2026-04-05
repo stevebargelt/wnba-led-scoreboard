@@ -15,6 +15,9 @@ web-admin/.next/
 web-admin/.env.local
 web-admin/.vercel
 web-admin/tsconfig.tsbuildinfo
+web-admin/test-results/
+web-admin/playwright-report/
+web-admin/playwright/.cache/
 
 node_modules/
 CLAUDE.local.md
