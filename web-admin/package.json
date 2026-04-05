@@ -12,6 +12,7 @@
     "test:ci": "npm run pretest:ci && jest --coverage --watchman=false",
     "pretest:ci": "(npm install --no-save @next/swc-linux-x64-gnu || true) && if command -v ldd >/dev/null 2>&1 && ldd --version 2>&1 | grep -qi musl; then npm install --no-save @next/swc-linux-x64-musl || true; fi",
     "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "lint": "next lint",
@@ -55,6 +56,7 @@
     "jest": "^30.1.3",
     "jest-environment-jsdom": "^30.1.2",
     "lint-staged": "^16.1.6",
+    "playwright": "^1.59.1",
     "prettier": "^3.6.2",
     "typescript": "5.9.2"
   }
