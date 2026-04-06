@@ -42,6 +42,10 @@ coverage*.html
 coverage*.xml
 *.coverage
 
+# Visual regression test artifacts
+tests/visual/diffs/
+tests/visual/test_output/
+
 # Supabase CLI temp files
 supabase/**/.temp/
 web-admin/supabase/.temp/

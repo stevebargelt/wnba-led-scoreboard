@@ -25,6 +25,36 @@ git add <files>
 git commit -m "<type>: <description>"
 ```
 
+## Deployment Verification (Web-Admin Changes)
+
+If your changes include web-admin files, verify the Vercel deployment:
+
+```bash
+scripts/polecat-verify-deployment.sh
+```
+
+**CRITICAL:** If deployment verification fails:
+- DO NOT call `gt done`
+- Create escalation bead:
+  ```bash
+  bd create --title="Vercel deployment failed for [work description]" \
+    --type=bug --priority=2 --stdin <<DETAILS
+  Deployment verification failed after pushing [bead-id].
+
+  Changes pushed: [commit SHA]
+  Error: [paste error output]
+
+  Vercel logs: vercel logs [deployment-url]
+  DETAILS
+  ```
+- File escalation:
+  ```bash
+  gt escalate -s HIGH "Deployment verification failed for [bead-id]"
+  ```
+- Exit session WITHOUT calling `gt done`
+
+**Success path:** Deployment verified → Continue to Execute section
+
 ## Execute
 
 Run `gt done` with any provided arguments:

@@ -49,14 +49,21 @@ npx playwright test --headed
    ```
 
 3. Set up environment variables:
-   - Copy `.env.example` to `.env.local`
-   - Configure Supabase credentials
-   - Set test user credentials (optional, defaults provided):
-     ```bash
-     TEST_USER_EMAIL=test@example.com
-     TEST_USER_PASSWORD=testpassword123
-     ```
-   - The global setup will attempt to create this user automatically
+
+   Create a `.env.local` file with the following variables:
+
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+   TEST_USER_EMAIL=test@example.com
+   TEST_USER_PASSWORD=test-password
+   ```
+
+4. Set up test data:
+   - Create a test user in Supabase Auth with the credentials above
+   - Create at least one device owned by the test user
+   - Ensure the device has valid configuration (device_config, device_leagues, etc.)
 
 ## Project Structure
 
@@ -89,12 +96,13 @@ test.describe('Feature Name', () => {
 ### Using authenticated fixtures
 
 ```typescript
-import { test } from './fixtures/auth'
+import { test, expect } from './fixtures/auth'
 
 test.describe('Authenticated Feature', () => {
-  test('should access protected page', async ({ authenticatedPage }) => {
-    await authenticatedPage.goto('/dashboard')
-    // Test authenticated functionality
+  test('should access protected page', async ({ authenticatedPage, testDeviceId }) => {
+    // authenticatedPage is automatically logged in with test user credentials
+    await authenticatedPage.goto(`/device/${testDeviceId}`)
+    // testDeviceId is dynamically fetched from the authenticated user's devices
   })
 })
 ```

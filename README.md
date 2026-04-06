@@ -270,6 +270,32 @@ If Supabase is unavailable, create `config/favorites.json`:
 ## 🚀 Deployment Options
 
 ### Development
+
+#### Development Prerequisites
+
+Additional tools required for development and deployment verification:
+
+- **Vercel CLI**: For deployment verification
+  ```bash
+  npm install -g vercel
+  ```
+- **GitHub CLI (`gh`)**: For deployment status checking
+  ```bash
+  # macOS
+  brew install gh
+  # Ubuntu/Debian
+  sudo apt install gh
+  ```
+- **jq**: For JSON parsing in scripts
+  ```bash
+  # macOS
+  brew install jq
+  # Ubuntu/Debian
+  sudo apt-get install jq
+  ```
+
+#### Running the Application
+
 ```bash
 python app.py --sim        # Simulation mode
 python app.py --demo       # Demo with fake games
@@ -355,7 +381,84 @@ python app.py --demo --sim
 
 # Web admin tests
 cd web-admin && npm test
+
+# Web admin E2E tests
+cd web-admin && npm run test:e2e           # Run all E2E tests
+cd web-admin && npm run test:e2e:headed    # Run with visible browser
+cd web-admin && npm run test:e2e:ui        # Run with Playwright UI mode
+cd web-admin && npm run test:e2e:debug     # Debug mode
 ```
+
+### Visual Regression Testing
+
+The project includes automated visual regression tests to catch rendering bugs in preview generation:
+
+```bash
+# Generate baseline screenshots (first-time setup)
+./scripts/generate_preview_baselines.sh
+
+# Run visual regression tests
+python -m unittest tests.test_visual_regression
+
+# Run a specific scene test
+python -m unittest tests.test_visual_regression.TestVisualRegression.test_idle_scene_visual_consistency
+```
+
+**How it works:**
+1. Baseline screenshots are generated for all 5 scene types (idle, pregame, live, live_big, final)
+2. Tests generate new previews and compare them pixel-by-pixel with baselines
+3. Differences exceeding 5% tolerance trigger test failures with diff images saved to `tests/visual/diffs/`
+4. Mask regions can exclude non-deterministic elements like timestamps
+
+**When to regenerate baselines:**
+- After intentional visual changes to scenes
+- After updating fonts or team logos
+- After changing display dimensions or rendering logic
+
+```bash
+# Regenerate all baselines
+./scripts/generate_preview_baselines.sh
+
+# Verify new baselines
+python -m unittest tests.test_visual_regression
+```
+
+**Baseline files:**
+- `tests/visual/baselines/idle_baseline.png`
+- `tests/visual/baselines/pregame_baseline.png`
+- `tests/visual/baselines/live_baseline.png`
+- `tests/visual/baselines/live_big_baseline.png`
+- `tests/visual/baselines/final_baseline.png`
+
+### Continuous Integration
+
+E2E tests run automatically on every pull request via GitHub Actions:
+
+```yaml
+# .github/workflows/e2e-tests.yml
+- Runs on: pull_request, push to main
+- Tests: All Playwright E2E tests
+- Browser: Chromium only (optimized for speed)
+- Artifacts: Screenshots and videos on failure
+- Target: < 5 min total runtime
+```
+
+To set up E2E tests in CI, configure the following GitHub Secrets (Settings → Secrets and variables → Actions):
+
+| Secret Name | Description | Example |
+|-------------|-------------|---------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | `https://your-project.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anonymous/public key | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `TEST_USER_EMAIL` | Test user email for auth tests | `test@example.com` |
+| `TEST_USER_PASSWORD` | Test user password | `SecurePassword123!` |
+
+**Branch Protection**: To require E2E tests to pass before merging:
+1. Go to repository Settings → Branches
+2. Add branch protection rule for `main`
+3. Enable "Require status checks to pass before merging"
+4. Select "Playwright E2E Tests" workflow
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#e2e-tests-ci-setup) for detailed setup instructions.
 
 ---
 
