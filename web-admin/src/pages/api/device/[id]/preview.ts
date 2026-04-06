@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const generator = new PreviewGenerator(deviceConfig)
-      const imageBuffer = generator.generatePreview(scene as SceneType)
+      const imageBuffer = await generator.generatePreview(scene as SceneType)
 
       res.setHeader('Content-Type', 'image/png')
       res.setHeader('Cache-Control', 'no-store, must-revalidate')
