@@ -1,5 +1,5 @@
 import { createCanvas } from 'canvas'
-import { IdleScene } from './idle'
+import { IdleScene } from '@/lib/preview/scenes/idle'
 
 describe('IdleScene', () => {
   let scene: IdleScene
