@@ -89,9 +89,16 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(500, 'Service role key not configured')
                 return
 
-            service_client = create_client(supabase_url, service_role_key)
-            loader = SupabaseConfigLoader(device_id, service_client)
-            config = loader.load_full_config()
+            try:
+                service_client = create_client(supabase_url, service_role_key)
+                loader = SupabaseConfigLoader(device_id, service_client)
+                config = loader.load_full_config()
+            except Exception as config_error:
+                # Log the specific error from config loading
+                import traceback
+                error_details = f"Config load error: {str(config_error)}\nDevice ID: {device_id}\nTraceback: {traceback.format_exc()}"
+                self._send_error(500, error_details)
+                return
 
             if not config:
                 self._send_error(404, 'Device configuration not found')
