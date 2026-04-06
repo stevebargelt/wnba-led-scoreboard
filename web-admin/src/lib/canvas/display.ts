@@ -1,4 +1,4 @@
-import { createCanvas, Canvas, CanvasRenderingContext2D } from 'canvas'
+import { createCanvas, Canvas, CanvasRenderingContext2D, Image } from 'canvas'
 import { GameSnapshot, DisplayConfig } from './types'
 
 export class CanvasDisplay {
@@ -56,6 +56,14 @@ export class CanvasDisplay {
   getTextWidth(text: string, fontSize: number, fontFamily: string = 'monospace'): number {
     this.ctx.font = `${fontSize}px ${fontFamily}`
     return this.ctx.measureText(text).width
+  }
+
+  drawImage(image: Image, x: number, y: number, width?: number, height?: number): void {
+    if (width !== undefined && height !== undefined) {
+      this.ctx.drawImage(image, x, y, width, height)
+    } else {
+      this.ctx.drawImage(image, x, y)
+    }
   }
 
   getCanvas(): Canvas {
