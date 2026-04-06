@@ -6,6 +6,11 @@ type AuthFixtures = {
   testDeviceId: string
 }
 
+const TEST_USER = {
+  email: process.env.TEST_USER_EMAIL || 'test@example.com',
+  password: process.env.TEST_USER_PASSWORD || 'testpassword123',
+}
+
 export const test = base.extend<AuthFixtures>({
   authenticatedPage: async ({ page }, use) => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -63,4 +68,5 @@ export const test = base.extend<AuthFixtures>({
   },
 })
 
+export { TEST_USER }
 export { expect } from '@playwright/test'
