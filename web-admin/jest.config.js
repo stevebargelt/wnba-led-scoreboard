@@ -37,7 +37,10 @@ module.exports = {
       },
     ],
   },
-  transformIgnorePatterns: ['/node_modules/(?!(.*\\.mjs$))', '^.+\\.module\\.(css|sass|scss)$'],
+  transformIgnorePatterns: [
+    '/node_modules/(?!(pixelmatch|.*\\.mjs$))',
+    '^.+\\.module\\.(css|sass|scss)$',
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
   },
