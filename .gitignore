@@ -53,3 +53,7 @@ supabase/supabase/.temp/
 .coverage
 
 plans/
+
+# Watchman (file watching service)
+.watchman-cookie-*
+**/.watchman-cookie-*
