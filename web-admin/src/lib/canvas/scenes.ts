@@ -33,7 +33,14 @@ export function renderPregameScene(display: CanvasDisplay, snapshot: GameSnapsho
 
   const status = snapshot.status_detail || 'Soon'
   const statusWidth = display.getTextWidth(status, 8)
-  display.drawText(status, Math.floor((w - statusWidth) / 2), h - 9, 8, 'monospace', 'rgb(255, 255, 0)')
+  display.drawText(
+    status,
+    Math.floor((w - statusWidth) / 2),
+    h - 9,
+    8,
+    'monospace',
+    'rgb(255, 255, 0)'
+  )
 }
 
 export async function renderLiveScene(
@@ -73,10 +80,24 @@ async function renderLiveStacked(
   } else {
     display.drawRectangle(logoX, topY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
   }
-  display.drawText(snapshot.away.abbr.slice(0, 4), abbrX, topY + 1, 8, 'monospace', 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.away.abbr.slice(0, 4),
+    abbrX,
+    topY + 1,
+    8,
+    'monospace',
+    'rgb(200, 200, 200)'
+  )
   const awayScore = String(snapshot.away.score)
   const awayScoreWidth = display.getTextWidth(awayScore, 10)
-  display.drawText(awayScore, scoreRightX - awayScoreWidth, topY, 10, 'monospace', 'rgb(255, 255, 255)')
+  display.drawText(
+    awayScore,
+    scoreRightX - awayScoreWidth,
+    topY,
+    10,
+    'monospace',
+    'rgb(255, 255, 255)'
+  )
 
   const homeLogo = await loadTeamLogo(snapshot.home.id, snapshot.home.abbr, sportCode, 'mini')
   if (homeLogo) {
@@ -84,14 +105,35 @@ async function renderLiveStacked(
   } else {
     display.drawRectangle(logoX, botY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
   }
-  display.drawText(snapshot.home.abbr.slice(0, 4), abbrX, botY + 1, 8, 'monospace', 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.home.abbr.slice(0, 4),
+    abbrX,
+    botY + 1,
+    8,
+    'monospace',
+    'rgb(200, 200, 200)'
+  )
   const homeScore = String(snapshot.home.score)
   const homeScoreWidth = display.getTextWidth(homeScore, 10)
-  display.drawText(homeScore, scoreRightX - homeScoreWidth, botY, 10, 'monospace', 'rgb(255, 255, 255)')
+  display.drawText(
+    homeScore,
+    scoreRightX - homeScoreWidth,
+    botY,
+    10,
+    'monospace',
+    'rgb(255, 255, 255)'
+  )
 
   const status = `${snapshot.period_name} ${snapshot.display_clock || ''}`.trim()
   const statusWidth = display.getTextWidth(status, 8)
-  display.drawText(status, Math.floor((w - statusWidth) / 2), h - 9, 8, 'monospace', 'rgb(0, 255, 0)')
+  display.drawText(
+    status,
+    Math.floor((w - statusWidth) / 2),
+    h - 9,
+    8,
+    'monospace',
+    'rgb(0, 255, 0)'
+  )
 }
 
 async function renderLiveBigLogos(
@@ -144,11 +186,25 @@ async function renderLiveBigLogos(
   const homeScore = String(snapshot.home.score)
   const scoreText = `${awayScore} - ${homeScore}`
   const scoreWidth = display.getTextWidth(scoreText, 10)
-  display.drawText(scoreText, Math.floor((w - scoreWidth) / 2), h - 12, 10, 'monospace', 'rgb(255, 255, 255)')
+  display.drawText(
+    scoreText,
+    Math.floor((w - scoreWidth) / 2),
+    h - 12,
+    10,
+    'monospace',
+    'rgb(255, 255, 255)'
+  )
 
   const status = `${snapshot.period_name} ${snapshot.display_clock || ''}`.trim()
   const statusWidth = display.getTextWidth(status, 8)
-  display.drawText(status, Math.floor((w - statusWidth) / 2), h - 4, 8, 'monospace', 'rgb(0, 255, 0)')
+  display.drawText(
+    status,
+    Math.floor((w - statusWidth) / 2),
+    h - 4,
+    8,
+    'monospace',
+    'rgb(0, 255, 0)'
+  )
 }
 
 export function renderFinalScene(display: CanvasDisplay, snapshot: GameSnapshot): void {
@@ -165,18 +221,53 @@ export function renderFinalScene(display: CanvasDisplay, snapshot: GameSnapshot)
   const scoreRightX = w - 1
 
   display.drawRectangle(logoX, topY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
-  display.drawText(snapshot.away.abbr.slice(0, 4), abbrX, topY + 1, 8, 'monospace', 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.away.abbr.slice(0, 4),
+    abbrX,
+    topY + 1,
+    8,
+    'monospace',
+    'rgb(200, 200, 200)'
+  )
   const awayScore = String(snapshot.away.score)
   const awayScoreWidth = display.getTextWidth(awayScore, 10)
-  display.drawText(awayScore, scoreRightX - awayScoreWidth, topY, 10, 'monospace', 'rgb(255, 255, 255)')
+  display.drawText(
+    awayScore,
+    scoreRightX - awayScoreWidth,
+    topY,
+    10,
+    'monospace',
+    'rgb(255, 255, 255)'
+  )
 
   display.drawRectangle(logoX, botY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
-  display.drawText(snapshot.home.abbr.slice(0, 4), abbrX, botY + 1, 8, 'monospace', 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.home.abbr.slice(0, 4),
+    abbrX,
+    botY + 1,
+    8,
+    'monospace',
+    'rgb(200, 200, 200)'
+  )
   const homeScore = String(snapshot.home.score)
   const homeScoreWidth = display.getTextWidth(homeScore, 10)
-  display.drawText(homeScore, scoreRightX - homeScoreWidth, botY, 10, 'monospace', 'rgb(255, 255, 255)')
+  display.drawText(
+    homeScore,
+    scoreRightX - homeScoreWidth,
+    botY,
+    10,
+    'monospace',
+    'rgb(255, 255, 255)'
+  )
 
   const status = 'Final'
   const statusWidth = display.getTextWidth(status, 8)
-  display.drawText(status, Math.floor((w - statusWidth) / 2), h - 9, 8, 'monospace', 'rgb(255, 0, 0)')
+  display.drawText(
+    status,
+    Math.floor((w - statusWidth) / 2),
+    h - 9,
+    8,
+    'monospace',
+    'rgb(255, 0, 0)'
+  )
 }
