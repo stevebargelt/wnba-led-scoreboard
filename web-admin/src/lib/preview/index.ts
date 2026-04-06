@@ -9,3 +9,4 @@ export {
 export type { Scene } from './scenes/idle'
 export { IdleScene } from './scenes/idle'
 export { PregameScene } from './scenes/pregame'
+export { drawFinalScene } from './scenes/final'
