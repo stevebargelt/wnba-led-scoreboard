@@ -389,6 +389,47 @@ cd web-admin && npm run test:e2e:ui        # Run with Playwright UI mode
 cd web-admin && npm run test:e2e:debug     # Debug mode
 ```
 
+### Visual Regression Testing
+
+The project includes automated visual regression tests to catch rendering bugs in preview generation:
+
+```bash
+# Generate baseline screenshots (first-time setup)
+./scripts/generate_preview_baselines.sh
+
+# Run visual regression tests
+python -m unittest tests.test_visual_regression
+
+# Run a specific scene test
+python -m unittest tests.test_visual_regression.TestVisualRegression.test_idle_scene_visual_consistency
+```
+
+**How it works:**
+1. Baseline screenshots are generated for all 5 scene types (idle, pregame, live, live_big, final)
+2. Tests generate new previews and compare them pixel-by-pixel with baselines
+3. Differences exceeding 5% tolerance trigger test failures with diff images saved to `tests/visual/diffs/`
+4. Mask regions can exclude non-deterministic elements like timestamps
+
+**When to regenerate baselines:**
+- After intentional visual changes to scenes
+- After updating fonts or team logos
+- After changing display dimensions or rendering logic
+
+```bash
+# Regenerate all baselines
+./scripts/generate_preview_baselines.sh
+
+# Verify new baselines
+python -m unittest tests.test_visual_regression
+```
+
+**Baseline files:**
+- `tests/visual/baselines/idle_baseline.png`
+- `tests/visual/baselines/pregame_baseline.png`
+- `tests/visual/baselines/live_baseline.png`
+- `tests/visual/baselines/live_big_baseline.png`
+- `tests/visual/baselines/final_baseline.png`
+
 ### Continuous Integration
 
 E2E tests run automatically on every pull request via GitHub Actions:
