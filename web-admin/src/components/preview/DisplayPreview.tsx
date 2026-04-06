@@ -1,6 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabaseClient'
 import { Card, CardHeader, CardTitle, Button } from '../ui'
+import { ClientPreviewGenerator } from '../../lib/client-preview'
+import { DisplayConfig, DeviceConfiguration } from '../../lib/canvas/types'
+import {
+  createDemoPregameSnapshot,
+  createDemoLiveSnapshot,
+  createDemoFinalSnapshot,
+} from '../../lib/canvas/demo-data'
 
 type SceneType = 'idle' | 'pregame' | 'live' | 'live_big' | 'final'
 
@@ -11,63 +18,106 @@ interface DisplayPreviewProps {
 export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [selectedScene, setSelectedScene] = useState<SceneType>('live')
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [deviceConfig, setDeviceConfig] = useState<DeviceConfiguration | null>(null)
+
+  useEffect(() => {
+    async function loadDeviceConfig() {
+      try {
+        const { data: configData, error: configErr } = await supabase
+          .from('device_config')
+          .select('*')
+          .eq('device_id', deviceId)
+          .maybeSingle()
+
+        if (configErr || !configData) {
+          setError('Failed to load device configuration')
+          return
+        }
+
+        const config: DeviceConfiguration = {
+          device_id: deviceId,
+          matrix_config: {
+            width: configData.matrix_width || 64,
+            height: configData.matrix_height || 32,
+            brightness: configData.matrix_brightness || 75,
+            pwm_bits: configData.matrix_pwm_bits || 11,
+            hardware_mapping: configData.matrix_hardware_mapping || 'regular',
+            chain_length: configData.matrix_chain_length || 1,
+            parallel: configData.matrix_parallel || 1,
+            gpio_slowdown: configData.matrix_gpio_slowdown || 1,
+          },
+          render_config: {
+            logo_variant: configData.logo_variant || 'small',
+            live_layout: configData.live_layout || 'stacked',
+          },
+        }
+
+        setDeviceConfig(config)
+      } catch (e: any) {
+        setError(e.message)
+      }
+    }
+
+    loadDeviceConfig()
+  }, [deviceId])
 
   const generatePreview = useCallback(
     async (scene: SceneType) => {
+      if (!deviceConfig || !canvasRef.current) {
+        return
+      }
+
       setLoading(true)
       setError(null)
 
       try {
-        const { data: sess } = await supabase.auth.getSession()
-        const jwt = sess.session?.access_token
-
-        if (!jwt) {
-          setError('Not authenticated')
-          setLoading(false)
-          return
+        const displayConfig: DisplayConfig = {
+          width: deviceConfig.matrix_config.width,
+          height: deviceConfig.matrix_config.height,
+          brightness: deviceConfig.matrix_config.brightness,
+          logo_variant: deviceConfig.render_config.logo_variant,
+          live_layout: deviceConfig.render_config.live_layout,
         }
 
-        const resp = await fetch(`/api/device/${deviceId}/preview-ts?scene=${scene}`, {
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          },
-        })
+        const generator = new ClientPreviewGenerator()
 
-        if (!resp.ok) {
-          const body = await resp.json()
-          throw new Error(body.error || 'Failed to generate preview')
+        let snapshot = null
+        switch (scene) {
+          case 'pregame':
+            snapshot = createDemoPregameSnapshot()
+            break
+          case 'live':
+          case 'live_big':
+            snapshot = createDemoLiveSnapshot()
+            if (scene === 'live_big') {
+              displayConfig.live_layout = 'big-logos'
+            }
+            break
+          case 'final':
+            snapshot = createDemoFinalSnapshot()
+            break
+          case 'idle':
+          default:
+            snapshot = null
         }
 
-        const blob = await resp.blob()
-        const url = URL.createObjectURL(blob)
-
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl)
-        }
-
-        setPreviewUrl(url)
+        await generator.generatePreview(displayConfig, snapshot, canvasRef.current)
       } catch (e: any) {
         setError(e.message)
       } finally {
         setLoading(false)
       }
     },
-    [deviceId, previewUrl]
+    [deviceConfig]
   )
 
   useEffect(() => {
-    generatePreview(selectedScene)
-  }, [selectedScene, generatePreview])
-
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl)
-      }
+    if (deviceConfig) {
+      generatePreview(selectedScene)
     }
-  }, [previewUrl])
+  }, [selectedScene, deviceConfig, generatePreview])
 
   const handleSceneChange = (scene: SceneType) => {
     setSelectedScene(scene)
@@ -130,20 +180,22 @@ export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
             {loading && (
               <div className="text-gray-500 dark:text-gray-400">Generating preview...</div>
             )}
-            {!loading && previewUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={previewUrl}
-                alt="LED Matrix Preview"
-                className="max-w-full h-auto"
+            {!loading && deviceConfig && (
+              <canvas
+                ref={canvasRef}
+                width={deviceConfig.matrix_config.width}
+                height={deviceConfig.matrix_config.height}
                 style={{
                   imageRendering: 'pixelated',
                   maxHeight: '400px',
+                  width: 'auto',
+                  height: 'auto',
+                  maxWidth: '100%',
                 }}
               />
             )}
-            {!loading && !previewUrl && !error && (
-              <div className="text-gray-500 dark:text-gray-400">No preview available</div>
+            {!loading && !deviceConfig && !error && (
+              <div className="text-gray-500 dark:text-gray-400">Loading configuration...</div>
             )}
           </div>
 
