@@ -1,11 +1,6 @@
 import { CanvasDisplay } from './display'
 import { DisplayConfig, DeviceConfiguration } from './types'
-import {
-  renderIdleScene,
-  renderPregameScene,
-  renderLiveScene,
-  renderFinalScene,
-} from './scenes'
+import { renderIdleScene, renderPregameScene, renderLiveScene, renderFinalScene } from './scenes'
 import {
   createDemoPregameSnapshot,
   createDemoLiveSnapshot,
