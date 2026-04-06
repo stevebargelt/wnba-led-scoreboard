@@ -1,9 +1,9 @@
 import { createCanvas } from 'canvas'
-import { PregameScene } from './pregame'
-import { GameSnapshot, GameState } from '../../canvas/types'
-import * as logosModule from '../logos'
+import { PregameScene } from '@/lib/preview/scenes/pregame'
+import { GameSnapshot, GameState } from '@/lib/canvas/types'
+import * as logosModule from '@/lib/preview/logos'
 
-jest.mock('../logos', () => ({
+jest.mock('@/lib/preview/logos', () => ({
   loadTeamLogo: jest.fn(),
 }))
 
