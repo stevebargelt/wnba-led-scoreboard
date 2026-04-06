@@ -62,10 +62,7 @@ export async function loadTeamLogo(
 
   if (!image) {
     const sportDir = getSportLogoDir(sport)
-    const candidates = [
-      path.join(sportDir, `${keyId}.png`),
-      path.join(sportDir, `${keyId}.svg`),
-    ]
+    const candidates = [path.join(sportDir, `${keyId}.png`), path.join(sportDir, `${keyId}.svg`)]
 
     if (abbr) {
       const abbrUpper = abbr.toUpperCase()
