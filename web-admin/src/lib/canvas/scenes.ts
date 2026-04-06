@@ -80,7 +80,14 @@ async function renderLiveStacked(
   } else {
     display.drawRectangle(logoX, topY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
   }
-  display.drawText(snapshot.away.abbr.slice(0, 4), abbrX, topY + 1, 8, 'monospace', 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.away.abbr.slice(0, 4),
+    abbrX,
+    topY + 1,
+    8,
+    'monospace',
+    'rgb(200, 200, 200)'
+  )
   const awayScore = String(snapshot.away.score)
   const awayScoreWidth = display.getTextWidth(awayScore, 10)
   display.drawText(
@@ -98,7 +105,14 @@ async function renderLiveStacked(
   } else {
     display.drawRectangle(logoX, botY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
   }
-  display.drawText(snapshot.home.abbr.slice(0, 4), abbrX, botY + 1, 8, 'monospace', 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.home.abbr.slice(0, 4),
+    abbrX,
+    botY + 1,
+    8,
+    'monospace',
+    'rgb(200, 200, 200)'
+  )
   const homeScore = String(snapshot.home.score)
   const homeScoreWidth = display.getTextWidth(homeScore, 10)
   display.drawText(
