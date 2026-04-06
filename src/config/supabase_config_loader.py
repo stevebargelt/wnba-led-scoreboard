@@ -119,8 +119,9 @@ class SupabaseConfigLoader:
         """
         try:
             # Call the database function to get complete config
+            # Ensure device_id is passed as string (Supabase client handles UUID conversion)
             response = self.client.rpc('get_device_configuration', {
-                'p_device_id': self.device_id
+                'p_device_id': str(self.device_id)
             }).execute()
 
             if not response.data:
