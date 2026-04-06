@@ -1,11 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
-import { execFile } from 'child_process'
-import { promisify } from 'util'
-import path from 'path'
-import fs from 'fs/promises'
-
-const execFileAsync = promisify(execFile)
+import { PreviewGenerator, SceneType, DeviceConfiguration } from '../../../../lib/canvas'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -47,54 +42,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'GET') {
-    if (process.env.VERCEL || process.env.NETLIFY) {
-      return res.status(503).json({
-        error: 'Preview generation not available on serverless deployment',
-        reason: 'serverless',
-        details:
-          'Preview generation requires Python runtime and file system access. ' +
-          'For previews, deploy the web admin on a server with Python 3.8+ installed, ' +
-          'or use a self-hosted environment. The preview feature will work on Railway, ' +
-          'Render, or any VM-based hosting.',
-      })
-    }
-
     try {
       const scene = (req.query.scene as string) || 'live'
-      const validScenes = ['idle', 'pregame', 'live', 'live_big', 'final']
-      if (!validScenes.includes(scene)) {
+      const validScenes: SceneType[] = ['idle', 'pregame', 'live', 'live_big', 'final']
+      if (!validScenes.includes(scene as SceneType)) {
         return res.status(400).json({ error: 'Invalid scene type' })
       }
 
-      const projectRoot = path.resolve(process.cwd(), '..')
-      const scriptPath = path.join(projectRoot, 'scripts', 'generate_preview.py')
-      const outputDir = path.join(projectRoot, 'out', 'preview')
+      const { data: configData, error: configErr } = await userScoped
+        .from('device_config')
+        .select('*')
+        .eq('device_id', deviceId)
+        .maybeSingle()
 
-      const { stdout, stderr } = await execFileAsync('python3', [
-        scriptPath,
-        '--device-id', deviceId,
-        '--scene', scene,
-        '--output', outputDir
-      ], {
-        cwd: projectRoot,
-        env: {
-          ...process.env,
-          PYTHONPATH: projectRoot,
+      if (configErr || !configData) {
+        return res.status(500).json({ error: 'Failed to load device configuration' })
+      }
+
+      const deviceConfig: DeviceConfiguration = {
+        device_id: deviceId,
+        matrix_config: {
+          width: configData.matrix_width || 64,
+          height: configData.matrix_height || 32,
+          brightness: configData.matrix_brightness || 75,
+          pwm_bits: configData.matrix_pwm_bits || 11,
+          hardware_mapping: configData.matrix_hardware_mapping || 'regular',
+          chain_length: configData.matrix_chain_length || 1,
+          parallel: configData.matrix_parallel || 1,
+          gpio_slowdown: configData.matrix_gpio_slowdown || 1,
         },
-      })
-
-      if (stderr) {
-        console.error('Preview generation stderr:', stderr)
+        render_config: {
+          logo_variant: configData.logo_variant || 'small',
+          live_layout: configData.live_layout || 'stacked',
+        },
       }
 
-      const result = JSON.parse(stdout)
-
-      if (!result.success) {
-        return res.status(500).json({ error: result.error || 'Preview generation failed' })
-      }
-
-      const framePath = result.path
-      const imageBuffer = await fs.readFile(framePath)
+      const generator = new PreviewGenerator(deviceConfig)
+      const imageBuffer = generator.generatePreview(scene as SceneType)
 
       res.setHeader('Content-Type', 'image/png')
       res.setHeader('Cache-Control', 'no-store, must-revalidate')
