@@ -1,5 +1,10 @@
 {
 <<<<<<< HEAD
+  "pid": 64590,
+  "acquired_at": "2026-04-06T08:09:58.221342-07:00",
+  "session_id": "%1809",
+=======
+<<<<<<< HEAD
   "pid": 48697,
   "acquired_at": "2026-04-06T08:07:18.443704-07:00",
   "session_id": "%1807",
@@ -7,6 +12,7 @@
   "pid": 13257,
   "acquired_at": "2026-04-06T08:00:43.502554-07:00",
   "session_id": "%1802",
+>>>>>>> main
 >>>>>>> main
   "hostname": "Steves-MacBook-Pro-3.local"
 }
