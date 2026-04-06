@@ -29,7 +29,7 @@ export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
           return
         }
 
-        const resp = await fetch(`/api/device/${deviceId}/preview?scene=${scene}`, {
+        const resp = await fetch(`/api/device/${deviceId}/preview-ts?scene=${scene}`, {
           headers: {
             Authorization: `Bearer ${jwt}`,
           },
