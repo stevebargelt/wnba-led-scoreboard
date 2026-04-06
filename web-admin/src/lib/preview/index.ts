@@ -6,4 +6,6 @@ export {
   type LogoVariant,
   type LogoOptions,
 } from './logos'
-export { PregameScene, type Scene } from './scenes/pregame'
+export type { Scene } from './scenes/idle'
+export { IdleScene } from './scenes/idle'
+export { PregameScene } from './scenes/pregame'
