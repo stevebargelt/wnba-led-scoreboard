@@ -1,11 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next'
 import { createClient } from '@supabase/supabase-js'
-import { exec } from 'child_process'
+import { execFile } from 'child_process'
 import { promisify } from 'util'
 import path from 'path'
 import fs from 'fs/promises'
 
-const execAsync = promisify(exec)
+const execFileAsync = promisify(execFile)
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -70,9 +70,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const scriptPath = path.join(projectRoot, 'scripts', 'generate_preview.py')
       const outputDir = path.join(projectRoot, 'out', 'preview')
 
-      const command = `cd ${projectRoot} && python3 ${scriptPath} --device-id ${deviceId} --scene ${scene} --output ${outputDir}`
-
-      const { stdout, stderr } = await execAsync(command, {
+      const { stdout, stderr } = await execFileAsync('python3', [
+        scriptPath,
+        '--device-id', deviceId,
+        '--scene', scene,
+        '--output', outputDir
+      ], {
+        cwd: projectRoot,
         env: {
           ...process.env,
           PYTHONPATH: projectRoot,
