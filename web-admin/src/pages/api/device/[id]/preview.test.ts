@@ -7,7 +7,7 @@ jest.mock('@supabase/supabase-js', () => ({
 
 jest.mock('../../../../lib/canvas', () => ({
   PreviewGenerator: jest.fn().mockImplementation(() => ({
-    generatePreview: jest.fn().mockReturnValue(Buffer.from('fake-png-data')),
+    generatePreview: jest.fn().mockResolvedValue(Buffer.from('fake-png-data')),
   })),
 }))
 

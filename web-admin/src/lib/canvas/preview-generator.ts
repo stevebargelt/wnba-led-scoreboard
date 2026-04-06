@@ -27,7 +27,7 @@ export class PreviewGenerator {
     }
   }
 
-  generatePreview(scene: SceneType): Buffer {
+  async generatePreview(scene: SceneType): Promise<Buffer> {
     const display = new CanvasDisplay(this.config)
 
     switch (scene) {
@@ -38,16 +38,16 @@ export class PreviewGenerator {
         renderPregameScene(display, createDemoPregameSnapshot())
         break
       case 'live':
-        renderLiveScene(display, createDemoLiveSnapshot(), false)
+        await renderLiveScene(display, createDemoLiveSnapshot(), false)
         break
       case 'live_big':
-        renderLiveScene(display, createDemoLiveSnapshot(), true)
+        await renderLiveScene(display, createDemoLiveSnapshot(), true)
         break
       case 'final':
         renderFinalScene(display, createDemoFinalSnapshot())
         break
       default:
-        renderLiveScene(display, createDemoLiveSnapshot(), false)
+        await renderLiveScene(display, createDemoLiveSnapshot(), false)
     }
 
     return display.toBuffer()
