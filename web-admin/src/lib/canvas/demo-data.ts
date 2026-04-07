@@ -32,13 +32,13 @@ export function createDemoPregameSnapshot(): GameSnapshot {
     state: GameState.PRE,
     start_time_local: startTime,
     home: {
-      id: '1',
+      id: '11',
       name: 'Mercury',
       abbr: 'PHX',
       score: 0,
     },
     away: {
-      id: '2',
+      id: '6',
       name: 'Sparks',
       abbr: 'LA',
       score: 0,
@@ -61,13 +61,13 @@ export function createDemoLiveSnapshot(): GameSnapshot {
     state: GameState.LIVE,
     start_time_local: new Date(),
     home: {
-      id: '1',
+      id: '11',
       name: 'Mercury',
       abbr: 'PHX',
       score: 72,
     },
     away: {
-      id: '2',
+      id: '6',
       name: 'Sparks',
       abbr: 'LA',
       score: 68,
@@ -90,13 +90,13 @@ export function createDemoFinalSnapshot(): GameSnapshot {
     state: GameState.FINAL,
     start_time_local: new Date(),
     home: {
-      id: '1',
+      id: '11',
       name: 'Mercury',
       abbr: 'PHX',
       score: 89,
     },
     away: {
-      id: '2',
+      id: '6',
       name: 'Sparks',
       abbr: 'LA',
       score: 82,
