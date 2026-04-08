@@ -19,7 +19,7 @@ export class ClientPreviewGenerator {
 
     switch (snapshot.state) {
       case GameState.PRE:
-        renderPregameScene(display, snapshot)
+        await renderPregameScene(display, snapshot)
         break
 
       case GameState.LIVE:
@@ -27,7 +27,7 @@ export class ClientPreviewGenerator {
         break
 
       case GameState.FINAL:
-        renderFinalScene(display, snapshot)
+        await renderFinalScene(display, snapshot)
         break
 
       default:

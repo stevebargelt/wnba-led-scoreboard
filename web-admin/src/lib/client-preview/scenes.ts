@@ -16,7 +16,10 @@ export function renderIdleScene(display: ClientDisplay): void {
   display.drawText(msg.slice(0, 20), 1, 1, 8, 'monospace', 'rgb(180, 180, 180)')
 }
 
-export function renderPregameScene(display: ClientDisplay, snapshot: GameSnapshot): void {
+export async function renderPregameScene(
+  display: ClientDisplay,
+  snapshot: GameSnapshot
+): Promise<void> {
   display.clear(0, 0, 0)
 
   const w = display.getCanvas().width
@@ -25,10 +28,21 @@ export function renderPregameScene(display: ClientDisplay, snapshot: GameSnapsho
   const awayAbbr = snapshot.away.abbr.slice(0, 4)
   const homeAbbr = snapshot.home.abbr.slice(0, 4)
 
-  display.drawRectangle(1, 1, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
+  const sportCode = snapshot.sport.id
+  const awayLogo = await loadTeamLogo(snapshot.away.id, snapshot.away.abbr, sportCode, 'mini')
+  if (awayLogo) {
+    display.drawImage(awayLogo, 1, 1, 10, 10)
+  } else {
+    display.drawRectangle(1, 1, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
+  }
   display.drawText(awayAbbr, 13, 2, 8, 'monospace', 'rgb(200, 200, 200)')
 
-  display.drawRectangle(1, 13, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
+  const homeLogo = await loadTeamLogo(snapshot.home.id, snapshot.home.abbr, sportCode, 'mini')
+  if (homeLogo) {
+    display.drawImage(homeLogo, 1, 13, 10, 10)
+  } else {
+    display.drawRectangle(1, 13, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
+  }
   display.drawText(homeAbbr, 13, 14, 8, 'monospace', 'rgb(200, 200, 200)')
 
   const status = snapshot.status_detail || 'Soon'
@@ -207,7 +221,10 @@ async function renderLiveBigLogos(
   )
 }
 
-export function renderFinalScene(display: ClientDisplay, snapshot: GameSnapshot): void {
+export async function renderFinalScene(
+  display: ClientDisplay,
+  snapshot: GameSnapshot
+): Promise<void> {
   display.clear(0, 0, 0)
 
   const w = display.getCanvas().width
@@ -220,7 +237,13 @@ export function renderFinalScene(display: ClientDisplay, snapshot: GameSnapshot)
   const abbrX = 13
   const scoreRightX = w - 1
 
-  display.drawRectangle(logoX, topY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
+  const sportCode = snapshot.sport.id
+  const awayLogo = await loadTeamLogo(snapshot.away.id, snapshot.away.abbr, sportCode, 'mini')
+  if (awayLogo) {
+    display.drawImage(awayLogo, logoX, topY, 10, 10)
+  } else {
+    display.drawRectangle(logoX, topY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
+  }
   display.drawText(
     snapshot.away.abbr.slice(0, 4),
     abbrX,
@@ -240,7 +263,12 @@ export function renderFinalScene(display: ClientDisplay, snapshot: GameSnapshot)
     'rgb(255, 255, 255)'
   )
 
-  display.drawRectangle(logoX, botY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
+  const homeLogo = await loadTeamLogo(snapshot.home.id, snapshot.home.abbr, sportCode, 'mini')
+  if (homeLogo) {
+    display.drawImage(homeLogo, logoX, botY, 10, 10)
+  } else {
+    display.drawRectangle(logoX, botY, 10, 10, undefined, 'rgb(100, 100, 100)', 1)
+  }
   display.drawText(
     snapshot.home.abbr.slice(0, 4),
     abbrX,
