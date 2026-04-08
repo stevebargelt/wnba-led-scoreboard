@@ -116,6 +116,9 @@ Run in order in Supabase SQL Editor.
 - **Device Management**: Direct database configuration (no WebSockets)
 - **UI Components**: Reusable component library (`src/components/ui/`)
 - **API Routes** (`src/pages/api/`): Next.js API for database operations
+- **Display Preview**: Client-side canvas rendering (`src/lib/client-preview/`)
+  - Uses browser Canvas API for Vercel compatibility
+  - Server-side alternative available for Railway/Render (`src/lib/canvas/`)
 
 ## Project Structure
 ```

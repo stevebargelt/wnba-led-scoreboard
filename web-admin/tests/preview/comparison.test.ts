@@ -6,6 +6,7 @@ import { PreviewGenerator } from '@/lib/canvas/preview-generator'
 import type { DeviceConfiguration } from '@/lib/canvas/types'
 
 const TEST_CONFIG: DeviceConfiguration = {
+  device_id: 'test-device',
   matrix_config: {
     width: 64,
     height: 32,
