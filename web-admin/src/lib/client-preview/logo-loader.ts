@@ -8,8 +8,7 @@ function getSportLogoPath(sport: string, teamId: string, filename: string): stri
 }
 
 function getVariantPath(teamId: string, variant: string, sport?: string): string {
-  const cacheKey = sport ? `${sport}_${teamId}` : teamId
-  return `/assets/logos/variants/${cacheKey}_${variant}.png`
+  return `/assets/logos/variants/${teamId}_${variant}.png`
 }
 
 async function loadImageSafe(url: string): Promise<HTMLImageElement | null> {
