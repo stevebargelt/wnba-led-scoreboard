@@ -11,9 +11,6 @@ from typing import DefaultDict, Dict, Iterable, Optional, Tuple
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 ASSETS_DIR = BASE_DIR / "assets"
-LEGACY_TEAMS_JSON = ASSETS_DIR / "teams.json"
-# Backward-compatible alias; code elsewhere may still reference TEAMS_JSON.
-TEAMS_JSON = LEGACY_TEAMS_JSON
 
 
 @dataclass
@@ -59,20 +56,9 @@ class TeamRegistry:
                         self.by_sport_abbr[meta.sport].setdefault(meta.abbr, meta)
 
     def _enumerate_team_files(self) -> Iterable[Tuple[Optional[str], Path]]:
-        # Prefer sport-specific files, but keep legacy support for assets/teams.json.
-        if LEGACY_TEAMS_JSON.exists():
-            yield None, LEGACY_TEAMS_JSON
-        # *_teams.json files hold sport-scoped data (wnba_teams.json, nhl_teams.json, etc.).
         for path in sorted(ASSETS_DIR.glob("*_teams.json")):
-            if path == LEGACY_TEAMS_JSON:
-                continue
             sport_name = path.stem.replace("_teams", "")
-            sport_type = None
-            try:
-                sport_type = sport_name.lower()  # Use league code directly
-            except ValueError:
-                sport_type = None
-            yield sport_type, path
+            yield sport_name.lower(), path
 
     def _load_team_file(self, path: Path) -> Iterable[dict]:
         try:

@@ -7,25 +7,30 @@ to different font styles for various display elements.
 
 import json
 import os
+from pathlib import Path
 from typing import Dict, Optional
 from PIL import ImageFont
 from functools import lru_cache
+
+_BASE_DIR = Path(__file__).resolve().parents[2]
+_DEFAULT_CONFIG = str(_BASE_DIR / "config" / "fonts.json")
 
 
 class FontManager:
     """Manages fonts for the LED display."""
 
-    def __init__(self, config_path: str = "config/fonts.json"):
+    def __init__(self, config_path: str = _DEFAULT_CONFIG):
         """Initialize font manager with configuration."""
         self.config_path = config_path
-        self.font_dir = "assets/fonts/pixel"
+        self.font_dir = str(_BASE_DIR / "assets" / "fonts" / "pixel")
         self._fonts: Dict[str, ImageFont.FreeTypeFont] = {}
         self._config = self._load_config()
 
     def _load_config(self) -> Dict:
         """Load font configuration from JSON file."""
         try:
-            with open(self.config_path, 'r') as f:
+            config_path_abs = _BASE_DIR / self.config_path if not os.path.isabs(self.config_path) else Path(self.config_path)
+            with open(config_path_abs, 'r') as f:
                 return json.load(f)
         except Exception as e:
             print(f"[FontManager] Failed to load font config: {e}")

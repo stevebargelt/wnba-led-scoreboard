@@ -70,14 +70,23 @@ export default function DevicePage() {
         .maybeSingle()
       if (data) {
         setTimezone(data.timezone || DEFAULTS.timezone)
-        setMatrix(data.matrix_config || DEFAULTS.matrix)
-        setRefreshCfg(data.refresh_config || DEFAULTS.refresh)
-        setRenderCfg(data.render_config || DEFAULTS.render)
+        setMatrix({
+          ...DEFAULTS.matrix,
+          width: data.matrix_width ?? DEFAULTS.matrix.width,
+          height: data.matrix_height ?? DEFAULTS.matrix.height,
+          brightness: data.brightness ?? DEFAULTS.matrix.brightness,
+        })
+        setRefreshCfg({
+          ...DEFAULTS.refresh,
+          pregame_sec: data.refresh_pregame_sec ?? DEFAULTS.refresh.pregame_sec,
+          ingame_sec: data.refresh_ingame_sec ?? DEFAULTS.refresh.ingame_sec,
+          final_sec: data.refresh_final_sec ?? DEFAULTS.refresh.final_sec,
+        })
+        setRenderCfg({
+          ...DEFAULTS.render,
+          live_layout: data.live_display_layout ?? DEFAULTS.render.live_layout,
+        })
       }
-      if ((data?.content as any)?.timezone) setTimezone((data!.content as any).timezone)
-      if ((data?.content as any)?.matrix) setMatrix((data!.content as any).matrix)
-      if ((data?.content as any)?.refresh) setRefreshCfg((data!.content as any).refresh)
-      if ((data?.content as any)?.render) setRenderCfg((data!.content as any).render)
       const { data: dev } = await supabase
         .from('devices')
         .select('id,name,last_seen_ts')
@@ -212,10 +221,13 @@ export default function DevicePage() {
       const { error } = await supabase.from('device_config').upsert({
         device_id: id as string,
         timezone,
-        matrix_config: matrix,
-        refresh_config: refreshCfg,
-        render_config: renderCfg,
-        priority_config: priorityConfig,
+        matrix_width: matrix.width,
+        matrix_height: matrix.height,
+        brightness: matrix.brightness,
+        refresh_pregame_sec: refreshCfg.pregame_sec,
+        refresh_ingame_sec: refreshCfg.ingame_sec,
+        refresh_final_sec: refreshCfg.final_sec,
+        live_display_layout: renderCfg.live_layout,
         updated_at: new Date().toISOString(),
       })
 
