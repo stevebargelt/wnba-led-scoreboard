@@ -76,15 +76,20 @@ describe('DisplayPreview', () => {
 
   it('respects custom matrixConfig dimensions', async () => {
     await act(async () => {
-      render(<DisplayPreview deviceId="device-1" matrixConfig={{ width: 128, height: 64, brightness: 80 }} />)
+      render(
+        <DisplayPreview
+          deviceId="device-1"
+          matrixConfig={{ width: 64, height: 32, brightness: 80 }}
+        />
+      )
     })
     await waitFor(() => {
       const canvas = document.querySelector('canvas') as HTMLCanvasElement
       expect(canvas).toBeInTheDocument()
-      expect(canvas).toHaveAttribute('width', '128')
-      expect(canvas).toHaveAttribute('height', '64')
-      expect(canvas.style.width).toBe('1024px')
-      expect(canvas.style.height).toBe('512px')
+      expect(canvas).toHaveAttribute('width', '64')
+      expect(canvas).toHaveAttribute('height', '32')
+      expect(canvas.style.width).toBe('512px')
+      expect(canvas.style.height).toBe('256px')
     })
   })
 
@@ -262,7 +267,9 @@ describe('sport toggle integration', () => {
     })
 
     await waitFor(() => {
-      expect((createNhlDemoFinalSnapshot as jest.Mock).mock.calls.length).toBeGreaterThan(callsBefore)
+      expect((createNhlDemoFinalSnapshot as jest.Mock).mock.calls.length).toBeGreaterThan(
+        callsBefore
+      )
     })
   })
 

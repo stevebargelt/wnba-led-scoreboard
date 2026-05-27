@@ -1,7 +1,17 @@
-import { renderIdleScene, renderLiveStacked, renderPregameScene, renderFinalScene, renderLiveBigLogos } from '../scenes'
+import {
+  renderIdleScene,
+  renderLiveStacked,
+  renderPregameScene,
+  renderFinalScene,
+  renderLiveBigLogos,
+} from '../scenes'
 import { ClientDisplay } from '../display'
 import { DisplayConfig } from '../types'
-import { createDemoLiveSnapshot, createDemoPregameSnapshot, createDemoFinalSnapshot } from '../demo-data'
+import {
+  createDemoLiveSnapshot,
+  createDemoPregameSnapshot,
+  createDemoFinalSnapshot,
+} from '../demo-data'
 import { FONT_SMALL, FONT_LARGE } from '../fonts'
 import { loadTeamLogo } from '../logos'
 
@@ -215,8 +225,18 @@ describe('renderLiveStacked', () => {
     const snap = createDemoLiveSnapshot()
     const display = new ClientDisplay(makeConfig())
     await renderLiveStacked(display, snap)
-    expect(mockLoadTeamLogo).toHaveBeenCalledWith(snap.away.id, snap.away.abbr, snap.sport.code, 'mini')
-    expect(mockLoadTeamLogo).toHaveBeenCalledWith(snap.home.id, snap.home.abbr, snap.sport.code, 'mini')
+    expect(mockLoadTeamLogo).toHaveBeenCalledWith(
+      snap.away.id,
+      snap.away.abbr,
+      snap.sport.code,
+      'mini'
+    )
+    expect(mockLoadTeamLogo).toHaveBeenCalledWith(
+      snap.home.id,
+      snap.home.abbr,
+      snap.sport.code,
+      'mini'
+    )
   })
 })
 
@@ -270,8 +290,8 @@ describe('renderPregameScene', () => {
     await renderPregameScene(display, createDemoPregameSnapshot())
     const vsCall = drawTextSpy.mock.calls.find(c => c[0] === 'VS')
     expect(vsCall).toBeDefined()
-    expect(vsCall![1]).toBe(26)  // floor(64/2) - 6 = 26
-    expect(vsCall![2]).toBe(3)   // topY + 1 = 2 + 1 = 3
+    expect(vsCall![1]).toBe(26) // floor(64/2) - 6 = 26
+    expect(vsCall![2]).toBe(3) // topY + 1 = 2 + 1 = 3
     expect(vsCall![3]).toBe(8)
     expect(vsCall![4]).toBe(FONT_SMALL)
     expect(vsCall![5]).toBe('rgb(200, 200, 200)')
@@ -281,7 +301,9 @@ describe('renderPregameScene', () => {
     const display = new ClientDisplay(makeConfig())
     const drawTextSpy = jest.spyOn(display, 'drawText')
     await renderPregameScene(display, createDemoPregameSnapshot())
-    const countdownCall = drawTextSpy.mock.calls.find(c => c[3] === 12 && c[5] === 'rgb(255, 200, 0)')
+    const countdownCall = drawTextSpy.mock.calls.find(
+      c => c[3] === 12 && c[5] === 'rgb(255, 200, 0)'
+    )
     expect(countdownCall).toBeDefined()
     expect(countdownCall![4]).toBe(FONT_LARGE)
   })
@@ -292,7 +314,9 @@ describe('renderPregameScene', () => {
     const snap = createDemoPregameSnapshot()
     // seconds_to_start = 7200 = 2h exactly
     await renderPregameScene(display, snap)
-    const countdownCall = drawTextSpy.mock.calls.find(c => c[3] === 12 && c[5] === 'rgb(255, 200, 0)')
+    const countdownCall = drawTextSpy.mock.calls.find(
+      c => c[3] === 12 && c[5] === 'rgb(255, 200, 0)'
+    )
     expect(countdownCall).toBeDefined()
     // 7200s = 2h:00m:00s
     expect(countdownCall![0]).toBe('2:00:00')
@@ -303,7 +327,9 @@ describe('renderPregameScene', () => {
     jest.spyOn(display, 'getTextWidth').mockReturnValue(20)
     const drawTextSpy = jest.spyOn(display, 'drawText')
     await renderPregameScene(display, createDemoPregameSnapshot())
-    const countdownCall = drawTextSpy.mock.calls.find(c => c[3] === 12 && c[5] === 'rgb(255, 200, 0)')
+    const countdownCall = drawTextSpy.mock.calls.find(
+      c => c[3] === 12 && c[5] === 'rgb(255, 200, 0)'
+    )
     expect(countdownCall).toBeDefined()
     // x = floor((64 - 20) / 2) = 22
     expect(countdownCall![1]).toBe(22)
@@ -313,7 +339,9 @@ describe('renderPregameScene', () => {
     const display = new ClientDisplay(makeConfig()) // h=32
     const drawTextSpy = jest.spyOn(display, 'drawText')
     await renderPregameScene(display, createDemoPregameSnapshot())
-    const startTimeCall = drawTextSpy.mock.calls.find(c => c[2] === 23 && c[5] === 'rgb(150, 150, 150)')
+    const startTimeCall = drawTextSpy.mock.calls.find(
+      c => c[2] === 23 && c[5] === 'rgb(150, 150, 150)'
+    )
     expect(startTimeCall).toBeDefined()
     expect(startTimeCall![1]).toBe(1)
     expect(startTimeCall![3]).toBe(8)
@@ -324,8 +352,18 @@ describe('renderPregameScene', () => {
     const snap = createDemoPregameSnapshot()
     const display = new ClientDisplay(makeConfig())
     await renderPregameScene(display, snap)
-    expect(mockLoadTeamLogo).toHaveBeenCalledWith(snap.away.id, snap.away.abbr, snap.sport.code, 'mini')
-    expect(mockLoadTeamLogo).toHaveBeenCalledWith(snap.home.id, snap.home.abbr, snap.sport.code, 'mini')
+    expect(mockLoadTeamLogo).toHaveBeenCalledWith(
+      snap.away.id,
+      snap.away.abbr,
+      snap.sport.code,
+      'mini'
+    )
+    expect(mockLoadTeamLogo).toHaveBeenCalledWith(
+      snap.home.id,
+      snap.home.abbr,
+      snap.sport.code,
+      'mini'
+    )
   })
 })
 
@@ -392,7 +430,9 @@ describe('renderFinalScene', () => {
     const display = new ClientDisplay(makeConfig())
     const drawTextSpy = jest.spyOn(display, 'drawText')
     await renderFinalScene(display, createDemoFinalSnapshot())
-    const scoreCalls = drawTextSpy.mock.calls.filter(c => c[3] === 12 && c[5] === 'rgb(255, 255, 255)')
+    const scoreCalls = drawTextSpy.mock.calls.filter(
+      c => c[3] === 12 && c[5] === 'rgb(255, 255, 255)'
+    )
     expect(scoreCalls).toHaveLength(2)
     for (const call of scoreCalls) {
       expect(call[4]).toBe(FONT_LARGE)
@@ -493,7 +533,9 @@ describe('renderLiveBigLogos', () => {
     const drawTextSpy = jest.spyOn(display, 'drawText')
     const snap = createDemoLiveSnapshot()
     await renderLiveBigLogos(display, snap)
-    const homeAbbrCall = drawTextSpy.mock.calls.find(c => c[0] === snap.home.abbr.slice(0, 4) && c[1] === 1 && c[2] === 23)
+    const homeAbbrCall = drawTextSpy.mock.calls.find(
+      c => c[0] === snap.home.abbr.slice(0, 4) && c[1] === 1 && c[2] === 23
+    )
     expect(homeAbbrCall).toBeDefined()
     expect(homeAbbrCall![5]).toBe('rgb(200, 200, 200)')
   })
@@ -503,7 +545,9 @@ describe('renderLiveBigLogos', () => {
     const drawTextSpy = jest.spyOn(display, 'drawText')
     const snap = createDemoLiveSnapshot()
     await renderLiveBigLogos(display, snap)
-    const abbrCalls = drawTextSpy.mock.calls.filter(c => c[2] === 23 && c[5] === 'rgb(200, 200, 200)')
+    const abbrCalls = drawTextSpy.mock.calls.filter(
+      c => c[2] === 23 && c[5] === 'rgb(200, 200, 200)'
+    )
     // Should have both home and away abbreviations at y=23
     expect(abbrCalls.length).toBeGreaterThanOrEqual(2)
   })
@@ -527,14 +571,14 @@ describe('renderLiveBigLogos', () => {
     }
   })
 
-  it('uses FONT_LARGE size 12 for scores on h=64 display with short scores', async () => {
-    const display = new ClientDisplay(makeConfig({ height: 64 }))
+  it('uses FONT_SMALL size 8 for scores on h=32 display with short scores', async () => {
+    const display = new ClientDisplay(makeConfig({ height: 32 }))
     const drawTextSpy = jest.spyOn(display, 'drawText')
     await renderLiveBigLogos(display, createDemoLiveSnapshot())
     const scoreCalls = drawTextSpy.mock.calls.filter(c => c[5] === 'rgb(255, 255, 255)')
     for (const call of scoreCalls) {
-      expect(call[3]).toBe(12)
-      expect(call[4]).toBe(FONT_LARGE)
+      expect(call[3]).toBe(8)
+      expect(call[4]).toBe(FONT_SMALL)
     }
   })
 
@@ -542,7 +586,17 @@ describe('renderLiveBigLogos', () => {
     const snap = createDemoLiveSnapshot()
     const display = new ClientDisplay(makeConfig())
     await renderLiveBigLogos(display, snap)
-    expect(mockLoadTeamLogo).toHaveBeenCalledWith(snap.home.id, snap.home.abbr, snap.sport.code, 'banner')
-    expect(mockLoadTeamLogo).toHaveBeenCalledWith(snap.away.id, snap.away.abbr, snap.sport.code, 'banner')
+    expect(mockLoadTeamLogo).toHaveBeenCalledWith(
+      snap.home.id,
+      snap.home.abbr,
+      snap.sport.code,
+      'banner'
+    )
+    expect(mockLoadTeamLogo).toHaveBeenCalledWith(
+      snap.away.id,
+      snap.away.abbr,
+      snap.sport.code,
+      'banner'
+    )
   })
 })

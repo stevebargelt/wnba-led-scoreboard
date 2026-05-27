@@ -45,7 +45,8 @@ class DeviceConfiguration:
         matrix_config = MatrixConfig(
             width=matrix_data.get('width', 128),
             height=matrix_data.get('height', 64),
-            brightness=matrix_data.get('brightness', 80)
+            brightness=matrix_data.get('brightness', 80),
+            pixel_mapper_config=matrix_data.get('pixel_mapper_config', ''),
         )
 
         render_data = data.get('render_config', {})
@@ -156,7 +157,8 @@ class SupabaseConfigLoader:
             matrix_config = MatrixConfig(
                 width=matrix_data.get('width', 128),
                 height=matrix_data.get('height', 64),
-                brightness=matrix_data.get('brightness', 100)
+                brightness=matrix_data.get('brightness', 100),
+                pixel_mapper_config=matrix_data.get('pixel_mapper_config', ''),
             )
 
             # Parse render config
@@ -230,7 +232,7 @@ class SupabaseConfigLoader:
             device_id=self.device_id,
             timezone='America/Los_Angeles',
             enabled=True,
-            matrix_config=MatrixConfig(width=128, height=64, brightness=100),
+            matrix_config=MatrixConfig(width=64, height=32, brightness=100),
             render_config=RenderConfig(),
             refresh_config=RefreshConfig(),
             enabled_leagues=['wnba', 'nhl'],
