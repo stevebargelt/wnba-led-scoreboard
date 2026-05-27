@@ -1,81 +1,110 @@
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '../../lib/supabaseClient'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Card, CardHeader, CardTitle, Button } from '../ui'
+import { PreviewGenerator, loadPreviewFonts, GameState } from '../../lib/preview'
+import {
+  createDemoPregameSnapshot,
+  createDemoLiveSnapshot,
+  createDemoFinalSnapshot,
+  createNhlDemoPregameSnapshot,
+  createNhlDemoLiveSnapshot,
+  createNhlDemoFinalSnapshot,
+} from '../../lib/preview'
+import type { DisplayConfig } from '../../lib/preview'
 
 type SceneType = 'idle' | 'pregame' | 'live' | 'live_big' | 'final'
 
 interface DisplayPreviewProps {
   deviceId: string
+  renderConfig?: { live_layout: string; logo_variant: string }
+  matrixConfig?: { width: number; height: number; brightness: number }
 }
 
-export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+type SportType = 'wnba' | 'nhl'
+
+export function DisplayPreview({ deviceId: _deviceId, renderConfig, matrixConfig }: DisplayPreviewProps) {
   const [selectedScene, setSelectedScene] = useState<SceneType>('live')
+  const [selectedSport, setSelectedSport] = useState<SportType>('wnba')
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [fontsReady, setFontsReady] = useState(false)
+  const [fontLoading, setFontLoading] = useState(true)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const generatePreview = useCallback(
-    async (scene: SceneType) => {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const { data: sess } = await supabase.auth.getSession()
-        const jwt = sess.session?.access_token
-
-        if (!jwt) {
-          setError('Not authenticated')
-          setLoading(false)
-          return
-        }
-
-        const resp = await fetch(`/api/device/${deviceId}/preview?scene=${scene}`, {
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          },
-        })
-
-        if (!resp.ok) {
-          const body = await resp.json()
-          throw new Error(body.error || 'Failed to generate preview')
-        }
-
-        const blob = await resp.blob()
-        const url = URL.createObjectURL(blob)
-
-        if (previewUrl) {
-          URL.revokeObjectURL(previewUrl)
-        }
-
-        setPreviewUrl(url)
-      } catch (e: any) {
-        setError(e.message)
-      } finally {
-        setLoading(false)
-      }
-    },
-    [deviceId, previewUrl]
-  )
+  const width = matrixConfig?.width ?? 64
+  const height = matrixConfig?.height ?? 32
 
   useEffect(() => {
-    generatePreview(selectedScene)
-  }, [selectedScene, generatePreview])
+    loadPreviewFonts()
+      .then(() => {
+        setFontsReady(true)
+        setFontLoading(false)
+      })
+      .catch(() => {
+        setFontsReady(true)
+        setFontLoading(false)
+      })
+  }, [])
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl)
+  const generatePreview = useCallback(async () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    setError(null)
+    setGenerating(true)
+
+    try {
+      const config: DisplayConfig = {
+        width: matrixConfig?.width ?? 64,
+        height: matrixConfig?.height ?? 32,
+        brightness: matrixConfig?.brightness ?? 75,
+        logo_variant: renderConfig?.logo_variant ?? 'mini',
+        live_layout: selectedScene === 'live_big' ? 'big-logos' : (renderConfig?.live_layout ?? 'stacked'),
       }
+
+      let snapshot = null
+      if (selectedSport === 'nhl') {
+        switch (selectedScene) {
+          case 'pregame':
+            snapshot = createNhlDemoPregameSnapshot()
+            break
+          case 'live':
+          case 'live_big':
+            snapshot = createNhlDemoLiveSnapshot()
+            break
+          case 'final':
+            snapshot = createNhlDemoFinalSnapshot()
+            break
+          // idle: snapshot remains null
+        }
+      } else {
+        switch (selectedScene) {
+          case 'pregame':
+            snapshot = createDemoPregameSnapshot()
+            break
+          case 'live':
+          case 'live_big':
+            snapshot = createDemoLiveSnapshot()
+            break
+          case 'final':
+            snapshot = createDemoFinalSnapshot()
+            break
+          // idle: snapshot remains null
+        }
+      }
+
+      const generator = new PreviewGenerator()
+      await generator.generatePreview(config, snapshot, canvas)
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setGenerating(false)
     }
-  }, [previewUrl])
+  }, [selectedScene, selectedSport, renderConfig, matrixConfig])
 
-  const handleSceneChange = (scene: SceneType) => {
-    setSelectedScene(scene)
-  }
-
-  const handleRefresh = () => {
-    generatePreview(selectedScene)
-  }
+  useEffect(() => {
+    if (!fontsReady) return
+    generatePreview()
+  }, [fontsReady, generatePreview])
 
   return (
     <div className="space-y-6">
@@ -84,6 +113,20 @@ export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
           <CardTitle>Display Preview</CardTitle>
         </CardHeader>
         <div className="p-6 space-y-4">
+          <div className="flex gap-2">
+            {(['wnba', 'nhl'] as SportType[]).map(sport => (
+              <Button
+                key={sport}
+                size="sm"
+                variant={selectedSport === sport ? 'primary' : 'secondary'}
+                onClick={() => setSelectedSport(sport)}
+                disabled={generating}
+              >
+                {sport.toUpperCase()}
+              </Button>
+            ))}
+          </div>
+
           <div className="flex items-center justify-between">
             <div className="flex gap-2 flex-wrap">
               {(['idle', 'pregame', 'live', 'live_big', 'final'] as SceneType[]).map(scene => (
@@ -91,8 +134,8 @@ export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
                   key={scene}
                   size="sm"
                   variant={selectedScene === scene ? 'primary' : 'secondary'}
-                  onClick={() => handleSceneChange(scene)}
-                  disabled={loading}
+                  onClick={() => setSelectedScene(scene)}
+                  disabled={generating}
                 >
                   {scene === 'live_big'
                     ? 'Big Logos'
@@ -102,9 +145,9 @@ export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
             </div>
             <Button
               size="sm"
-              onClick={handleRefresh}
-              disabled={loading}
-              loading={loading}
+              onClick={generatePreview}
+              disabled={generating}
+              loading={generating}
               leftIcon={
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path
@@ -127,23 +170,19 @@ export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
           )}
 
           <div className="flex justify-center items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-8 min-h-[200px]">
-            {loading && (
-              <div className="text-gray-500 dark:text-gray-400">Generating preview...</div>
-            )}
-            {!loading && previewUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={previewUrl}
-                alt="LED Matrix Preview"
-                className="max-w-full h-auto"
+            {fontLoading ? (
+              <div className="text-gray-500 dark:text-gray-400">Loading fonts...</div>
+            ) : (
+              <canvas
+                ref={canvasRef}
+                width={width}
+                height={height}
                 style={{
+                  width: width * 8,
+                  height: height * 8,
                   imageRendering: 'pixelated',
-                  maxHeight: '400px',
                 }}
               />
-            )}
-            {!loading && !previewUrl && !error && (
-              <div className="text-gray-500 dark:text-gray-400">No preview available</div>
             )}
           </div>
 
@@ -154,8 +193,8 @@ export function DisplayPreview({ deviceId }: DisplayPreviewProps) {
             <ul className="list-disc list-inside space-y-1 ml-2">
               <li>Shows how your scoreboard will look on the LED matrix</li>
               <li>Uses demo game data for preview scenes</li>
-              <li>Preview updates may take a few seconds to generate</li>
-              <li>Layout changes (stacked/big-logos) require refreshing the preview</li>
+              <li>Rendered client-side — no server request needed</li>
+              <li>Layout changes (stacked/big-logos) apply immediately</li>
             </ul>
           </div>
         </div>

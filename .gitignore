@@ -30,6 +30,15 @@ assets/
 !assets/fonts/pixel/*.ttf
 !assets/fonts/pixel/*.otf
 
+# Web admin preview assets (fonts copied, logos symlinked)
+!web-admin/public/assets/
+!web-admin/public/assets/fonts/
+!web-admin/public/assets/fonts/pixel/
+!web-admin/public/assets/fonts/pixel/*.TTF
+!web-admin/public/assets/fonts/pixel/*.otf
+!web-admin/public/assets/logos
+!web-admin/public/assets/nhl_logos
+
 # Test coverage and reports (don't track generated artifacts)
 coverage/
 **/coverage/
@@ -46,3 +55,7 @@ supabase/supabase/.temp/
 .coverage
 
 plans/
+
+# forge — per-developer claude-code config (machine-local, not committed)
+.claude/settings.local.json
+.claude/commands/

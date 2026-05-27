@@ -352,7 +352,11 @@ export default function DevicePage() {
           </TabsContent>
 
           <TabsContent value="preview">
-            <DisplayPreview deviceId={id as string} />
+            <DisplayPreview
+              deviceId={id as string}
+              renderConfig={renderCfg}
+              matrixConfig={matrix}
+            />
           </TabsContent>
 
           {/* Removed Device Actions and Token tabs content */}
