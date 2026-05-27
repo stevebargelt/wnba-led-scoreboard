@@ -191,7 +191,7 @@ class NBAClient(LeagueClient):
                     "id": team.get("id"),
                     "name": team.get("displayName"),
                     "abbreviation": team.get("abbreviation"),
-                    "logo_url": team.get("logo"),
+                    "logo_url": team.get("logos", [{}])[0].get("href") if team.get("logos") else None,
                     "colors": {
                         "primary": team.get("color"),
                         "secondary": team.get("alternateColor"),

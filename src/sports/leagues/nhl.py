@@ -21,7 +21,6 @@ NHL_LEAGUE = LeagueConfig(
         endpoints={
             "scoreboard": "/score/{date}",
             "schedule": "/schedule/{date}",
-            "teams": "/teams",
             "standings": "/standings",
         },
         rate_limit_per_minute=60,
@@ -37,12 +36,11 @@ NHL_LEAGUE = LeagueConfig(
         "overtime_duration_minutes": 5,  # 3-on-3 OT in regular season
         "has_shootout": True,  # After OT in regular season
     },
-    team_assets_url="https://api-web.nhle.com/v1/teams",
     logo_url_template="https://assets.nhle.com/logos/nhl/svg/{abbr}_light.svg",
     current_season=LeagueSeason(
-        start_date=date(2024, 10, 4),
-        end_date=date(2025, 6, 30),
-        playoff_start=date(2025, 4, 15),
+        start_date=date(2025, 10, 7),
+        end_date=date(2026, 6, 30),
+        playoff_start=date(2026, 4, 15),
         is_active=True,
     ),
 )

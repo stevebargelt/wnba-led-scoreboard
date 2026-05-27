@@ -36,10 +36,10 @@ WNBA_LEAGUE = LeagueConfig(
         "period_duration_minutes": 10,  # 10-minute quarters vs NBA's 12
     },
     current_season=LeagueSeason(
-        start_date=date(2025, 5, 16),
-        end_date=date(2025, 10, 20),
-        playoff_start=date(2025, 9, 15),
-        is_active=False,  # Off-season currently
+        start_date=date(2026, 5, 16),
+        end_date=date(2026, 10, 20),
+        playoff_start=date(2026, 9, 15),
+        is_active=True,
     ),
 )
 
@@ -151,7 +151,7 @@ class WNBAClient(LeagueClient):
                 status_detail=status_detail,
                 sport_specific_data={
                     "is_overtime": is_overtime,
-                    "broadcast": event.get("broadcasts", []),
+                    "broadcast": competition.get("broadcasts", []),
                 },
             )
 
@@ -181,7 +181,6 @@ class WNBAClient(LeagueClient):
                         "primary": team.get("color", ""),
                         "alternate": team.get("alternateColor", ""),
                     },
-                    "venue": team.get("venue", {}).get("fullName", ""),
                 })
 
         except Exception as e:
