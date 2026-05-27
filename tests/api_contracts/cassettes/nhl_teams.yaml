@@ -1,0 +1,810 @@
+interactions:
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+    method: GET
+    uri: https://api.nhle.com/stats/rest/en/team
+  response:
+    body:
+      string: '{"data": [{"id": 32, "fullName": "Quebec Nordiques", "triCode": "QUE"},
+        {"id": 8, "fullName": "Montr\u00e9al Canadiens", "triCode": "MTL"}, {"id":
+        58, "fullName": "Toronto St. Patricks", "triCode": "TSP"}, {"id": 7, "fullName":
+        "Buffalo Sabres", "triCode": "BUF"}, {"id": 46, "fullName": "Oakland Seals",
+        "triCode": "OAK"}, {"id": 48, "fullName": "Kansas City Scouts", "triCode":
+        "KCS"}, {"id": 36, "fullName": "Ottawa Senators (1917)", "triCode": "SEN"},
+        {"id": 70, "fullName": "To be determined", "triCode": "TBD"}, {"id": 11, "fullName":
+        "Atlanta Thrashers", "triCode": "ATL"}, {"id": 45, "fullName": "St. Louis
+        Eagles", "triCode": "SLE"}, {"id": 33, "fullName": "Winnipeg Jets (1979)",
+        "triCode": "WIN"}, {"id": 28, "fullName": "San Jose Sharks", "triCode": "SJS"},
+        {"id": 42, "fullName": "Quebec Bulldogs", "triCode": "QBD"}, {"id": 53, "fullName":
+        "Arizona Coyotes", "triCode": "ARI"}, {"id": 13, "fullName": "Florida Panthers",
+        "triCode": "FLA"}, {"id": 12, "fullName": "Carolina Hurricanes", "triCode":
+        "CAR"}, {"id": 52, "fullName": "Winnipeg Jets", "triCode": "WPG"}, {"id":
+        18, "fullName": "Nashville Predators", "triCode": "NSH"}, {"id": 27, "fullName":
+        "Phoenix Coyotes", "triCode": "PHX"}, {"id": 41, "fullName": "Montreal Wanderers",
+        "triCode": "MWN"}, {"id": 39, "fullName": "Philadelphia Quakers", "triCode":
+        "QUA"}, {"id": 37, "fullName": "Hamilton Tigers", "triCode": "HAM"}, {"id":
+        40, "fullName": "Detroit Cougars", "triCode": "DCG"}, {"id": 35, "fullName":
+        "Colorado Rockies", "triCode": "CLR"}, {"id": 38, "fullName": "Pittsburgh
+        Pirates", "triCode": "PIR"}, {"id": 34, "fullName": "Hartford Whalers", "triCode":
+        "HFD"}, {"id": 1, "fullName": "New Jersey Devils", "triCode": "NJD"}, {"id":
+        9, "fullName": "Ottawa Senators", "triCode": "OTT"}, {"id": 21, "fullName":
+        "Colorado Avalanche", "triCode": "COL"}, {"id": 44, "fullName": "New York
+        Americans", "triCode": "NYA"}, {"id": 15, "fullName": "Washington Capitals",
+        "triCode": "WSH"}, {"id": 31, "fullName": "Minnesota North Stars", "triCode":
+        "MNS"}, {"id": 99, "fullName": "NHL", "triCode": "NHL"}, {"id": 43, "fullName":
+        "Montreal Maroons", "triCode": "MMR"}, {"id": 49, "fullName": "Cleveland Barons",
+        "triCode": "CLE"}, {"id": 51, "fullName": "Brooklyn Americans", "triCode":
+        "BRK"}, {"id": 50, "fullName": "Detroit Falcons", "triCode": "DFL"}, {"id":
+        56, "fullName": "California Golden Seals", "triCode": "CGS"}, {"id": 47, "fullName":
+        "Atlanta Flames", "triCode": "AFM"}, {"id": 57, "fullName": "Toronto Arenas",
+        "triCode": "TAN"}, {"id": 20, "fullName": "Calgary Flames", "triCode": "CGY"},
+        {"id": 19, "fullName": "St. Louis Blues", "triCode": "STL"}, {"id": 17, "fullName":
+        "Detroit Red Wings", "triCode": "DET"}, {"id": 3, "fullName": "New York Rangers",
+        "triCode": "NYR"}, {"id": 24, "fullName": "Anaheim Ducks", "triCode": "ANA"},
+        {"id": 16, "fullName": "Chicago Blackhawks", "triCode": "CHI"}, {"id": 55,
+        "fullName": "Seattle Kraken", "triCode": "SEA"}, {"id": 5, "fullName": "Pittsburgh
+        Penguins", "triCode": "PIT"}, {"id": 6, "fullName": "Boston Bruins", "triCode":
+        "BOS"}, {"id": 25, "fullName": "Dallas Stars", "triCode": "DAL"}, {"id": 14,
+        "fullName": "Tampa Bay Lightning", "triCode": "TBL"}, {"id": 4, "fullName":
+        "Philadelphia Flyers", "triCode": "PHI"}, {"id": 30, "fullName": "Minnesota
+        Wild", "triCode": "MIN"}, {"id": 29, "fullName": "Columbus Blue Jackets",
+        "triCode": "CBJ"}, {"id": 26, "fullName": "Los Angeles Kings", "triCode":
+        "LAK"}, {"id": 68, "fullName": "Utah Mammoth", "triCode": "UTA"}, {"id": 59,
+        "fullName": "Utah Hockey Club", "triCode": "UTA"}, {"id": 54, "fullName":
+        "Vegas Golden Knights", "triCode": "VGK"}, {"id": 2, "fullName": "New York
+        Islanders", "triCode": "NYI"}, {"id": 10, "fullName": "Toronto Maple Leafs",
+        "triCode": "TOR"}, {"id": 22, "fullName": "Edmonton Oilers", "triCode": "EDM"},
+        {"id": 23, "fullName": "Vancouver Canucks", "triCode": "VAN"}], "total": 62}'
+    headers:
+      CF-RAY:
+      - a02777eebf97347d-SEA
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:36:26 GMT
+      Permissions-Policy:
+      - attribution-reporting=(), hid=(), window-management=(), document-domain=(),
+        usb=(), xr-spatial-tracking=(), midi=(), compute-pressure=(), display-capture=(),
+        accelerometer=(), payment=(), camera=(), microphone=(), magnetometer=(), autoplay=(),
+        gyroscope=(), idle-detection=(), screen-wake-lock=(), ambient-light-sensor=(),
+        otp-credentials=(), publickey-credentials-create=(), speaker-selection=(),
+        bluetooth=(), fullscreen=(), serial=(), gamepad=(), local-fonts=(), picture-in-picture=(),
+        identity-credentials-get=(), encrypted-media=(), web-share=(), geolocation=()
+      Referrer-Policy:
+      - no-referrer,strict-origin-when-cross-origin
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31622400
+      - max-age=157680000; includeSubDomains
+      Vary:
+      - Accept-Encoding
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      cf-cache-status:
+      - DYNAMIC
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+    method: GET
+    uri: https://api.nhle.com/stats/rest/en/team
+  response:
+    body:
+      string: '{"data": [{"id": 32, "fullName": "Quebec Nordiques", "triCode": "QUE"},
+        {"id": 8, "fullName": "Montr\u00e9al Canadiens", "triCode": "MTL"}, {"id":
+        58, "fullName": "Toronto St. Patricks", "triCode": "TSP"}, {"id": 7, "fullName":
+        "Buffalo Sabres", "triCode": "BUF"}, {"id": 46, "fullName": "Oakland Seals",
+        "triCode": "OAK"}, {"id": 48, "fullName": "Kansas City Scouts", "triCode":
+        "KCS"}, {"id": 36, "fullName": "Ottawa Senators (1917)", "triCode": "SEN"},
+        {"id": 70, "fullName": "To be determined", "triCode": "TBD"}, {"id": 11, "fullName":
+        "Atlanta Thrashers", "triCode": "ATL"}, {"id": 45, "fullName": "St. Louis
+        Eagles", "triCode": "SLE"}, {"id": 33, "fullName": "Winnipeg Jets (1979)",
+        "triCode": "WIN"}, {"id": 28, "fullName": "San Jose Sharks", "triCode": "SJS"},
+        {"id": 42, "fullName": "Quebec Bulldogs", "triCode": "QBD"}, {"id": 53, "fullName":
+        "Arizona Coyotes", "triCode": "ARI"}, {"id": 13, "fullName": "Florida Panthers",
+        "triCode": "FLA"}, {"id": 12, "fullName": "Carolina Hurricanes", "triCode":
+        "CAR"}, {"id": 52, "fullName": "Winnipeg Jets", "triCode": "WPG"}, {"id":
+        18, "fullName": "Nashville Predators", "triCode": "NSH"}, {"id": 27, "fullName":
+        "Phoenix Coyotes", "triCode": "PHX"}, {"id": 41, "fullName": "Montreal Wanderers",
+        "triCode": "MWN"}, {"id": 39, "fullName": "Philadelphia Quakers", "triCode":
+        "QUA"}, {"id": 37, "fullName": "Hamilton Tigers", "triCode": "HAM"}, {"id":
+        40, "fullName": "Detroit Cougars", "triCode": "DCG"}, {"id": 35, "fullName":
+        "Colorado Rockies", "triCode": "CLR"}, {"id": 38, "fullName": "Pittsburgh
+        Pirates", "triCode": "PIR"}, {"id": 34, "fullName": "Hartford Whalers", "triCode":
+        "HFD"}, {"id": 1, "fullName": "New Jersey Devils", "triCode": "NJD"}, {"id":
+        9, "fullName": "Ottawa Senators", "triCode": "OTT"}, {"id": 21, "fullName":
+        "Colorado Avalanche", "triCode": "COL"}, {"id": 44, "fullName": "New York
+        Americans", "triCode": "NYA"}, {"id": 15, "fullName": "Washington Capitals",
+        "triCode": "WSH"}, {"id": 31, "fullName": "Minnesota North Stars", "triCode":
+        "MNS"}, {"id": 99, "fullName": "NHL", "triCode": "NHL"}, {"id": 43, "fullName":
+        "Montreal Maroons", "triCode": "MMR"}, {"id": 49, "fullName": "Cleveland Barons",
+        "triCode": "CLE"}, {"id": 51, "fullName": "Brooklyn Americans", "triCode":
+        "BRK"}, {"id": 50, "fullName": "Detroit Falcons", "triCode": "DFL"}, {"id":
+        56, "fullName": "California Golden Seals", "triCode": "CGS"}, {"id": 47, "fullName":
+        "Atlanta Flames", "triCode": "AFM"}, {"id": 57, "fullName": "Toronto Arenas",
+        "triCode": "TAN"}, {"id": 20, "fullName": "Calgary Flames", "triCode": "CGY"},
+        {"id": 19, "fullName": "St. Louis Blues", "triCode": "STL"}, {"id": 17, "fullName":
+        "Detroit Red Wings", "triCode": "DET"}, {"id": 3, "fullName": "New York Rangers",
+        "triCode": "NYR"}, {"id": 24, "fullName": "Anaheim Ducks", "triCode": "ANA"},
+        {"id": 16, "fullName": "Chicago Blackhawks", "triCode": "CHI"}, {"id": 55,
+        "fullName": "Seattle Kraken", "triCode": "SEA"}, {"id": 5, "fullName": "Pittsburgh
+        Penguins", "triCode": "PIT"}, {"id": 6, "fullName": "Boston Bruins", "triCode":
+        "BOS"}, {"id": 25, "fullName": "Dallas Stars", "triCode": "DAL"}, {"id": 14,
+        "fullName": "Tampa Bay Lightning", "triCode": "TBL"}, {"id": 4, "fullName":
+        "Philadelphia Flyers", "triCode": "PHI"}, {"id": 30, "fullName": "Minnesota
+        Wild", "triCode": "MIN"}, {"id": 29, "fullName": "Columbus Blue Jackets",
+        "triCode": "CBJ"}, {"id": 26, "fullName": "Los Angeles Kings", "triCode":
+        "LAK"}, {"id": 68, "fullName": "Utah Mammoth", "triCode": "UTA"}, {"id": 59,
+        "fullName": "Utah Hockey Club", "triCode": "UTA"}, {"id": 54, "fullName":
+        "Vegas Golden Knights", "triCode": "VGK"}, {"id": 2, "fullName": "New York
+        Islanders", "triCode": "NYI"}, {"id": 10, "fullName": "Toronto Maple Leafs",
+        "triCode": "TOR"}, {"id": 22, "fullName": "Edmonton Oilers", "triCode": "EDM"},
+        {"id": 23, "fullName": "Vancouver Canucks", "triCode": "VAN"}], "total": 62}'
+    headers:
+      CF-RAY:
+      - a02777efdff5b9dc-SEA
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:36:26 GMT
+      Permissions-Policy:
+      - attribution-reporting=(), hid=(), window-management=(), document-domain=(),
+        usb=(), xr-spatial-tracking=(), midi=(), compute-pressure=(), display-capture=(),
+        accelerometer=(), payment=(), camera=(), microphone=(), magnetometer=(), autoplay=(),
+        gyroscope=(), idle-detection=(), screen-wake-lock=(), ambient-light-sensor=(),
+        otp-credentials=(), publickey-credentials-create=(), speaker-selection=(),
+        bluetooth=(), fullscreen=(), serial=(), gamepad=(), local-fonts=(), picture-in-picture=(),
+        identity-credentials-get=(), encrypted-media=(), web-share=(), geolocation=()
+      Referrer-Policy:
+      - no-referrer,strict-origin-when-cross-origin
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31622400
+      - max-age=157680000; includeSubDomains
+      Vary:
+      - Accept-Encoding
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      cf-cache-status:
+      - DYNAMIC
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+    method: GET
+    uri: https://api.nhle.com/stats/rest/en/team
+  response:
+    body:
+      string: '{"data": [{"id": 32, "fullName": "Quebec Nordiques", "triCode": "QUE"},
+        {"id": 8, "fullName": "Montr\u00e9al Canadiens", "triCode": "MTL"}, {"id":
+        58, "fullName": "Toronto St. Patricks", "triCode": "TSP"}, {"id": 7, "fullName":
+        "Buffalo Sabres", "triCode": "BUF"}, {"id": 46, "fullName": "Oakland Seals",
+        "triCode": "OAK"}, {"id": 48, "fullName": "Kansas City Scouts", "triCode":
+        "KCS"}, {"id": 36, "fullName": "Ottawa Senators (1917)", "triCode": "SEN"},
+        {"id": 70, "fullName": "To be determined", "triCode": "TBD"}, {"id": 11, "fullName":
+        "Atlanta Thrashers", "triCode": "ATL"}, {"id": 45, "fullName": "St. Louis
+        Eagles", "triCode": "SLE"}, {"id": 33, "fullName": "Winnipeg Jets (1979)",
+        "triCode": "WIN"}, {"id": 28, "fullName": "San Jose Sharks", "triCode": "SJS"},
+        {"id": 42, "fullName": "Quebec Bulldogs", "triCode": "QBD"}, {"id": 53, "fullName":
+        "Arizona Coyotes", "triCode": "ARI"}, {"id": 13, "fullName": "Florida Panthers",
+        "triCode": "FLA"}, {"id": 12, "fullName": "Carolina Hurricanes", "triCode":
+        "CAR"}, {"id": 52, "fullName": "Winnipeg Jets", "triCode": "WPG"}, {"id":
+        18, "fullName": "Nashville Predators", "triCode": "NSH"}, {"id": 27, "fullName":
+        "Phoenix Coyotes", "triCode": "PHX"}, {"id": 41, "fullName": "Montreal Wanderers",
+        "triCode": "MWN"}, {"id": 39, "fullName": "Philadelphia Quakers", "triCode":
+        "QUA"}, {"id": 37, "fullName": "Hamilton Tigers", "triCode": "HAM"}, {"id":
+        40, "fullName": "Detroit Cougars", "triCode": "DCG"}, {"id": 35, "fullName":
+        "Colorado Rockies", "triCode": "CLR"}, {"id": 38, "fullName": "Pittsburgh
+        Pirates", "triCode": "PIR"}, {"id": 34, "fullName": "Hartford Whalers", "triCode":
+        "HFD"}, {"id": 1, "fullName": "New Jersey Devils", "triCode": "NJD"}, {"id":
+        9, "fullName": "Ottawa Senators", "triCode": "OTT"}, {"id": 21, "fullName":
+        "Colorado Avalanche", "triCode": "COL"}, {"id": 44, "fullName": "New York
+        Americans", "triCode": "NYA"}, {"id": 15, "fullName": "Washington Capitals",
+        "triCode": "WSH"}, {"id": 31, "fullName": "Minnesota North Stars", "triCode":
+        "MNS"}, {"id": 99, "fullName": "NHL", "triCode": "NHL"}, {"id": 43, "fullName":
+        "Montreal Maroons", "triCode": "MMR"}, {"id": 49, "fullName": "Cleveland Barons",
+        "triCode": "CLE"}, {"id": 51, "fullName": "Brooklyn Americans", "triCode":
+        "BRK"}, {"id": 50, "fullName": "Detroit Falcons", "triCode": "DFL"}, {"id":
+        56, "fullName": "California Golden Seals", "triCode": "CGS"}, {"id": 47, "fullName":
+        "Atlanta Flames", "triCode": "AFM"}, {"id": 57, "fullName": "Toronto Arenas",
+        "triCode": "TAN"}, {"id": 20, "fullName": "Calgary Flames", "triCode": "CGY"},
+        {"id": 19, "fullName": "St. Louis Blues", "triCode": "STL"}, {"id": 17, "fullName":
+        "Detroit Red Wings", "triCode": "DET"}, {"id": 3, "fullName": "New York Rangers",
+        "triCode": "NYR"}, {"id": 24, "fullName": "Anaheim Ducks", "triCode": "ANA"},
+        {"id": 16, "fullName": "Chicago Blackhawks", "triCode": "CHI"}, {"id": 55,
+        "fullName": "Seattle Kraken", "triCode": "SEA"}, {"id": 5, "fullName": "Pittsburgh
+        Penguins", "triCode": "PIT"}, {"id": 6, "fullName": "Boston Bruins", "triCode":
+        "BOS"}, {"id": 25, "fullName": "Dallas Stars", "triCode": "DAL"}, {"id": 14,
+        "fullName": "Tampa Bay Lightning", "triCode": "TBL"}, {"id": 4, "fullName":
+        "Philadelphia Flyers", "triCode": "PHI"}, {"id": 30, "fullName": "Minnesota
+        Wild", "triCode": "MIN"}, {"id": 29, "fullName": "Columbus Blue Jackets",
+        "triCode": "CBJ"}, {"id": 26, "fullName": "Los Angeles Kings", "triCode":
+        "LAK"}, {"id": 68, "fullName": "Utah Mammoth", "triCode": "UTA"}, {"id": 59,
+        "fullName": "Utah Hockey Club", "triCode": "UTA"}, {"id": 54, "fullName":
+        "Vegas Golden Knights", "triCode": "VGK"}, {"id": 2, "fullName": "New York
+        Islanders", "triCode": "NYI"}, {"id": 10, "fullName": "Toronto Maple Leafs",
+        "triCode": "TOR"}, {"id": 22, "fullName": "Edmonton Oilers", "triCode": "EDM"},
+        {"id": 23, "fullName": "Vancouver Canucks", "triCode": "VAN"}], "total": 62}'
+    headers:
+      CF-RAY:
+      - a0277ccbdc1b8695-SEA
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:39:46 GMT
+      Permissions-Policy:
+      - attribution-reporting=(), hid=(), window-management=(), document-domain=(),
+        usb=(), xr-spatial-tracking=(), midi=(), compute-pressure=(), display-capture=(),
+        accelerometer=(), payment=(), camera=(), microphone=(), magnetometer=(), autoplay=(),
+        gyroscope=(), idle-detection=(), screen-wake-lock=(), ambient-light-sensor=(),
+        otp-credentials=(), publickey-credentials-create=(), speaker-selection=(),
+        bluetooth=(), fullscreen=(), serial=(), gamepad=(), local-fonts=(), picture-in-picture=(),
+        identity-credentials-get=(), encrypted-media=(), web-share=(), geolocation=()
+      Referrer-Policy:
+      - no-referrer,strict-origin-when-cross-origin
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31622400
+      - max-age=157680000; includeSubDomains
+      Vary:
+      - Accept-Encoding
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      cf-cache-status:
+      - DYNAMIC
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.34.2
+    method: GET
+    uri: https://api.nhle.com/stats/rest/en/team
+  response:
+    body:
+      string: '{"data": [{"id": 32, "fullName": "Quebec Nordiques", "triCode": "QUE"},
+        {"id": 8, "fullName": "Montr\u00e9al Canadiens", "triCode": "MTL"}, {"id":
+        58, "fullName": "Toronto St. Patricks", "triCode": "TSP"}, {"id": 7, "fullName":
+        "Buffalo Sabres", "triCode": "BUF"}, {"id": 46, "fullName": "Oakland Seals",
+        "triCode": "OAK"}, {"id": 48, "fullName": "Kansas City Scouts", "triCode":
+        "KCS"}, {"id": 36, "fullName": "Ottawa Senators (1917)", "triCode": "SEN"},
+        {"id": 70, "fullName": "To be determined", "triCode": "TBD"}, {"id": 11, "fullName":
+        "Atlanta Thrashers", "triCode": "ATL"}, {"id": 45, "fullName": "St. Louis
+        Eagles", "triCode": "SLE"}, {"id": 33, "fullName": "Winnipeg Jets (1979)",
+        "triCode": "WIN"}, {"id": 28, "fullName": "San Jose Sharks", "triCode": "SJS"},
+        {"id": 42, "fullName": "Quebec Bulldogs", "triCode": "QBD"}, {"id": 53, "fullName":
+        "Arizona Coyotes", "triCode": "ARI"}, {"id": 13, "fullName": "Florida Panthers",
+        "triCode": "FLA"}, {"id": 12, "fullName": "Carolina Hurricanes", "triCode":
+        "CAR"}, {"id": 52, "fullName": "Winnipeg Jets", "triCode": "WPG"}, {"id":
+        18, "fullName": "Nashville Predators", "triCode": "NSH"}, {"id": 27, "fullName":
+        "Phoenix Coyotes", "triCode": "PHX"}, {"id": 41, "fullName": "Montreal Wanderers",
+        "triCode": "MWN"}, {"id": 39, "fullName": "Philadelphia Quakers", "triCode":
+        "QUA"}, {"id": 37, "fullName": "Hamilton Tigers", "triCode": "HAM"}, {"id":
+        40, "fullName": "Detroit Cougars", "triCode": "DCG"}, {"id": 35, "fullName":
+        "Colorado Rockies", "triCode": "CLR"}, {"id": 38, "fullName": "Pittsburgh
+        Pirates", "triCode": "PIR"}, {"id": 34, "fullName": "Hartford Whalers", "triCode":
+        "HFD"}, {"id": 1, "fullName": "New Jersey Devils", "triCode": "NJD"}, {"id":
+        9, "fullName": "Ottawa Senators", "triCode": "OTT"}, {"id": 21, "fullName":
+        "Colorado Avalanche", "triCode": "COL"}, {"id": 44, "fullName": "New York
+        Americans", "triCode": "NYA"}, {"id": 15, "fullName": "Washington Capitals",
+        "triCode": "WSH"}, {"id": 31, "fullName": "Minnesota North Stars", "triCode":
+        "MNS"}, {"id": 99, "fullName": "NHL", "triCode": "NHL"}, {"id": 43, "fullName":
+        "Montreal Maroons", "triCode": "MMR"}, {"id": 49, "fullName": "Cleveland Barons",
+        "triCode": "CLE"}, {"id": 51, "fullName": "Brooklyn Americans", "triCode":
+        "BRK"}, {"id": 50, "fullName": "Detroit Falcons", "triCode": "DFL"}, {"id":
+        56, "fullName": "California Golden Seals", "triCode": "CGS"}, {"id": 47, "fullName":
+        "Atlanta Flames", "triCode": "AFM"}, {"id": 57, "fullName": "Toronto Arenas",
+        "triCode": "TAN"}, {"id": 20, "fullName": "Calgary Flames", "triCode": "CGY"},
+        {"id": 19, "fullName": "St. Louis Blues", "triCode": "STL"}, {"id": 17, "fullName":
+        "Detroit Red Wings", "triCode": "DET"}, {"id": 3, "fullName": "New York Rangers",
+        "triCode": "NYR"}, {"id": 24, "fullName": "Anaheim Ducks", "triCode": "ANA"},
+        {"id": 16, "fullName": "Chicago Blackhawks", "triCode": "CHI"}, {"id": 55,
+        "fullName": "Seattle Kraken", "triCode": "SEA"}, {"id": 5, "fullName": "Pittsburgh
+        Penguins", "triCode": "PIT"}, {"id": 6, "fullName": "Boston Bruins", "triCode":
+        "BOS"}, {"id": 25, "fullName": "Dallas Stars", "triCode": "DAL"}, {"id": 14,
+        "fullName": "Tampa Bay Lightning", "triCode": "TBL"}, {"id": 4, "fullName":
+        "Philadelphia Flyers", "triCode": "PHI"}, {"id": 30, "fullName": "Minnesota
+        Wild", "triCode": "MIN"}, {"id": 29, "fullName": "Columbus Blue Jackets",
+        "triCode": "CBJ"}, {"id": 26, "fullName": "Los Angeles Kings", "triCode":
+        "LAK"}, {"id": 68, "fullName": "Utah Mammoth", "triCode": "UTA"}, {"id": 59,
+        "fullName": "Utah Hockey Club", "triCode": "UTA"}, {"id": 54, "fullName":
+        "Vegas Golden Knights", "triCode": "VGK"}, {"id": 2, "fullName": "New York
+        Islanders", "triCode": "NYI"}, {"id": 10, "fullName": "Toronto Maple Leafs",
+        "triCode": "TOR"}, {"id": 22, "fullName": "Edmonton Oilers", "triCode": "EDM"},
+        {"id": 23, "fullName": "Vancouver Canucks", "triCode": "VAN"}], "total": 62}'
+    headers:
+      CF-RAY:
+      - a0277ccd2f916de2-SEA
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:39:46 GMT
+      Permissions-Policy:
+      - attribution-reporting=(), hid=(), window-management=(), document-domain=(),
+        usb=(), xr-spatial-tracking=(), midi=(), compute-pressure=(), display-capture=(),
+        accelerometer=(), payment=(), camera=(), microphone=(), magnetometer=(), autoplay=(),
+        gyroscope=(), idle-detection=(), screen-wake-lock=(), ambient-light-sensor=(),
+        otp-credentials=(), publickey-credentials-create=(), speaker-selection=(),
+        bluetooth=(), fullscreen=(), serial=(), gamepad=(), local-fonts=(), picture-in-picture=(),
+        identity-credentials-get=(), encrypted-media=(), web-share=(), geolocation=()
+      Referrer-Policy:
+      - no-referrer,strict-origin-when-cross-origin
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31622400
+      - max-age=157680000; includeSubDomains
+      Vary:
+      - Accept-Encoding
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      cf-cache-status:
+      - DYNAMIC
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api.nhle.com/stats/rest/en/team
+  response:
+    body:
+      string: '{"data": [{"id": 32, "fullName": "Quebec Nordiques", "triCode": "QUE"},
+        {"id": 8, "fullName": "Montr\u00e9al Canadiens", "triCode": "MTL"}, {"id":
+        58, "fullName": "Toronto St. Patricks", "triCode": "TSP"}, {"id": 7, "fullName":
+        "Buffalo Sabres", "triCode": "BUF"}, {"id": 46, "fullName": "Oakland Seals",
+        "triCode": "OAK"}, {"id": 48, "fullName": "Kansas City Scouts", "triCode":
+        "KCS"}, {"id": 36, "fullName": "Ottawa Senators (1917)", "triCode": "SEN"},
+        {"id": 70, "fullName": "To be determined", "triCode": "TBD"}, {"id": 11, "fullName":
+        "Atlanta Thrashers", "triCode": "ATL"}, {"id": 45, "fullName": "St. Louis
+        Eagles", "triCode": "SLE"}, {"id": 33, "fullName": "Winnipeg Jets (1979)",
+        "triCode": "WIN"}, {"id": 28, "fullName": "San Jose Sharks", "triCode": "SJS"},
+        {"id": 42, "fullName": "Quebec Bulldogs", "triCode": "QBD"}, {"id": 53, "fullName":
+        "Arizona Coyotes", "triCode": "ARI"}, {"id": 13, "fullName": "Florida Panthers",
+        "triCode": "FLA"}, {"id": 12, "fullName": "Carolina Hurricanes", "triCode":
+        "CAR"}, {"id": 52, "fullName": "Winnipeg Jets", "triCode": "WPG"}, {"id":
+        18, "fullName": "Nashville Predators", "triCode": "NSH"}, {"id": 27, "fullName":
+        "Phoenix Coyotes", "triCode": "PHX"}, {"id": 41, "fullName": "Montreal Wanderers",
+        "triCode": "MWN"}, {"id": 39, "fullName": "Philadelphia Quakers", "triCode":
+        "QUA"}, {"id": 37, "fullName": "Hamilton Tigers", "triCode": "HAM"}, {"id":
+        40, "fullName": "Detroit Cougars", "triCode": "DCG"}, {"id": 35, "fullName":
+        "Colorado Rockies", "triCode": "CLR"}, {"id": 38, "fullName": "Pittsburgh
+        Pirates", "triCode": "PIR"}, {"id": 34, "fullName": "Hartford Whalers", "triCode":
+        "HFD"}, {"id": 1, "fullName": "New Jersey Devils", "triCode": "NJD"}, {"id":
+        9, "fullName": "Ottawa Senators", "triCode": "OTT"}, {"id": 21, "fullName":
+        "Colorado Avalanche", "triCode": "COL"}, {"id": 44, "fullName": "New York
+        Americans", "triCode": "NYA"}, {"id": 15, "fullName": "Washington Capitals",
+        "triCode": "WSH"}, {"id": 31, "fullName": "Minnesota North Stars", "triCode":
+        "MNS"}, {"id": 99, "fullName": "NHL", "triCode": "NHL"}, {"id": 43, "fullName":
+        "Montreal Maroons", "triCode": "MMR"}, {"id": 49, "fullName": "Cleveland Barons",
+        "triCode": "CLE"}, {"id": 51, "fullName": "Brooklyn Americans", "triCode":
+        "BRK"}, {"id": 50, "fullName": "Detroit Falcons", "triCode": "DFL"}, {"id":
+        56, "fullName": "California Golden Seals", "triCode": "CGS"}, {"id": 47, "fullName":
+        "Atlanta Flames", "triCode": "AFM"}, {"id": 57, "fullName": "Toronto Arenas",
+        "triCode": "TAN"}, {"id": 20, "fullName": "Calgary Flames", "triCode": "CGY"},
+        {"id": 19, "fullName": "St. Louis Blues", "triCode": "STL"}, {"id": 17, "fullName":
+        "Detroit Red Wings", "triCode": "DET"}, {"id": 3, "fullName": "New York Rangers",
+        "triCode": "NYR"}, {"id": 24, "fullName": "Anaheim Ducks", "triCode": "ANA"},
+        {"id": 16, "fullName": "Chicago Blackhawks", "triCode": "CHI"}, {"id": 55,
+        "fullName": "Seattle Kraken", "triCode": "SEA"}, {"id": 5, "fullName": "Pittsburgh
+        Penguins", "triCode": "PIT"}, {"id": 6, "fullName": "Boston Bruins", "triCode":
+        "BOS"}, {"id": 25, "fullName": "Dallas Stars", "triCode": "DAL"}, {"id": 14,
+        "fullName": "Tampa Bay Lightning", "triCode": "TBL"}, {"id": 4, "fullName":
+        "Philadelphia Flyers", "triCode": "PHI"}, {"id": 30, "fullName": "Minnesota
+        Wild", "triCode": "MIN"}, {"id": 29, "fullName": "Columbus Blue Jackets",
+        "triCode": "CBJ"}, {"id": 26, "fullName": "Los Angeles Kings", "triCode":
+        "LAK"}, {"id": 68, "fullName": "Utah Mammoth", "triCode": "UTA"}, {"id": 59,
+        "fullName": "Utah Hockey Club", "triCode": "UTA"}, {"id": 54, "fullName":
+        "Vegas Golden Knights", "triCode": "VGK"}, {"id": 2, "fullName": "New York
+        Islanders", "triCode": "NYI"}, {"id": 10, "fullName": "Toronto Maple Leafs",
+        "triCode": "TOR"}, {"id": 22, "fullName": "Edmonton Oilers", "triCode": "EDM"},
+        {"id": 23, "fullName": "Vancouver Canucks", "triCode": "VAN"}], "total": 62}'
+    headers:
+      CF-RAY:
+      - a027859c1e156de2-SEA
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:45:46 GMT
+      Permissions-Policy:
+      - attribution-reporting=(), hid=(), window-management=(), document-domain=(),
+        usb=(), xr-spatial-tracking=(), midi=(), compute-pressure=(), display-capture=(),
+        accelerometer=(), payment=(), camera=(), microphone=(), magnetometer=(), autoplay=(),
+        gyroscope=(), idle-detection=(), screen-wake-lock=(), ambient-light-sensor=(),
+        otp-credentials=(), publickey-credentials-create=(), speaker-selection=(),
+        bluetooth=(), fullscreen=(), serial=(), gamepad=(), local-fonts=(), picture-in-picture=(),
+        identity-credentials-get=(), encrypted-media=(), web-share=(), geolocation=()
+      Referrer-Policy:
+      - no-referrer,strict-origin-when-cross-origin
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31622400
+      - max-age=157680000; includeSubDomains
+      Vary:
+      - Accept-Encoding
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      cf-cache-status:
+      - DYNAMIC
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api.nhle.com/stats/rest/en/team
+  response:
+    body:
+      string: '{"data": [{"id": 32, "fullName": "Quebec Nordiques", "triCode": "QUE"},
+        {"id": 8, "fullName": "Montr\u00e9al Canadiens", "triCode": "MTL"}, {"id":
+        58, "fullName": "Toronto St. Patricks", "triCode": "TSP"}, {"id": 7, "fullName":
+        "Buffalo Sabres", "triCode": "BUF"}, {"id": 46, "fullName": "Oakland Seals",
+        "triCode": "OAK"}, {"id": 48, "fullName": "Kansas City Scouts", "triCode":
+        "KCS"}, {"id": 36, "fullName": "Ottawa Senators (1917)", "triCode": "SEN"},
+        {"id": 70, "fullName": "To be determined", "triCode": "TBD"}, {"id": 11, "fullName":
+        "Atlanta Thrashers", "triCode": "ATL"}, {"id": 45, "fullName": "St. Louis
+        Eagles", "triCode": "SLE"}, {"id": 33, "fullName": "Winnipeg Jets (1979)",
+        "triCode": "WIN"}, {"id": 28, "fullName": "San Jose Sharks", "triCode": "SJS"},
+        {"id": 42, "fullName": "Quebec Bulldogs", "triCode": "QBD"}, {"id": 53, "fullName":
+        "Arizona Coyotes", "triCode": "ARI"}, {"id": 13, "fullName": "Florida Panthers",
+        "triCode": "FLA"}, {"id": 12, "fullName": "Carolina Hurricanes", "triCode":
+        "CAR"}, {"id": 52, "fullName": "Winnipeg Jets", "triCode": "WPG"}, {"id":
+        18, "fullName": "Nashville Predators", "triCode": "NSH"}, {"id": 27, "fullName":
+        "Phoenix Coyotes", "triCode": "PHX"}, {"id": 41, "fullName": "Montreal Wanderers",
+        "triCode": "MWN"}, {"id": 39, "fullName": "Philadelphia Quakers", "triCode":
+        "QUA"}, {"id": 37, "fullName": "Hamilton Tigers", "triCode": "HAM"}, {"id":
+        40, "fullName": "Detroit Cougars", "triCode": "DCG"}, {"id": 35, "fullName":
+        "Colorado Rockies", "triCode": "CLR"}, {"id": 38, "fullName": "Pittsburgh
+        Pirates", "triCode": "PIR"}, {"id": 34, "fullName": "Hartford Whalers", "triCode":
+        "HFD"}, {"id": 1, "fullName": "New Jersey Devils", "triCode": "NJD"}, {"id":
+        9, "fullName": "Ottawa Senators", "triCode": "OTT"}, {"id": 21, "fullName":
+        "Colorado Avalanche", "triCode": "COL"}, {"id": 44, "fullName": "New York
+        Americans", "triCode": "NYA"}, {"id": 15, "fullName": "Washington Capitals",
+        "triCode": "WSH"}, {"id": 31, "fullName": "Minnesota North Stars", "triCode":
+        "MNS"}, {"id": 99, "fullName": "NHL", "triCode": "NHL"}, {"id": 43, "fullName":
+        "Montreal Maroons", "triCode": "MMR"}, {"id": 49, "fullName": "Cleveland Barons",
+        "triCode": "CLE"}, {"id": 51, "fullName": "Brooklyn Americans", "triCode":
+        "BRK"}, {"id": 50, "fullName": "Detroit Falcons", "triCode": "DFL"}, {"id":
+        56, "fullName": "California Golden Seals", "triCode": "CGS"}, {"id": 47, "fullName":
+        "Atlanta Flames", "triCode": "AFM"}, {"id": 57, "fullName": "Toronto Arenas",
+        "triCode": "TAN"}, {"id": 20, "fullName": "Calgary Flames", "triCode": "CGY"},
+        {"id": 19, "fullName": "St. Louis Blues", "triCode": "STL"}, {"id": 17, "fullName":
+        "Detroit Red Wings", "triCode": "DET"}, {"id": 3, "fullName": "New York Rangers",
+        "triCode": "NYR"}, {"id": 24, "fullName": "Anaheim Ducks", "triCode": "ANA"},
+        {"id": 16, "fullName": "Chicago Blackhawks", "triCode": "CHI"}, {"id": 55,
+        "fullName": "Seattle Kraken", "triCode": "SEA"}, {"id": 5, "fullName": "Pittsburgh
+        Penguins", "triCode": "PIT"}, {"id": 6, "fullName": "Boston Bruins", "triCode":
+        "BOS"}, {"id": 25, "fullName": "Dallas Stars", "triCode": "DAL"}, {"id": 14,
+        "fullName": "Tampa Bay Lightning", "triCode": "TBL"}, {"id": 4, "fullName":
+        "Philadelphia Flyers", "triCode": "PHI"}, {"id": 30, "fullName": "Minnesota
+        Wild", "triCode": "MIN"}, {"id": 29, "fullName": "Columbus Blue Jackets",
+        "triCode": "CBJ"}, {"id": 26, "fullName": "Los Angeles Kings", "triCode":
+        "LAK"}, {"id": 68, "fullName": "Utah Mammoth", "triCode": "UTA"}, {"id": 59,
+        "fullName": "Utah Hockey Club", "triCode": "UTA"}, {"id": 54, "fullName":
+        "Vegas Golden Knights", "triCode": "VGK"}, {"id": 2, "fullName": "New York
+        Islanders", "triCode": "NYI"}, {"id": 10, "fullName": "Toronto Maple Leafs",
+        "triCode": "TOR"}, {"id": 22, "fullName": "Edmonton Oilers", "triCode": "EDM"},
+        {"id": 23, "fullName": "Vancouver Canucks", "triCode": "VAN"}], "total": 62}'
+    headers:
+      CF-RAY:
+      - a027859ce930be02-SEA
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:45:47 GMT
+      Permissions-Policy:
+      - attribution-reporting=(), hid=(), window-management=(), document-domain=(),
+        usb=(), xr-spatial-tracking=(), midi=(), compute-pressure=(), display-capture=(),
+        accelerometer=(), payment=(), camera=(), microphone=(), magnetometer=(), autoplay=(),
+        gyroscope=(), idle-detection=(), screen-wake-lock=(), ambient-light-sensor=(),
+        otp-credentials=(), publickey-credentials-create=(), speaker-selection=(),
+        bluetooth=(), fullscreen=(), serial=(), gamepad=(), local-fonts=(), picture-in-picture=(),
+        identity-credentials-get=(), encrypted-media=(), web-share=(), geolocation=()
+      Referrer-Policy:
+      - no-referrer,strict-origin-when-cross-origin
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31622400
+      - max-age=157680000; includeSubDomains
+      Vary:
+      - Accept-Encoding
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      cf-cache-status:
+      - DYNAMIC
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api.nhle.com/stats/rest/en/team
+  response:
+    body:
+      string: '{"data": [{"id": 32, "fullName": "Quebec Nordiques", "triCode": "QUE"},
+        {"id": 8, "fullName": "Montr\u00e9al Canadiens", "triCode": "MTL"}, {"id":
+        58, "fullName": "Toronto St. Patricks", "triCode": "TSP"}, {"id": 7, "fullName":
+        "Buffalo Sabres", "triCode": "BUF"}, {"id": 46, "fullName": "Oakland Seals",
+        "triCode": "OAK"}, {"id": 48, "fullName": "Kansas City Scouts", "triCode":
+        "KCS"}, {"id": 36, "fullName": "Ottawa Senators (1917)", "triCode": "SEN"},
+        {"id": 70, "fullName": "To be determined", "triCode": "TBD"}, {"id": 11, "fullName":
+        "Atlanta Thrashers", "triCode": "ATL"}, {"id": 45, "fullName": "St. Louis
+        Eagles", "triCode": "SLE"}, {"id": 33, "fullName": "Winnipeg Jets (1979)",
+        "triCode": "WIN"}, {"id": 28, "fullName": "San Jose Sharks", "triCode": "SJS"},
+        {"id": 42, "fullName": "Quebec Bulldogs", "triCode": "QBD"}, {"id": 53, "fullName":
+        "Arizona Coyotes", "triCode": "ARI"}, {"id": 13, "fullName": "Florida Panthers",
+        "triCode": "FLA"}, {"id": 12, "fullName": "Carolina Hurricanes", "triCode":
+        "CAR"}, {"id": 52, "fullName": "Winnipeg Jets", "triCode": "WPG"}, {"id":
+        18, "fullName": "Nashville Predators", "triCode": "NSH"}, {"id": 27, "fullName":
+        "Phoenix Coyotes", "triCode": "PHX"}, {"id": 41, "fullName": "Montreal Wanderers",
+        "triCode": "MWN"}, {"id": 39, "fullName": "Philadelphia Quakers", "triCode":
+        "QUA"}, {"id": 37, "fullName": "Hamilton Tigers", "triCode": "HAM"}, {"id":
+        40, "fullName": "Detroit Cougars", "triCode": "DCG"}, {"id": 35, "fullName":
+        "Colorado Rockies", "triCode": "CLR"}, {"id": 38, "fullName": "Pittsburgh
+        Pirates", "triCode": "PIR"}, {"id": 34, "fullName": "Hartford Whalers", "triCode":
+        "HFD"}, {"id": 1, "fullName": "New Jersey Devils", "triCode": "NJD"}, {"id":
+        9, "fullName": "Ottawa Senators", "triCode": "OTT"}, {"id": 21, "fullName":
+        "Colorado Avalanche", "triCode": "COL"}, {"id": 44, "fullName": "New York
+        Americans", "triCode": "NYA"}, {"id": 15, "fullName": "Washington Capitals",
+        "triCode": "WSH"}, {"id": 31, "fullName": "Minnesota North Stars", "triCode":
+        "MNS"}, {"id": 99, "fullName": "NHL", "triCode": "NHL"}, {"id": 43, "fullName":
+        "Montreal Maroons", "triCode": "MMR"}, {"id": 49, "fullName": "Cleveland Barons",
+        "triCode": "CLE"}, {"id": 51, "fullName": "Brooklyn Americans", "triCode":
+        "BRK"}, {"id": 50, "fullName": "Detroit Falcons", "triCode": "DFL"}, {"id":
+        56, "fullName": "California Golden Seals", "triCode": "CGS"}, {"id": 47, "fullName":
+        "Atlanta Flames", "triCode": "AFM"}, {"id": 57, "fullName": "Toronto Arenas",
+        "triCode": "TAN"}, {"id": 20, "fullName": "Calgary Flames", "triCode": "CGY"},
+        {"id": 19, "fullName": "St. Louis Blues", "triCode": "STL"}, {"id": 17, "fullName":
+        "Detroit Red Wings", "triCode": "DET"}, {"id": 3, "fullName": "New York Rangers",
+        "triCode": "NYR"}, {"id": 24, "fullName": "Anaheim Ducks", "triCode": "ANA"},
+        {"id": 16, "fullName": "Chicago Blackhawks", "triCode": "CHI"}, {"id": 55,
+        "fullName": "Seattle Kraken", "triCode": "SEA"}, {"id": 5, "fullName": "Pittsburgh
+        Penguins", "triCode": "PIT"}, {"id": 6, "fullName": "Boston Bruins", "triCode":
+        "BOS"}, {"id": 25, "fullName": "Dallas Stars", "triCode": "DAL"}, {"id": 14,
+        "fullName": "Tampa Bay Lightning", "triCode": "TBL"}, {"id": 4, "fullName":
+        "Philadelphia Flyers", "triCode": "PHI"}, {"id": 30, "fullName": "Minnesota
+        Wild", "triCode": "MIN"}, {"id": 29, "fullName": "Columbus Blue Jackets",
+        "triCode": "CBJ"}, {"id": 26, "fullName": "Los Angeles Kings", "triCode":
+        "LAK"}, {"id": 68, "fullName": "Utah Mammoth", "triCode": "UTA"}, {"id": 59,
+        "fullName": "Utah Hockey Club", "triCode": "UTA"}, {"id": 54, "fullName":
+        "Vegas Golden Knights", "triCode": "VGK"}, {"id": 2, "fullName": "New York
+        Islanders", "triCode": "NYI"}, {"id": 10, "fullName": "Toronto Maple Leafs",
+        "triCode": "TOR"}, {"id": 22, "fullName": "Edmonton Oilers", "triCode": "EDM"},
+        {"id": 23, "fullName": "Vancouver Canucks", "triCode": "VAN"}], "total": 62}'
+    headers:
+      CF-RAY:
+      - a0278c9f09654f5c-SEA
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:50:34 GMT
+      Permissions-Policy:
+      - attribution-reporting=(), hid=(), window-management=(), document-domain=(),
+        usb=(), xr-spatial-tracking=(), midi=(), compute-pressure=(), display-capture=(),
+        accelerometer=(), payment=(), camera=(), microphone=(), magnetometer=(), autoplay=(),
+        gyroscope=(), idle-detection=(), screen-wake-lock=(), ambient-light-sensor=(),
+        otp-credentials=(), publickey-credentials-create=(), speaker-selection=(),
+        bluetooth=(), fullscreen=(), serial=(), gamepad=(), local-fonts=(), picture-in-picture=(),
+        identity-credentials-get=(), encrypted-media=(), web-share=(), geolocation=()
+      Referrer-Policy:
+      - no-referrer,strict-origin-when-cross-origin
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31622400
+      - max-age=157680000; includeSubDomains
+      Vary:
+      - Accept-Encoding
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      cf-cache-status:
+      - DYNAMIC
+    status:
+      code: 200
+      message: OK
+- request:
+    body: null
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      User-Agent:
+      - python-requests/2.32.3
+    method: GET
+    uri: https://api.nhle.com/stats/rest/en/team
+  response:
+    body:
+      string: '{"data": [{"id": 32, "fullName": "Quebec Nordiques", "triCode": "QUE"},
+        {"id": 8, "fullName": "Montr\u00e9al Canadiens", "triCode": "MTL"}, {"id":
+        58, "fullName": "Toronto St. Patricks", "triCode": "TSP"}, {"id": 7, "fullName":
+        "Buffalo Sabres", "triCode": "BUF"}, {"id": 46, "fullName": "Oakland Seals",
+        "triCode": "OAK"}, {"id": 48, "fullName": "Kansas City Scouts", "triCode":
+        "KCS"}, {"id": 36, "fullName": "Ottawa Senators (1917)", "triCode": "SEN"},
+        {"id": 70, "fullName": "To be determined", "triCode": "TBD"}, {"id": 11, "fullName":
+        "Atlanta Thrashers", "triCode": "ATL"}, {"id": 45, "fullName": "St. Louis
+        Eagles", "triCode": "SLE"}, {"id": 33, "fullName": "Winnipeg Jets (1979)",
+        "triCode": "WIN"}, {"id": 28, "fullName": "San Jose Sharks", "triCode": "SJS"},
+        {"id": 42, "fullName": "Quebec Bulldogs", "triCode": "QBD"}, {"id": 53, "fullName":
+        "Arizona Coyotes", "triCode": "ARI"}, {"id": 13, "fullName": "Florida Panthers",
+        "triCode": "FLA"}, {"id": 12, "fullName": "Carolina Hurricanes", "triCode":
+        "CAR"}, {"id": 52, "fullName": "Winnipeg Jets", "triCode": "WPG"}, {"id":
+        18, "fullName": "Nashville Predators", "triCode": "NSH"}, {"id": 27, "fullName":
+        "Phoenix Coyotes", "triCode": "PHX"}, {"id": 41, "fullName": "Montreal Wanderers",
+        "triCode": "MWN"}, {"id": 39, "fullName": "Philadelphia Quakers", "triCode":
+        "QUA"}, {"id": 37, "fullName": "Hamilton Tigers", "triCode": "HAM"}, {"id":
+        40, "fullName": "Detroit Cougars", "triCode": "DCG"}, {"id": 35, "fullName":
+        "Colorado Rockies", "triCode": "CLR"}, {"id": 38, "fullName": "Pittsburgh
+        Pirates", "triCode": "PIR"}, {"id": 34, "fullName": "Hartford Whalers", "triCode":
+        "HFD"}, {"id": 1, "fullName": "New Jersey Devils", "triCode": "NJD"}, {"id":
+        9, "fullName": "Ottawa Senators", "triCode": "OTT"}, {"id": 21, "fullName":
+        "Colorado Avalanche", "triCode": "COL"}, {"id": 44, "fullName": "New York
+        Americans", "triCode": "NYA"}, {"id": 15, "fullName": "Washington Capitals",
+        "triCode": "WSH"}, {"id": 31, "fullName": "Minnesota North Stars", "triCode":
+        "MNS"}, {"id": 99, "fullName": "NHL", "triCode": "NHL"}, {"id": 43, "fullName":
+        "Montreal Maroons", "triCode": "MMR"}, {"id": 49, "fullName": "Cleveland Barons",
+        "triCode": "CLE"}, {"id": 51, "fullName": "Brooklyn Americans", "triCode":
+        "BRK"}, {"id": 50, "fullName": "Detroit Falcons", "triCode": "DFL"}, {"id":
+        56, "fullName": "California Golden Seals", "triCode": "CGS"}, {"id": 47, "fullName":
+        "Atlanta Flames", "triCode": "AFM"}, {"id": 57, "fullName": "Toronto Arenas",
+        "triCode": "TAN"}, {"id": 20, "fullName": "Calgary Flames", "triCode": "CGY"},
+        {"id": 19, "fullName": "St. Louis Blues", "triCode": "STL"}, {"id": 17, "fullName":
+        "Detroit Red Wings", "triCode": "DET"}, {"id": 3, "fullName": "New York Rangers",
+        "triCode": "NYR"}, {"id": 24, "fullName": "Anaheim Ducks", "triCode": "ANA"},
+        {"id": 16, "fullName": "Chicago Blackhawks", "triCode": "CHI"}, {"id": 55,
+        "fullName": "Seattle Kraken", "triCode": "SEA"}, {"id": 5, "fullName": "Pittsburgh
+        Penguins", "triCode": "PIT"}, {"id": 6, "fullName": "Boston Bruins", "triCode":
+        "BOS"}, {"id": 25, "fullName": "Dallas Stars", "triCode": "DAL"}, {"id": 14,
+        "fullName": "Tampa Bay Lightning", "triCode": "TBL"}, {"id": 4, "fullName":
+        "Philadelphia Flyers", "triCode": "PHI"}, {"id": 30, "fullName": "Minnesota
+        Wild", "triCode": "MIN"}, {"id": 29, "fullName": "Columbus Blue Jackets",
+        "triCode": "CBJ"}, {"id": 26, "fullName": "Los Angeles Kings", "triCode":
+        "LAK"}, {"id": 68, "fullName": "Utah Mammoth", "triCode": "UTA"}, {"id": 59,
+        "fullName": "Utah Hockey Club", "triCode": "UTA"}, {"id": 54, "fullName":
+        "Vegas Golden Knights", "triCode": "VGK"}, {"id": 2, "fullName": "New York
+        Islanders", "triCode": "NYI"}, {"id": 10, "fullName": "Toronto Maple Leafs",
+        "triCode": "TOR"}, {"id": 22, "fullName": "Edmonton Oilers", "triCode": "EDM"},
+        {"id": 23, "fullName": "Vancouver Canucks", "triCode": "VAN"}], "total": 62}'
+    headers:
+      CF-RAY:
+      - a0278ca02b1ce668-SEA
+      Connection:
+      - keep-alive
+      Content-Security-Policy:
+      - default-src 'none'; frame-ancestors 'none'
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 27 May 2026 19:50:34 GMT
+      Permissions-Policy:
+      - attribution-reporting=(), hid=(), window-management=(), document-domain=(),
+        usb=(), xr-spatial-tracking=(), midi=(), compute-pressure=(), display-capture=(),
+        accelerometer=(), payment=(), camera=(), microphone=(), magnetometer=(), autoplay=(),
+        gyroscope=(), idle-detection=(), screen-wake-lock=(), ambient-light-sensor=(),
+        otp-credentials=(), publickey-credentials-create=(), speaker-selection=(),
+        bluetooth=(), fullscreen=(), serial=(), gamepad=(), local-fonts=(), picture-in-picture=(),
+        identity-credentials-get=(), encrypted-media=(), web-share=(), geolocation=()
+      Referrer-Policy:
+      - no-referrer,strict-origin-when-cross-origin
+      Server:
+      - cloudflare
+      Strict-Transport-Security:
+      - max-age=31622400
+      - max-age=157680000; includeSubDomains
+      Vary:
+      - Accept-Encoding
+      - Origin
+      X-Content-Type-Options:
+      - nosniff
+      cf-cache-status:
+      - DYNAMIC
+    status:
+      code: 200
+      message: OK
+version: 1

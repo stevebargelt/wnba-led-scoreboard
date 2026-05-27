@@ -1,6 +1,6 @@
 # Makefile for WNBA LED Scoreboard
 
-.PHONY: test test-coverage test-watch install clean
+.PHONY: test test-coverage test-watch install clean test-contracts test-contracts-live
 
 # Install dependencies
 install:
@@ -52,6 +52,14 @@ run-sim:
 # Run the app in demo mode
 run-demo:
 	python app.py --demo
+
+# Run API contract tests in replay mode (uses recorded cassettes, CI-safe)
+test-contracts:
+	pytest tests/api_contracts -v
+
+# Run API contract tests against live endpoints (re-records cassettes)
+test-contracts-live:
+	pytest tests/api_contracts -v --live
 
 # Help
 help:
