@@ -29,11 +29,12 @@ func (m *MatrixDisplay) Init() error {
 		"--led-chain=2",
 		"--led-parallel=1",
 		"--led-pixel-mapper=Rotate:180",
-		"--led-gpio-slowdown=4",
+		"--led-slowdown-gpio=4",
 		"--led-brightness=80",
 		"--led-pwm-bits=11",
 		"--led-pwm-lsb-nanoseconds=130",
-		"--led-hardware-mapping=adafruit-hat",
+		"--led-gpio-mapping=adafruit-hat",
+		"--led-no-hardware-pulse",
 	}
 
 	cargs := make([]*C.char, len(args))
