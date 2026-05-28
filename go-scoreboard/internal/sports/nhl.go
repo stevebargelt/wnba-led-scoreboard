@@ -85,7 +85,7 @@ func parseNHLGame(g nhlGame) (GameSnapshot, bool) {
 		Abbr:  g.AwayTeam.Abbrev,
 		Score: g.AwayTeam.Score,
 	}
-	start, _ := time.Parse(time.RFC3339, g.StartTimeUTC)
+	start := parseEventTime(g.StartTimeUTC)
 	state := parseNHLState(g.GameState)
 	clock := g.Clock.TimeRemaining
 	if clock == "" {

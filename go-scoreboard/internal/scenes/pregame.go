@@ -49,7 +49,10 @@ func (p Pregame) Render(width, height int, _ time.Time) *image.RGBA {
 	render.DrawText(img, abbr(p.Game.Away.Abbr), smallFace, abbrColor, awayLogoX+logoSize+2, abbrBaseY, render.AlignLeft)
 	render.DrawText(img, abbr(p.Game.Home.Abbr), smallFace, abbrColor, homeLogoX-2, abbrBaseY, render.AlignRight)
 
-	startLocal := p.Game.StartTime.Local().Format("3:04 PM")
+	startLocal := "TBD"
+	if !p.Game.StartTime.IsZero() {
+		startLocal = p.Game.StartTime.Local().Format("3:04 PM")
+	}
 	render.DrawText(img, startLocal, timeFace, amber, width/2, height-7, render.AlignCenter)
 
 	return img

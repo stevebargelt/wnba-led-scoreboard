@@ -104,7 +104,7 @@ func parseEvent(league string, e espnEvent) (GameSnapshot, bool) {
 		return GameSnapshot{}, false
 	}
 
-	start, _ := time.Parse(time.RFC3339, e.Date)
+	start := parseEventTime(e.Date)
 
 	return GameSnapshot{
 		League:       league,
