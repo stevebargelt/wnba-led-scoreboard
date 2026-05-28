@@ -5,8 +5,8 @@ beforeEach(() => {
 })
 
 describe('font constants', () => {
-  it('exports FONT_SMALL as "04B24"', () => {
-    expect(FONT_SMALL).toBe('04B24')
+  it('exports FONT_SMALL as "04B03"', () => {
+    expect(FONT_SMALL).toBe('04B03')
   })
 
   it('exports FONT_LARGE as "ScoreLarge"', () => {
@@ -26,7 +26,7 @@ describe('loadPreviewFonts', () => {
       const result = await loadPreviewFonts()
       expect(result).toEqual({ small: false, large: false })
     } finally {
-      (global as any).FontFace = original
+      ;(global as any).FontFace = original
     }
   })
 

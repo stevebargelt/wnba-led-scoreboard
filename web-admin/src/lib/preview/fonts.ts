@@ -1,4 +1,4 @@
-export const FONT_SMALL = '04B24'
+export const FONT_SMALL = '04B03'
 export const FONT_LARGE = 'ScoreLarge'
 export const FONT_FALLBACK = 'monospace'
 
@@ -21,7 +21,7 @@ export async function loadPreviewFonts(): Promise<{ small: boolean; large: boole
   }
 
   const results = await Promise.allSettled([
-    _loadFont(FONT_SMALL, '/assets/fonts/pixel/04B_24__.TTF'),
+    _loadFont(FONT_SMALL, '/assets/fonts/pixel/04B_03B_.TTF'),
     _loadFont(FONT_LARGE, '/assets/fonts/pixel/score_large.otf'),
   ])
 
@@ -37,7 +37,11 @@ export async function loadPreviewFonts(): Promise<{ small: boolean; large: boole
 async function _loadFont(family: string, url: string): Promise<void> {
   const font = new FontFace(family, `url(${url})`)
   const loaded = await font.load()
-  if (typeof document !== 'undefined' && document.fonts && typeof document.fonts.add === 'function') {
+  if (
+    typeof document !== 'undefined' &&
+    document.fonts &&
+    typeof document.fonts.add === 'function'
+  ) {
     document.fonts.add(loaded)
   }
 }
