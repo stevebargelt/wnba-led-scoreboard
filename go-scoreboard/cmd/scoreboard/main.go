@@ -20,6 +20,8 @@ import (
 const (
 	width  = 64
 	height = 32
+
+	liveMaxPollSec = 15
 )
 
 func main() {
@@ -251,7 +253,12 @@ func (s *appState) pollChannel() <-chan time.Time {
 	var secs int
 	switch state {
 	case sports.StateLive:
+		// Live games need a near-real-time clock. Cap the (often conservative)
+		// configured interval so the displayed period/clock stays current.
 		secs = r.IngameSec
+		if secs <= 0 || secs > liveMaxPollSec {
+			secs = liveMaxPollSec
+		}
 	case sports.StatePre:
 		secs = r.PregameSec
 	case sports.StateFinal:
@@ -259,7 +266,7 @@ func (s *appState) pollChannel() <-chan time.Time {
 	default:
 		secs = r.PregameSec
 	}
-	if secs < 30 {
+	if state != sports.StateLive && secs < 30 {
 		secs = 30
 	}
 	t := time.NewTimer(time.Duration(secs) * time.Second)
