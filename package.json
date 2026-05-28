@@ -4,21 +4,19 @@
   "description": "Multi-league LED scoreboard with web admin",
   "private": true,
   "scripts": {
-    "test": "npm run test:python && npm run test:web",
-    "test:python": "python -m coverage run -m unittest discover tests -q && python -m coverage report",
+    "test": "cd web-admin && npm test",
     "test:web": "cd web-admin && npm test",
-    "test:coverage": "npm run test:python && npm run test:web:coverage",
+    "test:coverage": "cd web-admin && npm run test:coverage",
     "test:web:coverage": "cd web-admin && npm run test:coverage",
-    "test:all": "npm run test:python && cd web-admin && npm run test:ci",
+    "test:all": "cd web-admin && npm run test:ci",
     "test:watch": "cd web-admin && npm run test:watch",
-    "coverage:combined": "python scripts/combined-coverage.py",
     "lint": "cd web-admin && npm run lint",
     "lint:fix": "cd web-admin && npm run lint:fix",
     "format": "cd web-admin && npm run format",
     "dev": "cd web-admin && npm run dev",
     "build": "cd web-admin && npm run build",
-    "install:all": "pip install -r requirements.txt && pip install coverage && cd web-admin && npm ci",
-    "clean": "make clean && cd web-admin && rm -rf .next node_modules"
+    "install:all": "cd web-admin && npm ci",
+    "clean": "cd web-admin && rm -rf .next node_modules"
   },
   "repository": {
     "type": "git",
