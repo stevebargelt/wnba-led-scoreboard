@@ -1,0 +1,6 @@
+# Build output (binary at repo root, not the cmd/scoreboard/ source dir)
+/scoreboard
+/out/
+
+# Editor
+.vscode/
