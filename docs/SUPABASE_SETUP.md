@@ -1,112 +1,82 @@
-# Supabase Setup Guide
+# Supabase Setup
 
-## Overview
-
-This guide covers setting up a new Supabase instance for the WNBA LED Scoreboard.
+Step-by-step guide to setting up a new Supabase project for the LED Scoreboard. Higher-level overview is in `supabase/README.md` and the top-level `README.md`.
 
 ## Prerequisites
 
 - Supabase account with project created
-- Project credentials (URL, anon key, service role key)
-- Access to Supabase SQL Editor
+- Project credentials (URL, anon key, service role key) from Settings → API
+- Access to the Supabase SQL Editor
 
-## Step 1: Update Environment Variables
+## Step 1: Configure environment
 
-Update `.env` with your Supabase credentials:
+Values you'll need from Supabase Dashboard → Settings → API:
 
-```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-DEVICE_ID=your-device-uuid
-```
+- `SUPABASE_URL` (e.g. `https://abcdef.supabase.co`)
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (only used server-side by the web admin)
 
-## Step 2: Run Database Migrations
+Where they go:
 
-### Why Manual Migration?
+- **Web admin** (`web-admin/.env.local`): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAILS`
+- **Device** (`.env` on the Pi): `SUPABASE_URL`, `SUPABASE_ANON_KEY`, plus `DEVICE_ID` (obtained after registering the device via the web admin)
 
-Supabase does not support raw SQL execution via the REST API for security reasons. The standard approach is to use the SQL Editor in the Supabase Dashboard.
+## Step 2: Run migrations
 
-### Running Migrations
+Supabase doesn't allow arbitrary SQL execution via its REST API, so migrations run via the dashboard SQL Editor.
 
-1. Open Supabase SQL Editor:
-   ```
-   https://supabase.com/dashboard/project/YOUR_PROJECT_REF/sql
-   ```
-
-2. Run each migration file in order:
+1. Open SQL Editor: `https://supabase.com/dashboard/project/YOUR_PROJECT_REF/sql`
+2. Run each migration **in order**:
    - `supabase/migrations/001_complete_schema.sql`
    - `supabase/migrations/002_rls_policies.sql`
    - `supabase/migrations/003_seed_data.sql`
 
-3. For each file:
-   - Open the file in your editor
-   - Copy the entire contents
-   - Paste into the SQL Editor
-   - Click "Run" or press Cmd+Enter
+For each: open the file, copy its full contents into the SQL Editor, run.
 
-### Verification
-
-After running migrations, verify the setup:
-
-```bash
-python scripts/run_migrations.py
-```
-
-This will check:
-- All required tables exist
-- Sports and leagues data is seeded
-- RLS policies are active
-
-## Step 3: Create/Verify Device
-
-The device should be created automatically when you first access the web admin. Alternatively, create it manually:
+### Verify
 
 ```sql
-INSERT INTO devices (id, name, owner_id)
-VALUES (
-    'e9004446-dbb9-44dc-be01-410048f26cd3',
-    'Default Device',
-    (SELECT id FROM auth.users LIMIT 1)
-)
-ON CONFLICT (id) DO NOTHING;
+-- All expected tables exist
+SELECT table_name FROM information_schema.tables
+WHERE table_schema = 'public' ORDER BY table_name;
+-- Expect: device_config, device_favorite_teams, device_leagues,
+--         devices, game_overrides, league_teams, leagues, sports
+
+-- RLS is on
+SELECT tablename FROM pg_tables
+WHERE schemaname = 'public' AND rowsecurity = true;
+
+-- Seed data loaded
+SELECT l.code, l.name, s.name AS sport
+FROM leagues l JOIN sports s ON l.sport_id = s.id;
 ```
 
-## Step 4: Test Connection
+## Step 3: Register your first device
 
-Test the Python app can connect and load configuration:
+The intended flow is to sign up via the web admin and register the device through the UI — that handles ownership correctly and gives you a `DEVICE_ID` to install on the Pi.
 
-```bash
-python -c "from src.config.supabase_config_loader import *; from supabase import create_client; import os; client = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_ANON_KEY')); loader = SupabaseConfigLoader(os.getenv('DEVICE_ID'), client); config = loader.load_full_config(); print('✅ Config loaded:', config.device_id, 'Leagues:', config.enabled_leagues)"
+If you need to bootstrap one manually in SQL:
+
+```sql
+INSERT INTO devices (name, user_id)
+VALUES ('Living Room Display', '<your-user-id-from-auth.users>')
+RETURNING id;
+-- The returned UUID becomes DEVICE_ID in the device's .env
 ```
 
-## Troubleshooting
+## Alternative: Supabase CLI
 
-### Connection Errors
-
-- Verify SUPABASE_URL and keys are correct
-- Check project is not paused (inactive projects pause after 7 days)
-- Ensure RLS policies allow device access
-
-### Missing Tables
-
-- Run migrations in order - each depends on the previous
-- Check SQL Editor for error messages
-- Verify you're running against the correct project
-
-### Device Not Found
-
-- Check DEVICE_ID matches a device in the database
-- Verify the device has an owner_id set
-- Check RLS policies allow device access
-
-## Alternative: Supabase CLI (Advanced)
-
-If you have the Supabase CLI installed and configured:
+If you've installed and configured `supabase` CLI:
 
 ```bash
 supabase link --project-ref YOUR_PROJECT_REF
 supabase db push
 ```
 
-Note: This requires proper authentication and configuration.
+Requires the database password (shown once at project creation).
+
+## Troubleshooting
+
+- **Connection errors:** verify URL + keys; check the project isn't paused (free-tier projects pause after 7 days inactive); confirm RLS allows access for the calling user
+- **Missing tables:** migrations must run in order; check SQL Editor output for errors
+- **Device-not-found in the device app:** confirm `DEVICE_ID` matches a row in `devices`, the device has `user_id` set, and the user owns it (RLS check)

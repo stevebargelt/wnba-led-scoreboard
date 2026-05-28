@@ -2,7 +2,7 @@
 
 ## Overview
 
-This directory contains SQL migrations for the WNBA LED Scoreboard's direct Supabase integration. The Python app polls configuration directly from the database - no agents, websockets, or edge functions required.
+This directory contains SQL migrations for the LED Scoreboard's direct Supabase integration. The device polls configuration directly from the database — no agents, websockets, or edge functions required.
 
 ## Migration Structure
 
@@ -76,7 +76,7 @@ JOIN sports s ON l.sport_id = s.id;
    - `device_leagues` - Which sports are enabled
    - `device_favorite_teams` - Favorite teams per sport
 
-2. **Python App** polls every 60 seconds:
+2. **Device** polls every 60 seconds:
    - Reads configuration from database
    - Updates display accordingly
    - No websockets or real-time subscriptions
@@ -130,7 +130,7 @@ GRANT ALL ON SCHEMA public TO public;
 - No edge functions needed - direct database access only
 - No device tokens or agent authentication required
 - RLS policies ensure users can only access their own devices
-- The Python app uses read-only access (anon key)
+- The device uses read-only access (anon key)
 - Web admin uses authenticated access for configuration
 
 ## Archived Content
