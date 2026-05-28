@@ -16,6 +16,7 @@ const readdirMock = fs.readdir as jest.MockedFunction<typeof fs.readdir>
 const readFileMock = fs.readFile as jest.MockedFunction<typeof fs.readFile>
 
 const getUserMock = jest.fn()
+const selectMock = jest.fn()
 const upsertMock = jest.fn()
 const fromMock = jest.fn()
 
@@ -25,6 +26,7 @@ beforeEach(() => {
   jest.clearAllMocks()
 
   getUserMock.mockReset()
+  selectMock.mockReset()
   upsertMock.mockReset()
   fromMock.mockReset()
 
@@ -33,8 +35,15 @@ beforeEach(() => {
     error: null,
   })
 
+  selectMock.mockResolvedValue({
+    data: [{ id: 'league-uuid-wnba', code: 'wnba' }],
+    error: null,
+  })
   upsertMock.mockResolvedValue({ error: null })
-  fromMock.mockImplementation(() => ({ upsert: upsertMock }))
+  fromMock.mockImplementation((table: string) => {
+    if (table === 'leagues') return { select: selectMock }
+    return { upsert: upsertMock }
+  })
 
   createClientMock.mockImplementation(
     () =>
@@ -209,7 +218,7 @@ describe('POST /api/admin/seed-teams', () => {
     expect(readFileMock).not.toHaveBeenCalled()
   })
 
-  it('upserts teams from asset files', async () => {
+  it('upserts teams from asset files into league_teams', async () => {
     const handler = await loadHandler()
     const req = createRequest()
     const res = createResponse()
@@ -227,24 +236,25 @@ describe('POST /api/admin/seed-teams', () => {
       },
     })
 
-    expect(fromMock).toHaveBeenCalledWith('sport_teams')
+    expect(fromMock).toHaveBeenCalledWith('leagues')
+    expect(fromMock).toHaveBeenCalledWith('league_teams')
     expect(upsertMock).toHaveBeenCalledTimes(1)
     expect(upsertMock).toHaveBeenCalledWith(
       [
         expect.objectContaining({
-          sport: 'wnba',
-          external_id: '18',
+          league_id: 'league-uuid-wnba',
+          team_id: '18',
           name: 'Seattle Storm',
           abbreviation: 'SEA',
         }),
         expect.objectContaining({
-          sport: 'wnba',
-          external_id: '22',
+          league_id: 'league-uuid-wnba',
+          team_id: '22',
           name: 'Las Vegas Aces',
           abbreviation: 'LV',
         }),
       ],
-      { onConflict: 'sport,external_id' }
+      { onConflict: 'league_id,team_id' }
     )
   })
 

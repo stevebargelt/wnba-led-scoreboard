@@ -1,298 +1,149 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
-import { MultiSportTeamSelector } from '../../components/config/MultiSportTeamSelector'
-import { MultiSportFavoritesEditor } from '../../components/config/MultiSportFavoritesEditor'
-import { makeValidator } from '@/lib/schema'
 import { Layout } from '../../components/layout'
 import {
+  Button,
   Card,
   CardHeader,
   CardTitle,
-  Button,
-  Input,
   StatusBadge,
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
 } from '../../components/ui'
-import { SportManagement } from '../../components/sports/SportManagement'
-import { LiveGameMonitor } from '../../components/sports/LiveGameMonitor'
+import { DeviceTeamsTab } from '../../components/config/DeviceTeamsTab'
 
-// Removed edge function endpoints - now using direct database writes
+const SETTINGS_DEFAULTS = {
+  brightness: 80,
+  timezone: 'America/Los_Angeles',
+  pregameSec: 30,
+  ingameSec: 5,
+  finalSec: 60,
+}
+
+interface SettingsState {
+  brightness: number
+  timezone: string
+  pregameSec: number
+  ingameSec: number
+  finalSec: number
+}
+
+function settingsEqual(a: SettingsState, b: SettingsState): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
 
 export default function DevicePage() {
   const router = useRouter()
   const { id } = router.query
+
   const [device, setDevice] = useState<{
     id: string
     name?: string
     last_seen_ts?: string | null
   } | null>(null)
-  const [loading, setLoading] = useState(false)
+
+  const [settings, setSettings] = useState<SettingsState>(SETTINGS_DEFAULTS)
+  const [settingsClean, setSettingsClean] = useState<SettingsState>(SETTINGS_DEFAULTS)
+  const [settingsLoading, setSettingsLoading] = useState(false)
   const [message, setMessage] = useState('')
-  // Removed: mintedToken, configText, schemaErrors - no longer needed with direct UI
-  const [multiSportConfig, setMultiSportConfig] = useState<any>(null)
-  const handleMultiSportConfigChange = useCallback((config: any) => {
-    setMultiSportConfig(config)
-  }, [])
-  // Inline editable settings (with reasonable defaults)
-  const DEFAULTS = {
-    timezone: 'America/Los_Angeles',
-    matrix: {
-      width: 64,
-      height: 32,
-      chain_length: 1,
-      parallel: 1,
-      gpio_slowdown: 2,
-      hardware_mapping: 'adafruit-hat',
-      brightness: 80,
-      pwm_bits: 11,
-    },
-    refresh: { pregame_sec: 30, ingame_sec: 5, final_sec: 60 },
-    render: { live_layout: 'stacked', logo_variant: 'mini' },
-  }
-  const [timezone, setTimezone] = useState<string>(DEFAULTS.timezone)
-  const [matrix, setMatrix] = useState(DEFAULTS.matrix)
-  const [refreshCfg, setRefreshCfg] = useState(DEFAULTS.refresh)
-  const [renderCfg, setRenderCfg] = useState(DEFAULTS.render)
+
+  const settingsIsDirty = !settingsEqual(settings, settingsClean)
 
   useEffect(() => {
     if (!id) return
     ;(async () => {
-      // Load device config from new simplified table
-      const { data } = await supabase
-        .from('device_config')
-        .select('*')
-        .eq('device_id', id)
-        .maybeSingle()
-      if (data) {
-        setTimezone(data.timezone || DEFAULTS.timezone)
-        setMatrix({
-          ...DEFAULTS.matrix,
-          width: data.matrix_width ?? DEFAULTS.matrix.width,
-          height: data.matrix_height ?? DEFAULTS.matrix.height,
-          brightness: data.brightness ?? DEFAULTS.matrix.brightness,
-        })
-        setRefreshCfg({
-          ...DEFAULTS.refresh,
-          pregame_sec: data.refresh_pregame_sec ?? DEFAULTS.refresh.pregame_sec,
-          ingame_sec: data.refresh_ingame_sec ?? DEFAULTS.refresh.ingame_sec,
-          final_sec: data.refresh_final_sec ?? DEFAULTS.refresh.final_sec,
-        })
-        setRenderCfg({
-          ...DEFAULTS.render,
-          live_layout: data.live_display_layout ?? DEFAULTS.render.live_layout,
-        })
-      }
       const { data: dev } = await supabase
         .from('devices')
         .select('id,name,last_seen_ts')
         .eq('id', id)
         .maybeSingle()
       if (dev) setDevice(dev)
-      // Events removed - no longer tracking device events
 
-      // Load device sport configuration for Multi-Sport Favorites editor
-      try {
-        const { data: sess } = await supabase.auth.getSession()
-        const jwt = sess.session?.access_token
-        // Fetch available sports/teams to resolve identifiers to canonical names/abbrs
-        let sportDirectory: Record<string, any[]> = {}
-        try {
-          const sRes = await fetch('/api/sports', {
-            headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
-          })
-          if (sRes.ok) {
-            const sJson = await sRes.json()
-            sportDirectory = sJson.sports || {}
-          }
-        } catch {}
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) return
 
-        const resp = await fetch(`/api/device/${id}/sports`, {
-          headers: jwt ? { Authorization: `Bearer ${jwt}` } : {},
-        })
-        if (resp.ok) {
-          const body = await resp.json()
-          const sportConfigs: any[] = body.sportConfigs || []
-          // Helper to resolve identifier to {id,name,abbr}
-          const resolveFav = (sport: string, identifier: any) => {
-            const list = (sportDirectory[sport] || []) as any[]
-            const idStr = String(identifier)
-            const byId = list.find(t => String(t.id) === idStr)
-            if (byId) return { id: String(byId.id), name: byId.name, abbr: byId.abbreviation }
-            const byAbbr = list.find(
-              t => String(t.abbreviation).toUpperCase() === idStr.toUpperCase()
-            )
-            if (byAbbr)
-              return { id: String(byAbbr.id), name: byAbbr.name, abbr: byAbbr.abbreviation }
-            const byName = list.find(t => String(t.name).toLowerCase() === idStr.toLowerCase())
-            if (byName)
-              return { id: String(byName.id), name: byName.name, abbr: byName.abbreviation }
-            return { id: idStr, name: idStr, abbr: idStr }
-          }
-
-          // Map DB rows to editor format with enrichment using directory if available
-          const wnba = sportConfigs.find(c => String(c.sport) === 'wnba') || {
-            sport: 'wnba',
-            enabled: true,
-            favorite_teams: [],
-            priority: 1,
-          }
-          const nhl = sportConfigs.find(c => String(c.sport) === 'nhl') || {
-            sport: 'nhl',
-            enabled: false,
-            favorite_teams: [],
-            priority: 2,
-          }
-          const mapFavs = (arr: any[], sport: string) =>
-            (Array.isArray(arr) ? arr : []).map(v => resolveFav(sport, v))
-          setMultiSportConfig({
-            sports: [
-              {
-                sport: 'wnba',
-                enabled: !!wnba.enabled,
-                favorites: mapFavs(wnba.favorite_teams, 'wnba'),
-              },
-              {
-                sport: 'nhl',
-                enabled: !!nhl.enabled,
-                favorites: mapFavs(nhl.favorite_teams, 'nhl'),
-              },
-            ],
-          })
+      const resp = await fetch(`/api/device/${id}/config`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      })
+      if (resp.ok) {
+        const data = await resp.json()
+        const loaded: SettingsState = {
+          brightness: data.brightness ?? SETTINGS_DEFAULTS.brightness,
+          timezone: data.timezone ?? SETTINGS_DEFAULTS.timezone,
+          pregameSec: data.refresh_pregame_sec ?? SETTINGS_DEFAULTS.pregameSec,
+          ingameSec: data.refresh_ingame_sec ?? SETTINGS_DEFAULTS.ingameSec,
+          finalSec: data.refresh_final_sec ?? SETTINGS_DEFAULTS.finalSec,
         }
-      } catch (e) {
-        // Non-fatal for the page
-        console.warn('Failed to load device sport configs for favorites editor', e)
+        setSettings(loaded)
+        setSettingsClean(loaded)
       }
     })()
   }, [id])
 
-  // Poll for device updates periodically (removed realtime subscriptions)
   useEffect(() => {
     if (!id) return
-
-    // Load initial device data
     const loadDevice = async () => {
       const { data } = await supabase.from('devices').select('*').eq('id', id).single()
-
-      if (data) {
-        setDevice(data)
-      }
+      if (data) setDevice(data)
     }
-
     loadDevice()
-
-    // Optionally poll for updates every 30 seconds
     const interval = setInterval(loadDevice, 30000)
-
     return () => clearInterval(interval)
   }, [id])
 
-  const saveConfig = async () => {
+  async function saveSettings() {
     if (!id) return
-    setLoading(true)
+    setSettingsLoading(true)
     setMessage('')
-
     try {
-      // Build priority config from multiSportConfig if available
-      const priorityConfig: any = {
-        sport_order: ['wnba', 'nhl', 'nba'],
-        live_game_boost: true,
-        favorite_team_boost: true,
-        close_game_boost: true,
-        close_game_threshold: 5,
-        playoff_boost: true,
-        conflict_resolution: 'priority',
-      }
-
-      if (multiSportConfig?.sports) {
-        // Extract sport order from enabled sports
-        priorityConfig.sport_order = multiSportConfig.sports
-          .filter((s: any) => s.enabled)
-          .sort((a: any, b: any) => a.priority - b.priority)
-          .map((s: any) => s.sport)
-      }
-
-      // Update device_config table directly
-      const { error } = await supabase.from('device_config').upsert({
-        device_id: id as string,
-        timezone,
-        matrix_width: matrix.width,
-        matrix_height: matrix.height,
-        brightness: matrix.brightness,
-        refresh_pregame_sec: refreshCfg.pregame_sec,
-        refresh_ingame_sec: refreshCfg.ingame_sec,
-        refresh_final_sec: refreshCfg.final_sec,
-        live_display_layout: renderCfg.live_layout,
-        updated_at: new Date().toISOString(),
-      })
-
-      if (error) {
-        setMessage(`Save failed: ${error.message}`)
-      } else {
-        setMessage('Configuration saved successfully')
-      }
-    } catch (e: any) {
-      setMessage(`Error: ${e.message}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Removed sendAction - no longer needed with direct database updates
-  // Removed buildApplyFromDb - configuration is now saved directly to database
-
-  // Removed previewFromDb - configuration is now loaded directly from database
-
-  const seedTeams = async () => {
-    try {
-      setLoading(true)
-      setMessage('')
       const { data: sess } = await supabase.auth.getSession()
       const jwt = sess.session?.access_token
       if (!jwt) {
         setMessage('Not signed in')
-        setLoading(false)
         return
       }
-      const resp = await fetch('/api/admin/seed-teams', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${jwt}`,
-        },
+      const resp = await fetch(`/api/device/${id}/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({
+          brightness: settings.brightness,
+          timezone: settings.timezone,
+          refresh_pregame_sec: settings.pregameSec,
+          refresh_ingame_sec: settings.ingameSec,
+          refresh_final_sec: settings.finalSec,
+        }),
       })
-      const body = await resp.json()
       if (resp.ok) {
-        const parts = Object.entries(body.results || {})
-          .map(([sport, r]: any) => `${sport}: ${r.upserted}`)
-          .join(', ')
-        setMessage(`Seeded teams (${parts || 'no files found'})`)
+        setSettingsClean(settings)
+        setMessage('Settings saved.')
       } else {
-        setMessage(`Seed failed: ${body?.error || 'Unknown error'}`)
+        const body = await resp.json()
+        setMessage(`Save failed: ${body?.error || 'Unknown error'}`)
       }
     } catch (e: any) {
-      setMessage(`Seed error: ${e.message}`)
+      setMessage(`Error: ${e.message}`)
     } finally {
-      setLoading(false)
+      setSettingsLoading(false)
     }
   }
 
-  // Removed mintDeviceToken - no longer needed with direct Supabase
+  function discardSettings() {
+    setSettings(settingsClean)
+    setMessage('')
+  }
 
   const isDeviceOnline = useMemo(() => {
     if (!device?.last_seen_ts) return false
-    const last = new Date(device.last_seen_ts).getTime()
-    return Date.now() - last < 90_000
+    return Date.now() - new Date(device.last_seen_ts).getTime() < 90_000
   }, [device?.last_seen_ts])
 
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header with back button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Button
@@ -331,145 +182,146 @@ export default function DevicePage() {
           </div>
         </div>
 
-        {/* Tabbed Interface */}
-        <Tabs defaultValue="sports" className="w-full">
-          <TabsList className="grid grid-cols-3 w-full">
-            <TabsTrigger value="sports">Sports</TabsTrigger>
-            <TabsTrigger value="favorites">Favorite Teams</TabsTrigger>
-            <TabsTrigger value="config">Config</TabsTrigger>
+        <Tabs defaultValue="teams" className="w-full">
+          <TabsList className="grid grid-cols-2 w-full">
+            <TabsTrigger value="teams">Teams</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="sports">
-            <div className="space-y-6">
-              <SportManagement deviceId={id as string} />
-              <LiveGameMonitor
-                deviceId={id as string}
-                onGameOverride={async (sport, gameEventId, reason) => {
-                  // This will be handled by the SportManagement component
-                  console.log('Game override requested:', { sport, gameEventId, reason })
-                }}
-              />
-            </div>
+          <TabsContent value="teams">
+            <DeviceTeamsTab deviceId={id as string} />
           </TabsContent>
 
-          <TabsContent value="favorites">
-            <MultiSportFavoritesEditor
-              deviceId={id as string}
-              onConfigChange={handleMultiSportConfigChange}
-              initialConfig={multiSportConfig}
-            />
-          </TabsContent>
-
-          <TabsContent value="config">
+          <TabsContent value="settings">
             <div className="space-y-6">
-              {/* Device Settings */}
               <Card>
                 <CardHeader>
                   <CardTitle>Device Settings</CardTitle>
                 </CardHeader>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    label="Timezone"
-                    value={timezone}
-                    onChange={e => setTimezone(e.target.value)}
-                    placeholder="America/Los_Angeles"
-                  />
-                  <Input
-                    label="Brightness"
-                    type="number"
-                    min={1}
-                    max={100}
-                    value={matrix.brightness.toString()}
-                    onChange={e => setMatrix({ ...matrix, brightness: Number(e.target.value) })}
-                  />
-                  <Input
-                    label="Matrix Width"
-                    type="number"
-                    value={matrix.width.toString()}
-                    onChange={e => setMatrix({ ...matrix, width: Number(e.target.value) })}
-                  />
-                  <Input
-                    label="Matrix Height"
-                    type="number"
-                    value={matrix.height.toString()}
-                    onChange={e => setMatrix({ ...matrix, height: Number(e.target.value) })}
-                  />
-                  <Input
-                    label="Pregame Refresh (sec)"
-                    type="number"
-                    value={refreshCfg.pregame_sec.toString()}
-                    onChange={e =>
-                      setRefreshCfg({ ...refreshCfg, pregame_sec: Number(e.target.value) })
-                    }
-                  />
-                  <Input
-                    label="Ingame Refresh (sec)"
-                    type="number"
-                    value={refreshCfg.ingame_sec.toString()}
-                    onChange={e =>
-                      setRefreshCfg({ ...refreshCfg, ingame_sec: Number(e.target.value) })
-                    }
-                  />
-                  <Input
-                    label="Final Refresh (sec)"
-                    type="number"
-                    value={refreshCfg.final_sec.toString()}
-                    onChange={e =>
-                      setRefreshCfg({ ...refreshCfg, final_sec: Number(e.target.value) })
-                    }
-                  />
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                      Live Layout
-                    </label>
-                    <select
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      value={renderCfg.live_layout}
-                      onChange={e =>
-                        setRenderCfg({ ...renderCfg, live_layout: e.target.value as any })
-                      }
-                    >
-                      <option value="stacked">Stacked</option>
-                      <option value="big-logos">Big Logos</option>
-                    </select>
+                {settingsIsDirty && (
+                  <div
+                    role="alert"
+                    className="rounded-md bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 px-4 py-2 text-sm text-amber-800 dark:text-amber-200 mb-4"
+                  >
+                    Unsaved changes
                   </div>
-                  <div className="space-y-1">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
-                      Logo Variant
-                    </label>
-                    <select
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 shadow-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                      value={renderCfg.logo_variant}
-                      onChange={e =>
-                        setRenderCfg({ ...renderCfg, logo_variant: e.target.value as any })
-                      }
-                    >
-                      <option value="mini">Mini</option>
-                      <option value="banner">Banner</option>
-                    </select>
-                  </div>
-                </div>
-              </Card>
-
-              {/* Favorites Editor removed: sport favorites are managed in the Sport Favorites tab and DB */}
-
-              {/* Save button */}
-              <div className="flex justify-end gap-4">
-                <Button
-                  onClick={seedTeams}
-                  disabled={loading}
-                  variant="secondary"
-                  size="sm"
-                  title="Admin: Import team data from local assets into database"
+                )}
+                <form
+                  className="space-y-4"
+                  onSubmit={e => { e.preventDefault(); saveSettings() }}
                 >
-                  Import Team Data
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="brightness"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                    >
+                      Brightness: {settings.brightness}
+                    </label>
+                    <input
+                      id="brightness"
+                      type="range"
+                      min={1}
+                      max={100}
+                      value={settings.brightness}
+                      aria-label="Brightness"
+                      aria-valuemin={1}
+                      aria-valuemax={100}
+                      aria-valuenow={settings.brightness}
+                      onChange={e =>
+                        setSettings(s => ({ ...s, brightness: Number(e.target.value) }))
+                      }
+                      className="w-full"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="timezone"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                    >
+                      Timezone
+                    </label>
+                    <input
+                      id="timezone"
+                      type="text"
+                      value={settings.timezone}
+                      onChange={e => setSettings(s => ({ ...s, timezone: e.target.value }))}
+                      placeholder="America/Los_Angeles"
+                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="pregame-refresh"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                      >
+                        Pregame Refresh (sec)
+                      </label>
+                      <input
+                        id="pregame-refresh"
+                        type="number"
+                        value={settings.pregameSec}
+                        onChange={e =>
+                          setSettings(s => ({ ...s, pregameSec: Number(e.target.value) }))
+                        }
+                        className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="ingame-refresh"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                      >
+                        Ingame Refresh (sec)
+                      </label>
+                      <input
+                        id="ingame-refresh"
+                        type="number"
+                        value={settings.ingameSec}
+                        onChange={e =>
+                          setSettings(s => ({ ...s, ingameSec: Number(e.target.value) }))
+                        }
+                        className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="final-refresh"
+                        className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                      >
+                        Final Refresh (sec)
+                      </label>
+                      <input
+                        id="final-refresh"
+                        type="number"
+                        value={settings.finalSec}
+                        onChange={e =>
+                          setSettings(s => ({ ...s, finalSec: Number(e.target.value) }))
+                        }
+                        className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                </form>
+              </Card>
+              <div className="flex justify-end gap-3">
+                <Button
+                  variant="secondary"
+                  disabled={!settingsIsDirty}
+                  onClick={discardSettings}
+                >
+                  Discard
                 </Button>
-                <Button onClick={saveConfig} disabled={loading} loading={loading}>
-                  Save Configuration
+                <Button
+                  disabled={!settingsIsDirty || settingsLoading}
+                  loading={settingsLoading}
+                  onClick={saveSettings}
+                >
+                  Save
                 </Button>
               </div>
               {message && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{message}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
               )}
             </div>
           </TabsContent>

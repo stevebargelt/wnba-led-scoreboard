@@ -26,8 +26,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (authError || !userData?.user) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
-  console.log('Authenticated user ID:', userData.user.id)
-
   // Ensure the authenticated user can access this device (leverages RLS)
   const { data: deviceRow, error: deviceErr } = await userScoped
     .from('devices')
@@ -41,11 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!deviceRow) {
     return res.status(403).json({ error: 'Forbidden' })
   }
-  console.log('Device check:', {
-    deviceId,
-    deviceUserId: deviceRow.user_id,
-    currentUserId: userData.user.id,
-  })
 
   if (req.method === 'GET') {
     try {
@@ -118,112 +111,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PUT') {
     try {
-      const { sportConfigs, prioritySettings } = req.body || {}
-      console.log('PUT /api/device/[id]/sports - received:', { deviceId, sportConfigs })
-
+      const { sportConfigs } = req.body || {}
       if (!Array.isArray(sportConfigs)) {
         return res.status(400).json({ error: 'sportConfigs must be an array' })
       }
 
-      // First, get ALL league IDs (not just the ones in sportConfigs)
       const { data: allLeagues, error: leagueLookupError } = await userScoped
         .from('leagues')
         .select('id, code')
 
       if (leagueLookupError) return res.status(500).json({ error: leagueLookupError.message })
 
-      console.log('Found leagues in database:', allLeagues)
-      const leagueMap = new Map((allLeagues || []).map((l: any) => [l.code, l.id]))
+      const leagueMap = new Map((allLeagues || []).map((l: any) => [String(l.code), String(l.id)]))
 
-      // Prepare upsert data for ALL leagues (to ensure we update disabled ones too)
-      const configMap = new Map(sportConfigs.map((c: any) => [String(c.sport), c]))
-
-      const leagueRows: any[] = []
-      leagueMap.forEach((leagueId, code) => {
-        const config = configMap.get(code)
-        leagueRows.push({
-          device_id: deviceId,
-          league_id: leagueId,
-          enabled: config ? Boolean(config.enabled) : false,
-          priority: config ? Number(config.priority) : 999,
+      const rpcLeagues = sportConfigs
+        .map((config: any) => {
+          const leagueId = leagueMap.get(String(config.sport))
+          if (!leagueId) return null
+          const teamIds = Array.isArray(config.favorite_teams)
+            ? config.favorite_teams
+            : Array.isArray(config.favoriteTeams)
+              ? config.favoriteTeams
+              : []
+          return {
+            league_id: leagueId,
+            enabled: Boolean(config.enabled),
+            priority: Number(config.priority),
+            team_ids: teamIds.map(String),
+          }
         })
+        .filter(Boolean)
+
+      const { error: rpcError } = await userScoped.rpc('save_device_teams', {
+        p_device_id: deviceId,
+        p_leagues: rpcLeagues,
       })
 
-      // Upsert leagues configuration
-      if (leagueRows.length > 0) {
-        console.log('Upserting league rows:', leagueRows)
-        const { error: leaguesError } = await userScoped.from('device_leagues').upsert(leagueRows, {
-          onConflict: 'device_id,league_id',
-        })
+      if (rpcError) return res.status(500).json({ error: rpcError.message })
 
-        if (leaguesError) {
-          console.error('Error upserting leagues:', leaguesError)
-          return res.status(500).json({ error: leaguesError.message })
-        }
-        console.log('Successfully upserted league configurations')
-      }
-
-      // Update favorite teams
-      // First delete existing favorites
-      const { error: deleteError } = await userScoped
-        .from('device_favorite_teams')
-        .delete()
-        .eq('device_id', deviceId)
-
-      if (deleteError) return res.status(500).json({ error: deleteError.message })
-
-      // Then insert new favorites
-      const favoriteRows: any[] = []
-      for (const config of sportConfigs) {
-        const leagueId = leagueMap.get(String(config.sport))
-        if (!leagueId) continue
-
-        const teams = Array.isArray(config.favoriteTeams)
-          ? config.favoriteTeams
-          : Array.isArray(config.favorite_teams)
-            ? config.favorite_teams
-            : []
-
-        for (const teamId of teams) {
-          favoriteRows.push({
-            device_id: deviceId,
-            league_id: leagueId,
-            team_id: String(teamId),
-            priority: 999,
-          })
-        }
-      }
-
-      if (favoriteRows.length > 0) {
-        const { error: favError } = await userScoped
-          .from('device_favorite_teams')
-          .insert(favoriteRows)
-
-        if (favError) return res.status(500).json({ error: favError.message })
-      }
-
-      // Update priority settings in device_config if provided
-      if (prioritySettings) {
-        const { error: configError } = await userScoped.from('device_config').upsert({
-          device_id: deviceId,
-          priority_config: {
-            sport_order: sportConfigs
-              .filter((c: any) => c.enabled)
-              .sort((a: any, b: any) => a.priority - b.priority)
-              .map((c: any) => c.sport),
-            live_game_boost: prioritySettings.liveGameBoost,
-            favorite_team_boost: prioritySettings.favoriteTeamBoost,
-            close_game_boost: prioritySettings.closeGameBoost,
-            playoff_boost: prioritySettings.playoffBoost,
-            conflict_resolution: prioritySettings.conflictResolution,
-          },
-          updated_at: new Date().toISOString(),
-        })
-
-        if (configError) return res.status(500).json({ error: configError.message })
-      }
-
-      // Optionally: persist global priority settings in a future table
       return res.status(200).json({ success: true })
     } catch (e: any) {
       console.error('PUT /device/[id]/sports error:', e)
