@@ -101,6 +101,7 @@ func main() {
 
 	state := newAppState(*assetsDir, *demoLeagues)
 	state.reloadConfig()
+	d.SetBrightness(state.currentBrightness())
 	state.refreshGames()
 
 	render := func() { d.SetImage(state.currentScene().Render(width, height, time.Now())) }
@@ -129,6 +130,7 @@ func main() {
 		case <-hup:
 			log.Print("SIGHUP: reloading config")
 			state.reloadConfig()
+			d.SetBrightness(state.currentBrightness())
 			state.refreshGames()
 			pollC = state.pollChannel()
 		case <-stop:
@@ -144,6 +146,8 @@ type appState struct {
 	leagues     []string
 	favorites   map[string]map[string]bool
 	refresh     config.RefreshConfig
+	brightness  int
+	loc         *time.Location
 	games       []sports.GameSnapshot
 	chosen      *sports.GameSnapshot
 }
@@ -188,13 +192,16 @@ func (s *appState) reloadConfig() {
 		}
 		favs[league] = set
 	}
+	loc := loadLocation(cfg.Timezone)
 	s.mu.Lock()
 	s.leagues = leagues
 	s.favorites = favs
 	s.refresh = cfg.Refresh
+	s.brightness = cfg.Matrix.Brightness
+	s.loc = loc
 	s.mu.Unlock()
-	log.Printf("config: %d leagues (%v), refresh pre=%ds in=%ds fin=%ds",
-		len(leagues), leagues, cfg.Refresh.PregameSec, cfg.Refresh.IngameSec, cfg.Refresh.FinalSec)
+	log.Printf("config: %d leagues (%v), refresh pre=%ds in=%ds fin=%ds, brightness=%d, tz=%s",
+		len(leagues), leagues, cfg.Refresh.PregameSec, cfg.Refresh.IngameSec, cfg.Refresh.FinalSec, cfg.Matrix.Brightness, loc)
 }
 
 func (s *appState) refreshGames() {
@@ -228,19 +235,20 @@ func (s *appState) currentScene() scenes.Scene {
 	s.mu.RLock()
 	chosen := s.chosen
 	assetsDir := s.assetsDir
+	loc := s.loc
 	s.mu.RUnlock()
 	if chosen == nil {
-		return scenes.Idle{}
+		return scenes.Idle{Loc: loc}
 	}
 	switch chosen.State {
 	case sports.StatePre:
-		return scenes.Pregame{Game: *chosen, AssetsDir: assetsDir}
+		return scenes.Pregame{Game: *chosen, AssetsDir: assetsDir, Loc: loc}
 	case sports.StateLive:
 		return scenes.Live{Game: *chosen, AssetsDir: assetsDir}
 	case sports.StateFinal:
 		return scenes.Final{Game: *chosen, AssetsDir: assetsDir}
 	}
-	return scenes.Idle{}
+	return scenes.Idle{Loc: loc}
 }
 
 func (s *appState) pollChannel() <-chan time.Time {
@@ -316,6 +324,26 @@ func clampPoll(secs int) int {
 		return minPollSec
 	}
 	return secs
+}
+
+func (s *appState) currentBrightness() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.brightness
+}
+
+// loadLocation resolves a timezone name to a *time.Location, falling back to
+// the system local zone for an empty or invalid name.
+func loadLocation(name string) *time.Location {
+	if name == "" {
+		return time.Local
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		log.Printf("timezone %q invalid, using system local: %v", name, err)
+		return time.Local
+	}
+	return loc
 }
 
 func fetchDeviceConfig() (*config.DeviceConfig, error) {

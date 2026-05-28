@@ -79,6 +79,16 @@ func (m *MatrixDisplay) SetImage(img *image.RGBA) {
 	m.canvas = C.led_matrix_swap_on_vsync(m.matrix, m.canvas)
 }
 
+// SetBrightness updates panel brightness at runtime (percentage 1–100).
+// Out-of-range values are ignored so a missing/zero config can't black out
+// the panel.
+func (m *MatrixDisplay) SetBrightness(pct int) {
+	if m.matrix == nil || pct < 1 || pct > 100 {
+		return
+	}
+	C.led_matrix_set_brightness(m.matrix, C.uint8_t(pct))
+}
+
 func (m *MatrixDisplay) Close() {
 	if m.matrix != nil {
 		C.led_canvas_clear(m.canvas)

@@ -15,4 +15,6 @@ func (m *MatrixDisplay) Init() error {
 
 func (m *MatrixDisplay) SetImage(img *image.RGBA) {}
 
+func (m *MatrixDisplay) SetBrightness(pct int) {}
+
 func (m *MatrixDisplay) Close() {}

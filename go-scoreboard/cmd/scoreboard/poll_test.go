@@ -40,3 +40,15 @@ func TestPollIntervalSec(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadLocation(t *testing.T) {
+	if got := loadLocation("America/New_York"); got == nil || got.String() != "America/New_York" {
+		t.Errorf("valid tz: got %v", got)
+	}
+	if got := loadLocation(""); got != time.Local {
+		t.Errorf("empty tz should be system Local, got %v", got)
+	}
+	if got := loadLocation("Not/AZone"); got != time.Local {
+		t.Errorf("invalid tz should fall back to Local, got %v", got)
+	}
+}

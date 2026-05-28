@@ -13,6 +13,7 @@ import (
 type Pregame struct {
 	Game      sports.GameSnapshot
 	AssetsDir string
+	Loc       *time.Location
 }
 
 func (p Pregame) Render(width, height int, _ time.Time) *image.RGBA {
@@ -51,7 +52,7 @@ func (p Pregame) Render(width, height int, _ time.Time) *image.RGBA {
 
 	startLocal := "TBD"
 	if !p.Game.StartTime.IsZero() {
-		startLocal = p.Game.StartTime.Local().Format("3:04 PM")
+		startLocal = p.Game.StartTime.In(locOr(p.Loc)).Format("3:04 PM")
 	}
 	render.DrawText(img, startLocal, timeFace, amber, width/2, height-7, render.AlignCenter)
 
@@ -63,4 +64,13 @@ func abbr(s string) string {
 		return s[:4]
 	}
 	return s
+}
+
+// locOr returns loc, or the system local zone when loc is nil (e.g. demo mode
+// or an unset/invalid configured timezone).
+func locOr(loc *time.Location) *time.Location {
+	if loc == nil {
+		return time.Local
+	}
+	return loc
 }

@@ -9,9 +9,11 @@ import (
 	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/render"
 )
 
-type Idle struct{}
+type Idle struct {
+	Loc *time.Location
+}
 
-func (Idle) Render(width, height int, now time.Time) *image.RGBA {
+func (i Idle) Render(width, height int, now time.Time) *image.RGBA {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
 	draw.Draw(img, img.Bounds(), image.NewUniform(color.Black), image.Point{}, draw.Src)
 
@@ -28,6 +30,6 @@ func (Idle) Render(width, height int, now time.Time) *image.RGBA {
 	white := color.RGBA{R: 230, G: 230, B: 230, A: 255}
 
 	render.DrawText(img, "WNBA", headerFace, teal, width/2, 7, render.AlignCenter)
-	render.DrawText(img, now.Format("3:04"), clockFace, white, width/2, 26, render.AlignCenter)
+	render.DrawText(img, now.In(locOr(i.Loc)).Format("3:04"), clockFace, white, width/2, 26, render.AlignCenter)
 	return img
 }

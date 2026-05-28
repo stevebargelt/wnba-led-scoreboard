@@ -21,4 +21,6 @@ func (s *SimulatorDisplay) SetImage(img *image.RGBA) {
 	png.Encode(f, img)
 }
 
+func (s *SimulatorDisplay) SetBrightness(pct int) {}
+
 func (s *SimulatorDisplay) Close() {}
