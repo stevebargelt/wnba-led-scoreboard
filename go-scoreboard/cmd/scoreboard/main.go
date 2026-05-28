@@ -4,8 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -28,57 +30,13 @@ func main() {
 	fetchNHL := flag.Bool("fetch-nhl", false, "fetch today's NHL games and print, then exit")
 	fetchConfig := flag.Bool("fetch-config", false, "fetch device config from Supabase and print, then exit")
 	envFile := flag.String("env", "../.env", "path to .env file (existing vars take precedence)")
-	demo := flag.Bool("demo", false, "fetch live WNBA games and render the first one (falls back to Idle)")
 	assetsDir := flag.String("assets-dir", "../assets", "path to assets directory (for team logos)")
+	demoLeagues := flag.String("demo-leagues", "", "comma-separated leagues to use without Supabase (e.g. \"wnba,nhl\")")
 	flag.Parse()
 
 	if err := config.LoadEnvFile(*envFile); err != nil {
 		fmt.Fprintf(os.Stderr, "env: %v\n", err)
 		os.Exit(1)
-	}
-
-	if *fetchConfig {
-		url, err := config.MustEnv("SUPABASE_URL")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
-		anon, err := config.MustEnv("SUPABASE_ANON_KEY")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
-		dev, err := config.MustEnv("DEVICE_ID")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "%v\n", err)
-			os.Exit(1)
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		cfg, err := config.FetchDeviceConfig(ctx, url, anon, dev)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "fetch: %v\n", err)
-			os.Exit(1)
-		}
-		fmt.Printf("Timezone: %s\n", cfg.Timezone)
-		fmt.Printf("Matrix:   %dx%d brightness=%d mapper=%q\n",
-			cfg.Matrix.Width, cfg.Matrix.Height, cfg.Matrix.Brightness, cfg.Matrix.PixelMapperConfig)
-		fmt.Printf("Render:   layout=%s logo=%s\n", cfg.Render.LiveLayout, cfg.Render.LogoVariant)
-		fmt.Printf("Refresh:  pregame=%ds ingame=%ds final=%ds\n",
-			cfg.Refresh.PregameSec, cfg.Refresh.IngameSec, cfg.Refresh.FinalSec)
-		fmt.Printf("Leagues:  %d enabled\n", len(cfg.EnabledLeagues))
-		for _, l := range cfg.EnabledLeagues {
-			fmt.Printf("  - %s\n", l.Code)
-		}
-		fmt.Printf("Favorites:\n")
-		for league, teams := range cfg.FavoriteTeams {
-			abbrs := make([]string, 0, len(teams))
-			for _, t := range teams {
-				abbrs = append(abbrs, t.Abbreviation)
-			}
-			fmt.Printf("  - %s: %v\n", league, abbrs)
-		}
-		return
 	}
 
 	printGames := func(label string, games []sports.GameSnapshot) {
@@ -115,25 +73,33 @@ func main() {
 		return
 	}
 
+	if *fetchConfig {
+		cfg, err := fetchDeviceConfig()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+		printDeviceConfig(cfg)
+		return
+	}
+
 	var d display.Display
 	if *sim {
 		d = &display.SimulatorDisplay{}
 	} else {
 		d = &display.MatrixDisplay{}
 	}
-
 	if err := d.Init(); err != nil {
 		fmt.Fprintf(os.Stderr, "display init: %v\n", err)
 		os.Exit(1)
 	}
 	defer d.Close()
 
-	chooseScene := func() scenes.Scene { return scenes.Idle{} }
-	if *demo {
-		chooseScene = makeDemoSelector(*assetsDir)
-	}
+	state := newAppState(*assetsDir, *demoLeagues)
+	state.reloadConfig()
+	state.refreshGames()
 
-	render := func() { d.SetImage(chooseScene().Render(width, height, time.Now())) }
+	render := func() { d.SetImage(state.currentScene().Render(width, height, time.Now())) }
 	render()
 	if *once {
 		return
@@ -141,42 +107,222 @@ func main() {
 
 	ticker := time.NewTicker(time.Duration(*tickMs) * time.Millisecond)
 	defer ticker.Stop()
+	pollC := state.pollChannel()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	fmt.Println("Rendering. Ctrl+C to exit.")
+	hup := make(chan os.Signal, 1)
+	signal.Notify(hup, syscall.SIGHUP)
+	fmt.Println("Rendering. SIGHUP to reload config. Ctrl+C to exit.")
 
 	for {
 		select {
 		case <-ticker.C:
 			render()
+		case <-pollC:
+			state.refreshGames()
+			pollC = state.pollChannel()
+		case <-hup:
+			log.Print("SIGHUP: reloading config")
+			state.reloadConfig()
+			state.refreshGames()
+			pollC = state.pollChannel()
 		case <-stop:
 			return
 		}
 	}
 }
 
-func makeDemoSelector(assetsDir string) func() scenes.Scene {
-	var (
-		cached     []sports.GameSnapshot
-		lastFetch  time.Time
-		fetchEvery = 30 * time.Second
-	)
-	return func() scenes.Scene {
-		if time.Since(lastFetch) > fetchEvery {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			games, err := sports.FetchWNBA(ctx, time.Now())
-			cancel()
-			if err == nil {
-				cached = games
-				lastFetch = time.Now()
-			}
+type appState struct {
+	mu          sync.RWMutex
+	assetsDir   string
+	demoLeagues []string
+	leagues     []string
+	favorites   map[string]map[string]bool
+	refresh     config.RefreshConfig
+	games       []sports.GameSnapshot
+	chosen      *sports.GameSnapshot
+	lastChosen  sports.GameState
+}
+
+func newAppState(assetsDir, demoLeagues string) *appState {
+	s := &appState{
+		assetsDir: assetsDir,
+		favorites: map[string]map[string]bool{},
+		refresh: config.RefreshConfig{
+			PregameSec: 600,
+			IngameSec:  120,
+			FinalSec:   900,
+		},
+	}
+	if demoLeagues != "" {
+		s.demoLeagues = splitCSV(demoLeagues)
+	}
+	return s
+}
+
+func (s *appState) reloadConfig() {
+	if s.demoLeagues != nil {
+		s.mu.Lock()
+		s.leagues = s.demoLeagues
+		s.mu.Unlock()
+		return
+	}
+	cfg, err := fetchDeviceConfig()
+	if err != nil {
+		log.Printf("config fetch failed (keeping previous): %v", err)
+		return
+	}
+	leagues := make([]string, 0, len(cfg.EnabledLeagues))
+	for _, l := range cfg.EnabledLeagues {
+		leagues = append(leagues, l.Code)
+	}
+	favs := map[string]map[string]bool{}
+	for league, teams := range cfg.FavoriteTeams {
+		set := map[string]bool{}
+		for _, t := range teams {
+			set[t.TeamID] = true
 		}
-		for _, g := range cached {
-			if g.State == sports.StateLive {
-				return scenes.Live{Game: g, AssetsDir: assetsDir}
-			}
-		}
+		favs[league] = set
+	}
+	s.mu.Lock()
+	s.leagues = leagues
+	s.favorites = favs
+	s.refresh = cfg.Refresh
+	s.mu.Unlock()
+	log.Printf("config: %d leagues (%v), refresh pre=%ds in=%ds fin=%ds",
+		len(leagues), leagues, cfg.Refresh.PregameSec, cfg.Refresh.IngameSec, cfg.Refresh.FinalSec)
+}
+
+func (s *appState) refreshGames() {
+	s.mu.RLock()
+	leagues := append([]string{}, s.leagues...)
+	favs := s.favorites
+	s.mu.RUnlock()
+
+	if len(leagues) == 0 {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	games, failures := sports.FetchAll(ctx, time.Now(), leagues)
+	cancel()
+	for code, err := range failures {
+		log.Printf("fetch %s: %v", code, err)
+	}
+	chosen := sports.SelectGame(games, favs)
+	s.mu.Lock()
+	s.games = games
+	s.chosen = chosen
+	if chosen != nil {
+		s.lastChosen = chosen.State
+	}
+	s.mu.Unlock()
+	if chosen != nil {
+		log.Printf("selected: %s %s@%s state=%s", chosen.League, chosen.Away.Abbr, chosen.Home.Abbr, chosen.State)
+	} else {
+		log.Printf("selected: none (%d games fetched)", len(games))
+	}
+}
+
+func (s *appState) currentScene() scenes.Scene {
+	s.mu.RLock()
+	chosen := s.chosen
+	assetsDir := s.assetsDir
+	s.mu.RUnlock()
+	if chosen == nil {
 		return scenes.Idle{}
 	}
+	switch chosen.State {
+	case sports.StatePre:
+		return scenes.Pregame{Game: *chosen, AssetsDir: assetsDir}
+	case sports.StateLive:
+		return scenes.Live{Game: *chosen, AssetsDir: assetsDir}
+	case sports.StateFinal:
+		return scenes.Final{Game: *chosen, AssetsDir: assetsDir}
+	}
+	return scenes.Idle{}
+}
+
+func (s *appState) pollChannel() <-chan time.Time {
+	s.mu.RLock()
+	state := s.lastChosen
+	r := s.refresh
+	s.mu.RUnlock()
+	var secs int
+	switch state {
+	case sports.StateLive:
+		secs = r.IngameSec
+	case sports.StatePre:
+		secs = r.PregameSec
+	case sports.StateFinal:
+		secs = r.FinalSec
+	default:
+		secs = r.PregameSec
+	}
+	if secs < 30 {
+		secs = 30
+	}
+	t := time.NewTimer(time.Duration(secs) * time.Second)
+	return t.C
+}
+
+func fetchDeviceConfig() (*config.DeviceConfig, error) {
+	url, err := config.MustEnv("SUPABASE_URL")
+	if err != nil {
+		return nil, err
+	}
+	anon, err := config.MustEnv("SUPABASE_ANON_KEY")
+	if err != nil {
+		return nil, err
+	}
+	dev, err := config.MustEnv("DEVICE_ID")
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	return config.FetchDeviceConfig(ctx, url, anon, dev)
+}
+
+func printDeviceConfig(cfg *config.DeviceConfig) {
+	fmt.Printf("Timezone: %s\n", cfg.Timezone)
+	fmt.Printf("Matrix:   %dx%d brightness=%d mapper=%q\n",
+		cfg.Matrix.Width, cfg.Matrix.Height, cfg.Matrix.Brightness, cfg.Matrix.PixelMapperConfig)
+	fmt.Printf("Render:   layout=%s logo=%s\n", cfg.Render.LiveLayout, cfg.Render.LogoVariant)
+	fmt.Printf("Refresh:  pregame=%ds ingame=%ds final=%ds\n",
+		cfg.Refresh.PregameSec, cfg.Refresh.IngameSec, cfg.Refresh.FinalSec)
+	fmt.Printf("Leagues:  %d enabled\n", len(cfg.EnabledLeagues))
+	for _, l := range cfg.EnabledLeagues {
+		fmt.Printf("  - %s\n", l.Code)
+	}
+	fmt.Printf("Favorites:\n")
+	for league, teams := range cfg.FavoriteTeams {
+		abbrs := make([]string, 0, len(teams))
+		for _, t := range teams {
+			abbrs = append(abbrs, t.Abbreviation)
+		}
+		fmt.Printf("  - %s: %v\n", league, abbrs)
+	}
+}
+
+func splitCSV(s string) []string {
+	out := []string{}
+	cur := ""
+	for _, r := range s {
+		if r == ',' {
+			if cur != "" {
+				out = append(out, cur)
+			}
+			cur = ""
+			continue
+		}
+		if r == ' ' {
+			continue
+		}
+		cur += string(r)
+	}
+	if cur != "" {
+		out = append(out, cur)
+	}
+	return out
 }
