@@ -1,7 +1,7 @@
 const logoCache = new Map<string, HTMLImageElement | null>()
 
 function loadImage(src: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)

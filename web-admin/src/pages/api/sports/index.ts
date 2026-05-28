@@ -24,9 +24,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       const resp = await admin
         .from('league_teams')
-        .select(
-          'team_id, name, abbreviation, conference, division, is_active, leagues(code)'
-        )
+        .select('team_id, name, abbreviation, conference, division, is_active, leagues(code)')
         .eq('is_active', true)
       data = resp.data
       error = resp.error
@@ -42,9 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       })
       const resp = await userClient
         .from('league_teams')
-        .select(
-          'team_id, name, abbreviation, conference, division, is_active, leagues(code)'
-        )
+        .select('team_id, name, abbreviation, conference, division, is_active, leagues(code)')
         .eq('is_active', true)
       data = resp.data
       error = resp.error

@@ -1,5 +1,11 @@
 import { ClientDisplay } from './display'
-import { renderIdleScene, renderPregameScene, renderLiveStacked, renderFinalScene, renderLiveBigLogos } from './scenes'
+import {
+  renderIdleScene,
+  renderPregameScene,
+  renderLiveStacked,
+  renderFinalScene,
+  renderLiveBigLogos,
+} from './scenes'
 import { DisplayConfig, GameSnapshot, GameState } from './types'
 
 export class PreviewGenerator {

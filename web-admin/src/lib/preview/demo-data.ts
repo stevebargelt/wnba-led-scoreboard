@@ -15,7 +15,12 @@ export function getPeriodName(sportCode: string, period: number): string {
 }
 
 const WNBA_SPORT: Sport = { id: 'basketball', name: 'Basketball', code: 'wnba' }
-const WNBA_LEAGUE: League = { id: 'wnba', name: 'WNBA', abbreviation: 'WNBA', sport_id: 'basketball' }
+const WNBA_LEAGUE: League = {
+  id: 'wnba',
+  name: 'WNBA',
+  abbreviation: 'WNBA',
+  sport_id: 'basketball',
+}
 const MERCURY: TeamInfo = { id: '11', name: 'Mercury', abbr: 'PHX', score: 0 }
 const SPARKS: TeamInfo = { id: '6', name: 'Sparks', abbr: 'LA', score: 0 }
 

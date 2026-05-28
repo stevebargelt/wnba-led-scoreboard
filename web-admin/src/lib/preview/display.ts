@@ -40,13 +40,7 @@ export class ClientDisplay {
     this.ctx.fillText(text, x, y)
   }
 
-  drawImage(
-    image: HTMLImageElement,
-    x: number,
-    y: number,
-    width?: number,
-    height?: number
-  ): void {
+  drawImage(image: HTMLImageElement, x: number, y: number, width?: number, height?: number): void {
     if (width !== undefined && height !== undefined) {
       this.ctx.drawImage(image, x, y, width, height)
     } else {

@@ -21,7 +21,11 @@ interface DisplayPreviewProps {
 
 type SportType = 'wnba' | 'nhl'
 
-export function DisplayPreview({ deviceId: _deviceId, renderConfig, matrixConfig }: DisplayPreviewProps) {
+export function DisplayPreview({
+  deviceId: _deviceId,
+  renderConfig,
+  matrixConfig,
+}: DisplayPreviewProps) {
   const [selectedScene, setSelectedScene] = useState<SceneType>('live')
   const [selectedSport, setSelectedSport] = useState<SportType>('wnba')
   const [generating, setGenerating] = useState(false)
@@ -58,7 +62,8 @@ export function DisplayPreview({ deviceId: _deviceId, renderConfig, matrixConfig
         height: matrixConfig?.height ?? 32,
         brightness: matrixConfig?.brightness ?? 75,
         logo_variant: renderConfig?.logo_variant ?? 'mini',
-        live_layout: selectedScene === 'live_big' ? 'big-logos' : (renderConfig?.live_layout ?? 'stacked'),
+        live_layout:
+          selectedScene === 'live_big' ? 'big-logos' : (renderConfig?.live_layout ?? 'stacked'),
       }
 
       let snapshot = null

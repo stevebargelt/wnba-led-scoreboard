@@ -23,7 +23,10 @@ export function renderIdleScene(display: ClientDisplay): void {
   display.drawText(msg.slice(0, 20), 1, 1, 8, FONT_SMALL, 'rgb(180, 180, 180)')
 }
 
-export async function renderLiveStacked(display: ClientDisplay, snapshot: GameSnapshot): Promise<void> {
+export async function renderLiveStacked(
+  display: ClientDisplay,
+  snapshot: GameSnapshot
+): Promise<void> {
   display.clear(0, 0, 0)
 
   const canvas = display.getCanvas()
@@ -38,25 +41,49 @@ export async function renderLiveStacked(display: ClientDisplay, snapshot: GameSn
   const scoreRightX = w - 1
 
   // Away row
-  const awayLogo = await loadTeamLogo(snapshot.away.id, snapshot.away.abbr, snapshot.sport.code, 'mini')
+  const awayLogo = await loadTeamLogo(
+    snapshot.away.id,
+    snapshot.away.abbr,
+    snapshot.sport.code,
+    'mini'
+  )
   if (awayLogo) {
     display.drawImage(awayLogo, logoX, topY, 10, 10)
   } else {
     display.drawRectangle(logoX, topY, 10, 10, undefined, 'rgb(100, 100, 100)')
   }
-  display.drawText(snapshot.away.abbr.slice(0, 4), abbrX, topY + 1, 8, FONT_SMALL, 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.away.abbr.slice(0, 4),
+    abbrX,
+    topY + 1,
+    8,
+    FONT_SMALL,
+    'rgb(200, 200, 200)'
+  )
   const awayScore = String(snapshot.away.score)
   const awayScoreX = scoreRightX - display.getTextWidth(awayScore, 12, FONT_LARGE)
   display.drawText(awayScore, awayScoreX, topY, 12, FONT_LARGE, 'rgb(255, 255, 255)')
 
   // Home row
-  const homeLogo = await loadTeamLogo(snapshot.home.id, snapshot.home.abbr, snapshot.sport.code, 'mini')
+  const homeLogo = await loadTeamLogo(
+    snapshot.home.id,
+    snapshot.home.abbr,
+    snapshot.sport.code,
+    'mini'
+  )
   if (homeLogo) {
     display.drawImage(homeLogo, logoX, botY, 10, 10)
   } else {
     display.drawRectangle(logoX, botY, 10, 10, undefined, 'rgb(100, 100, 100)')
   }
-  display.drawText(snapshot.home.abbr.slice(0, 4), abbrX, botY + 1, 8, FONT_SMALL, 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.home.abbr.slice(0, 4),
+    abbrX,
+    botY + 1,
+    8,
+    FONT_SMALL,
+    'rgb(200, 200, 200)'
+  )
   const homeScore = String(snapshot.home.score)
   const homeScoreX = scoreRightX - display.getTextWidth(homeScore, 12, FONT_LARGE)
   display.drawText(homeScore, homeScoreX, botY, 12, FONT_LARGE, 'rgb(255, 255, 255)')
@@ -69,7 +96,10 @@ export async function renderLiveStacked(display: ClientDisplay, snapshot: GameSn
   display.drawText(statusText, statusX, statusY, 8, FONT_SMALL, 'rgb(0, 255, 0)')
 }
 
-export async function renderPregameScene(display: ClientDisplay, snapshot: GameSnapshot): Promise<void> {
+export async function renderPregameScene(
+  display: ClientDisplay,
+  snapshot: GameSnapshot
+): Promise<void> {
   display.clear(0, 0, 0)
 
   const canvas = display.getCanvas()
@@ -79,12 +109,22 @@ export async function renderPregameScene(display: ClientDisplay, snapshot: GameS
   const topY = 2
   const logoSize = 10
 
-  const awayLogo = await loadTeamLogo(snapshot.away.id, snapshot.away.abbr, snapshot.sport.code, 'mini')
+  const awayLogo = await loadTeamLogo(
+    snapshot.away.id,
+    snapshot.away.abbr,
+    snapshot.sport.code,
+    'mini'
+  )
   if (awayLogo) {
     display.drawImage(awayLogo, 2, topY, logoSize, logoSize)
   }
 
-  const homeLogo = await loadTeamLogo(snapshot.home.id, snapshot.home.abbr, snapshot.sport.code, 'mini')
+  const homeLogo = await loadTeamLogo(
+    snapshot.home.id,
+    snapshot.home.abbr,
+    snapshot.sport.code,
+    'mini'
+  )
   if (homeLogo) {
     display.drawImage(homeLogo, w - logoSize - 2, topY, logoSize, logoSize)
   }
@@ -111,7 +151,10 @@ export async function renderPregameScene(display: ClientDisplay, snapshot: GameS
   display.drawText(startTime, 1, h - 9, 8, FONT_SMALL, 'rgb(150, 150, 150)')
 }
 
-export async function renderFinalScene(display: ClientDisplay, snapshot: GameSnapshot): Promise<void> {
+export async function renderFinalScene(
+  display: ClientDisplay,
+  snapshot: GameSnapshot
+): Promise<void> {
   display.clear(0, 0, 0)
 
   const canvas = display.getCanvas()
@@ -125,30 +168,57 @@ export async function renderFinalScene(display: ClientDisplay, snapshot: GameSna
   const abbrX = 13
   const scoreRightX = w - 1
 
-  const awayLogo = await loadTeamLogo(snapshot.away.id, snapshot.away.abbr, snapshot.sport.code, 'mini')
+  const awayLogo = await loadTeamLogo(
+    snapshot.away.id,
+    snapshot.away.abbr,
+    snapshot.sport.code,
+    'mini'
+  )
   if (awayLogo) {
     display.drawImage(awayLogo, logoX, topY, 10, 10)
   } else {
     display.drawRectangle(logoX, topY, 10, 10, undefined, 'rgb(100, 100, 100)')
   }
-  display.drawText(snapshot.away.abbr.slice(0, 4), abbrX, topY + 1, 8, FONT_SMALL, 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.away.abbr.slice(0, 4),
+    abbrX,
+    topY + 1,
+    8,
+    FONT_SMALL,
+    'rgb(200, 200, 200)'
+  )
   const awayScore = String(snapshot.away.score)
   const awayScoreX = scoreRightX - display.getTextWidth(awayScore, 12, FONT_LARGE)
   display.drawText(awayScore, awayScoreX, topY, 12, FONT_LARGE, 'rgb(255, 255, 255)')
 
-  const homeLogo = await loadTeamLogo(snapshot.home.id, snapshot.home.abbr, snapshot.sport.code, 'mini')
+  const homeLogo = await loadTeamLogo(
+    snapshot.home.id,
+    snapshot.home.abbr,
+    snapshot.sport.code,
+    'mini'
+  )
   if (homeLogo) {
     display.drawImage(homeLogo, logoX, botY, 10, 10)
   } else {
     display.drawRectangle(logoX, botY, 10, 10, undefined, 'rgb(100, 100, 100)')
   }
-  display.drawText(snapshot.home.abbr.slice(0, 4), abbrX, botY + 1, 8, FONT_SMALL, 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.home.abbr.slice(0, 4),
+    abbrX,
+    botY + 1,
+    8,
+    FONT_SMALL,
+    'rgb(200, 200, 200)'
+  )
   const homeScore = String(snapshot.home.score)
   const homeScoreX = scoreRightX - display.getTextWidth(homeScore, 12, FONT_LARGE)
   display.drawText(homeScore, homeScoreX, botY, 12, FONT_LARGE, 'rgb(255, 255, 255)')
 }
 
-export async function renderLiveBigLogos(display: ClientDisplay, snapshot: GameSnapshot): Promise<void> {
+export async function renderLiveBigLogos(
+  display: ClientDisplay,
+  snapshot: GameSnapshot
+): Promise<void> {
   display.clear(0, 0, 0)
 
   const canvas = display.getCanvas()
@@ -160,27 +230,51 @@ export async function renderLiveBigLogos(display: ClientDisplay, snapshot: GameS
   const statusX = Math.floor((w - statusWidth) / 2)
   display.drawText(statusText, statusX, 0, 8, FONT_SMALL, 'rgb(150, 150, 150)')
 
-  const yLogoTop = 1 + 8  // 1 + approximate FONT_SMALL text height
+  const yLogoTop = 1 + 8 // 1 + approximate FONT_SMALL text height
   const desiredLogoH = h > 32 ? 20 : 16
 
-  const homeLogo = await loadTeamLogo(snapshot.home.id, snapshot.home.abbr, snapshot.sport.code, 'banner')
+  const homeLogo = await loadTeamLogo(
+    snapshot.home.id,
+    snapshot.home.abbr,
+    snapshot.sport.code,
+    'banner'
+  )
   if (homeLogo) {
     display.drawImage(homeLogo, 1, yLogoTop, desiredLogoH, desiredLogoH)
   } else {
     display.drawRectangle(1, yLogoTop, desiredLogoH, desiredLogoH, undefined, 'rgb(100, 100, 100)')
   }
 
-  const awayLogo = await loadTeamLogo(snapshot.away.id, snapshot.away.abbr, snapshot.sport.code, 'banner')
+  const awayLogo = await loadTeamLogo(
+    snapshot.away.id,
+    snapshot.away.abbr,
+    snapshot.sport.code,
+    'banner'
+  )
   if (awayLogo) {
     display.drawImage(awayLogo, w - desiredLogoH - 2, yLogoTop, desiredLogoH, desiredLogoH)
   } else {
-    display.drawRectangle(w - desiredLogoH - 2, yLogoTop, desiredLogoH, desiredLogoH, undefined, 'rgb(100, 100, 100)')
+    display.drawRectangle(
+      w - desiredLogoH - 2,
+      yLogoTop,
+      desiredLogoH,
+      desiredLogoH,
+      undefined,
+      'rgb(100, 100, 100)'
+    )
   }
 
   const yAbbr = h - 9
   display.drawText(snapshot.home.abbr.slice(0, 4), 1, yAbbr, 8, FONT_SMALL, 'rgb(200, 200, 200)')
   const awayAbbrWidth = display.getTextWidth(snapshot.away.abbr.slice(0, 4), 8, FONT_SMALL)
-  display.drawText(snapshot.away.abbr.slice(0, 4), w - awayAbbrWidth - 2, yAbbr, 8, FONT_SMALL, 'rgb(200, 200, 200)')
+  display.drawText(
+    snapshot.away.abbr.slice(0, 4),
+    w - awayAbbrWidth - 2,
+    yAbbr,
+    8,
+    FONT_SMALL,
+    'rgb(200, 200, 200)'
+  )
 
   const homeScore = String(snapshot.home.score)
   const awayScore = String(snapshot.away.score)
@@ -195,6 +289,13 @@ export async function renderLiveBigLogos(display: ClientDisplay, snapshot: GameS
   const centerX = Math.floor(w / 2)
   const gap = 1
   const homeScoreWidth = display.getTextWidth(homeScore, scoreFontSize, scoreFont)
-  display.drawText(homeScore, centerX - gap - homeScoreWidth, scoreY, scoreFontSize, scoreFont, 'rgb(255, 255, 255)')
+  display.drawText(
+    homeScore,
+    centerX - gap - homeScoreWidth,
+    scoreY,
+    scoreFontSize,
+    scoreFont,
+    'rgb(255, 255, 255)'
+  )
   display.drawText(awayScore, centerX + gap, scoreY, scoreFontSize, scoreFont, 'rgb(255, 255, 255)')
 }

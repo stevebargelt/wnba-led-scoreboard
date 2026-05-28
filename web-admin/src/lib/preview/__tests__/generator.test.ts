@@ -1,6 +1,12 @@
 import { PreviewGenerator } from '../generator'
 import { DisplayConfig, GameSnapshot, GameState } from '../types'
-import { renderIdleScene, renderPregameScene, renderLiveStacked, renderFinalScene, renderLiveBigLogos } from '../scenes'
+import {
+  renderIdleScene,
+  renderPregameScene,
+  renderLiveStacked,
+  renderFinalScene,
+  renderLiveBigLogos,
+} from '../scenes'
 
 jest.mock('../scenes', () => ({
   renderIdleScene: jest.fn(),
@@ -93,13 +99,19 @@ describe('PreviewGenerator', () => {
 
   describe('LIVE state', () => {
     it('calls renderLiveStacked for LIVE state with stacked layout', async () => {
-      await generator.generatePreview(makeConfig({ live_layout: 'stacked' }), makeSnapshot(GameState.LIVE))
+      await generator.generatePreview(
+        makeConfig({ live_layout: 'stacked' }),
+        makeSnapshot(GameState.LIVE)
+      )
       expect(mockRenderLiveStacked).toHaveBeenCalledTimes(1)
       expect(mockRenderLiveBigLogos).not.toHaveBeenCalled()
     })
 
     it('calls renderLiveBigLogos for LIVE state with big-logos layout', async () => {
-      await generator.generatePreview(makeConfig({ live_layout: 'big-logos' }), makeSnapshot(GameState.LIVE))
+      await generator.generatePreview(
+        makeConfig({ live_layout: 'big-logos' }),
+        makeSnapshot(GameState.LIVE)
+      )
       expect(mockRenderLiveBigLogos).toHaveBeenCalledTimes(1)
       expect(mockRenderLiveStacked).not.toHaveBeenCalled()
     })

@@ -56,7 +56,10 @@ describe('PreviewGenerator integration (no scene mocks)', () => {
 
   it('generates a valid PNG data URL for WNBA LIVE big-logos state', async () => {
     const snapshot = createDemoLiveSnapshot()
-    const result = await generator.generatePreview(makeConfig({ live_layout: 'big-logos' }), snapshot)
+    const result = await generator.generatePreview(
+      makeConfig({ live_layout: 'big-logos' }),
+      snapshot
+    )
     expect(result.startsWith('data:image/png;base64,')).toBe(true)
   })
 
