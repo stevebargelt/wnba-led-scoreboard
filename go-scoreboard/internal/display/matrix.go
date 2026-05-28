@@ -34,7 +34,6 @@ func (m *MatrixDisplay) Init() error {
 		"--led-pwm-bits=11",
 		"--led-pwm-lsb-nanoseconds=130",
 		"--led-gpio-mapping=adafruit-hat",
-		"--led-no-hardware-pulse",
 	}
 
 	cargs := make([]*C.char, len(args))
