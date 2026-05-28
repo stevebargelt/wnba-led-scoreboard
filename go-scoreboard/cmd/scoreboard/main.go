@@ -25,6 +25,7 @@ func main() {
 	once := flag.Bool("once", false, "render a single frame and exit")
 	tickMs := flag.Int("tick-ms", 1000, "render interval in milliseconds")
 	fetchWNBA := flag.Bool("fetch-wnba", false, "fetch today's WNBA games and print, then exit")
+	fetchNHL := flag.Bool("fetch-nhl", false, "fetch today's NHL games and print, then exit")
 	fetchConfig := flag.Bool("fetch-config", false, "fetch device config from Supabase and print, then exit")
 	envFile := flag.String("env", "../.env", "path to .env file (existing vars take precedence)")
 	demo := flag.Bool("demo", false, "fetch live WNBA games and render the first one (falls back to Idle)")
@@ -80,6 +81,16 @@ func main() {
 		return
 	}
 
+	printGames := func(label string, games []sports.GameSnapshot) {
+		fmt.Printf("Fetched %d %s game(s):\n", len(games), label)
+		for _, g := range games {
+			fmt.Printf("  [%s] %s @ %s  %d-%d  P%d %s  (%s)\n",
+				g.State, g.Away.Abbr, g.Home.Abbr,
+				g.Away.Score, g.Home.Score,
+				g.Period, g.DisplayClock, g.StatusDetail)
+		}
+	}
+
 	if *fetchWNBA {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
@@ -88,13 +99,19 @@ func main() {
 			fmt.Fprintf(os.Stderr, "fetch: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Fetched %d game(s):\n", len(games))
-		for _, g := range games {
-			fmt.Printf("  [%s] %s @ %s  %d-%d  P%d %s  (%s)\n",
-				g.State, g.Away.Abbr, g.Home.Abbr,
-				g.Away.Score, g.Home.Score,
-				g.Period, g.DisplayClock, g.StatusDetail)
+		printGames("WNBA", games)
+		return
+	}
+
+	if *fetchNHL {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		games, err := sports.FetchNHL(ctx, time.Now())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "fetch: %v\n", err)
+			os.Exit(1)
 		}
+		printGames("NHL", games)
 		return
 	}
 
