@@ -5,6 +5,7 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"strings"
 	"time"
 
 	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/render"
@@ -72,10 +73,19 @@ func (l Live) Render(width, height int, _ time.Time) *image.RGBA {
 	drawRow(l.Game.Away, topY)
 	drawRow(l.Game.Home, botY)
 
-	status := fmt.Sprintf("%s %s", periodName(l.Game.Period), l.Game.DisplayClock)
-	render.DrawText(img, status, smallFace, statusColor, width/2, height-1, render.AlignCenter)
+	render.DrawText(img, statusLine(l.Game), smallFace, statusColor, width/2, height-1, render.AlignCenter)
 
 	return img
+}
+
+// statusLine builds the bottom status text for a live game. It prefers ESPN's
+// human-readable detail for intermission states (e.g. Halftime) and otherwise
+// shows the period name plus the game clock.
+func statusLine(g sports.GameSnapshot) string {
+	if strings.EqualFold(strings.TrimSpace(g.StatusDetail), "halftime") {
+		return "Halftime"
+	}
+	return strings.TrimSpace(periodName(g.Period) + " " + g.DisplayClock)
 }
 
 func periodName(period int) string {

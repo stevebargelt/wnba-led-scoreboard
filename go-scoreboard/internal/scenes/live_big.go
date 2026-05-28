@@ -31,8 +31,7 @@ func (lb LiveBig) Render(width, height int, _ time.Time) *image.RGBA {
 	abbrColor := color.RGBA{R: 220, G: 220, B: 220, A: 255}
 	scoreColor := color.RGBA{R: 255, G: 255, B: 255, A: 255}
 
-	status := fmt.Sprintf("%s %s", periodName(lb.Game.Period), lb.Game.DisplayClock)
-	render.DrawText(img, status, smallFace, statusColor, width/2, 7, render.AlignCenter)
+	render.DrawText(img, statusLine(lb.Game), smallFace, statusColor, width/2, 7, render.AlignCenter)
 
 	const (
 		logoW        = 20
