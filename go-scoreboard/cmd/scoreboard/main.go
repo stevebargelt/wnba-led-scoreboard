@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/display"
 	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/scenes"
+	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/sports"
 )
 
 const (
@@ -21,7 +23,26 @@ func main() {
 	sim := flag.Bool("sim", false, "use simulator display (saves to out/frame.png)")
 	once := flag.Bool("once", false, "render a single frame and exit")
 	tickMs := flag.Int("tick-ms", 1000, "render interval in milliseconds")
+	fetchWNBA := flag.Bool("fetch-wnba", false, "fetch today's WNBA games and print, then exit")
 	flag.Parse()
+
+	if *fetchWNBA {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		games, err := sports.FetchWNBA(ctx, time.Now())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "fetch: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Fetched %d game(s):\n", len(games))
+		for _, g := range games {
+			fmt.Printf("  [%s] %s @ %s  %d-%d  P%d %s  (%s)\n",
+				g.State, g.Away.Abbr, g.Home.Abbr,
+				g.Away.Score, g.Home.Score,
+				g.Period, g.DisplayClock, g.StatusDetail)
+		}
+		return
+	}
 
 	var d display.Display
 	if *sim {
