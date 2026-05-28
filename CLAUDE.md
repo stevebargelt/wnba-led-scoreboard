@@ -19,6 +19,82 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Web Admin**: Next.js interface for configuration
 - **No agents, WebSockets, or edge functions** - Simple, direct integration
 
+## Go Scoreboard (ACTIVE rewrite — read this first)
+
+The Python app (`src/`, `app.py`) is **frozen**. Active development of the live-rendering
+scoreboard happens in **`go-scoreboard/`** (Go). It produces a single static binary, which
+solved the Python dependency pain on the Pi (venv, pip, Pillow C headers, rgbmatrix build
+failures). The web admin (`web-admin/`) and Supabase schema are unchanged and shared by both.
+
+### This project is different from most Forge projects
+- **Do NOT route Go scoreboard work through the Forge pipeline.** Forge containers can't reach
+  the Pi's GPIO hardware, and the dev loop depends on building/running on the Pi. Work on it
+  **directly**: Claude edits the Go source, commits, and drives the Pi over SSH. The "don't edit
+  source / delegate to engineer" rule in the forge-orchestrator block below does **not** apply to
+  `go-scoreboard/`.
+- The user collaborates directly here (tech-lead-style), not as a pure product owner.
+
+### Hardware + remote target
+- Pi: hostname `led-scoreboard-3`, SSH alias `led-scoreboard-3` (in `~/.ssh/config`, key auth).
+  DHCP IP has been `192.168.68.62` but can change; mDNS (`.local`) does not always resolve from
+  the Mac — if SSH fails, get the current IP and update `~/.ssh/config`.
+- Go is installed on the Pi at `~/go-sdk/` (on PATH via `~/.profile` and `~/.bashrc`); use a
+  login shell (`ssh led-scoreboard-3 'bash -lc "go ..."'`) so `go` is found.
+- Panel config is the verified set, hardcoded in `internal/display/matrix.go`:
+  `--led-rows=32 --led-cols=32 --led-chain=2 --led-pixel-mapper=Rotate:180
+  --led-slowdown-gpio=4 --led-gpio-mapping=adafruit-hat --led-brightness=80`.
+- `snd_bcm2835` is blacklisted on the Pi (`/etc/modprobe.d/blacklist-rgb-matrix.conf`); this is
+  required for hardware PWM. Without it you must pass `--led-no-hardware-pulse`, which produces
+  garbage (dotted-red-column artifacts) on this Pi 4.
+- The rgbmatrix C library is built at `/home/pi/rpi-rgb-led-matrix/lib/librgbmatrix.a`
+  (headers in `.../include/`). The Go matrix backend links it via CGO `#cgo` directives — there
+  is **no** third-party Go LED dependency (the 2018 `mcuadros/go-rpi-rgb-led-matrix` lacked
+  GPIOSlowdown/PixelMapperConfig, so we wrote a thin direct CGO wrapper instead).
+
+### Build & run
+```bash
+# From go-scoreboard/ — Mac (dev/simulator, no CGO, uses matrix_stub.go):
+go build -o scoreboard ./cmd/scoreboard
+./scoreboard --sim --once            # writes out/frame.png (no hardware)
+
+# On the Pi (hardware, links librgbmatrix via -tags matrix):
+go build -tags matrix -o scoreboard-matrix ./cmd/scoreboard
+sudo ./scoreboard-matrix             # GPIO needs root
+
+# Useful flags: --fetch-wnba --fetch-nhl --fetch-config --demo-leagues=wnba,nhl
+#               --env <path> --assets-dir <path> --tick-ms N --once
+```
+
+### The dev loop (exact process)
+1. Edit Go source on the **Mac**.
+2. Verify locally: `go build ./...` and a `--sim --once` render (read `out/frame.png`).
+3. `git commit` + `git push` from the Mac.
+4. On the Pi: `git pull`, then rebuild (`go build -tags matrix ...`), then run.
+5. To *see* a render without a hardware run, `--sim --once` on the Pi and `scp` the
+   `out/frame.png` back to the Mac to view it (logos only exist on the Pi).
+
+### Gotchas (hard-won)
+- **Never run `go get` or `go mod tidy` on the Pi.** Do all module changes on the Mac, commit,
+  and let the Pi consume `go.mod`/`go.sum` read-only via `git pull`. Mutating modules on the Pi
+  desyncs go.mod and makes `git pull` fail with "Please commit your changes." (This is why early
+  sessions kept running `git checkout -- go.mod`; with modules touched only on the Mac, the Pi
+  stays clean and that workaround is unnecessary.)
+- **Logos are gitignored** (root `.gitignore` swallows all `assets/`) and live only on the Pi.
+  They are white silhouettes by default; regenerate color variants with
+  `go run ./cmd/fetch-logos --assets-dir ../assets` (WNBA only so far). Fonts, by contrast, are
+  committed and `//go:embed`ed from `internal/render/assets/` (a local `.gitignore` override
+  re-includes them).
+- **ESPN start times omit seconds** (e.g. `2026-05-29T00:00Z`), which `time.RFC3339` rejects.
+  Use `sports.parseEventTime` (handles both layouts) — a raw `time.Parse(time.RFC3339, ...)`
+  silently yields the zero time, which renders as a bogus "4:07 PM" in `America/Los_Angeles`.
+- **`.local` mDNS is flaky from the Mac**; prefer the IP/alias and re-check on connection failure.
+- **Device-config fields not yet honored by the Go app**: `matrix_config` (size/brightness/
+  mapper), `render_config` (layout/logo variant), and `timezone` are read but ignored — the app
+  uses hardcoded matrix settings, stacked+mini rendering, and the Pi's system TZ. Only
+  `enabled_leagues`, `favorite_teams`, and `refresh_config` actually drive behavior. Don't expose
+  the ignored settings in the web UI as if they work.
+- The Go module's `go` directive is `1.25.0`; the Pi runs Go 1.26.x and builds it fine.
+
 ## Development Tools
 
 ### Core Scoreboard Application (Python)
@@ -307,6 +383,7 @@ SIMULATION_MODE=true          # Force simulation (no hardware)
 DEMO_MODE=true               # Run with fake games
 TIMEZONE=America/New_York    # Override timezone
 BRIGHTNESS=75                # LED brightness (1-100)
+MATRIX_PIXEL_MAPPER_CONFIG=Rotate:180  # e.g. for panels requiring rotation (S-P4-2020-A3)
 ```
 
 ## Troubleshooting Guide
