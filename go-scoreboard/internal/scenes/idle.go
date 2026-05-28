@@ -6,9 +6,6 @@ import (
 	"image/draw"
 	"time"
 
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
-
 	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/render"
 )
 
@@ -30,19 +27,7 @@ func (Idle) Render(width, height int, now time.Time) *image.RGBA {
 	teal := color.RGBA{R: 0, G: 200, B: 200, A: 255}
 	white := color.RGBA{R: 230, G: 230, B: 230, A: 255}
 
-	drawCentered(img, "WNBA", headerFace, teal, 7)
-	drawCentered(img, now.Format("3:04"), clockFace, white, 26)
+	render.DrawText(img, "WNBA", headerFace, teal, width/2, 7, render.AlignCenter)
+	render.DrawText(img, now.Format("3:04"), clockFace, white, width/2, 26, render.AlignCenter)
 	return img
-}
-
-func drawCentered(img *image.RGBA, s string, face font.Face, c color.Color, baselineY int) {
-	w := font.MeasureString(face, s).Round()
-	x := (img.Bounds().Dx() - w) / 2
-	d := &font.Drawer{
-		Dst:  img,
-		Src:  image.NewUniform(c),
-		Face: face,
-		Dot:  fixed.Point26_6{X: fixed.I(x), Y: fixed.I(baselineY)},
-	}
-	d.DrawString(s)
 }

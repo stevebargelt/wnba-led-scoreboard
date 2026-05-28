@@ -24,6 +24,8 @@ func main() {
 	once := flag.Bool("once", false, "render a single frame and exit")
 	tickMs := flag.Int("tick-ms", 1000, "render interval in milliseconds")
 	fetchWNBA := flag.Bool("fetch-wnba", false, "fetch today's WNBA games and print, then exit")
+	demo := flag.Bool("demo", false, "fetch live WNBA games and render the first one (falls back to Idle)")
+	assetsDir := flag.String("assets-dir", "../assets", "path to assets directory (for team logos)")
 	flag.Parse()
 
 	if *fetchWNBA {
@@ -57,9 +59,12 @@ func main() {
 	}
 	defer d.Close()
 
-	scene := scenes.Idle{}
+	chooseScene := func() scenes.Scene { return scenes.Idle{} }
+	if *demo {
+		chooseScene = makeDemoSelector(*assetsDir)
+	}
 
-	render := func() { d.SetImage(scene.Render(width, height, time.Now())) }
+	render := func() { d.SetImage(chooseScene().Render(width, height, time.Now())) }
 	render()
 	if *once {
 		return
@@ -79,5 +84,30 @@ func main() {
 		case <-stop:
 			return
 		}
+	}
+}
+
+func makeDemoSelector(assetsDir string) func() scenes.Scene {
+	var (
+		cached     []sports.GameSnapshot
+		lastFetch  time.Time
+		fetchEvery = 30 * time.Second
+	)
+	return func() scenes.Scene {
+		if time.Since(lastFetch) > fetchEvery {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			games, err := sports.FetchWNBA(ctx, time.Now())
+			cancel()
+			if err == nil {
+				cached = games
+				lastFetch = time.Now()
+			}
+		}
+		for _, g := range cached {
+			if g.State == sports.StateLive {
+				return scenes.Live{Game: g, AssetsDir: assetsDir}
+			}
+		}
+		return scenes.Idle{}
 	}
 }
