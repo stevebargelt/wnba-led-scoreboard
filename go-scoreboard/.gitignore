@@ -1,6 +1,11 @@
 # Build output (binary at repo root, not the cmd/scoreboard/ source dir)
 /scoreboard
+/scoreboard-matrix
 /out/
 
 # Editor
 .vscode/
+
+# Re-include embedded assets (root .gitignore ignores all `assets/`)
+!internal/render/assets/
+!internal/render/assets/*

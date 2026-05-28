@@ -3,16 +3,24 @@ package main
 import (
 	"flag"
 	"fmt"
-	"image/color"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/display"
+	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/scenes"
+)
+
+const (
+	width  = 64
+	height = 32
 )
 
 func main() {
 	sim := flag.Bool("sim", false, "use simulator display (saves to out/frame.png)")
+	once := flag.Bool("once", false, "render a single frame and exit")
+	tickMs := flag.Int("tick-ms", 1000, "render interval in milliseconds")
 	flag.Parse()
 
 	var d display.Display
@@ -28,36 +36,27 @@ func main() {
 	}
 	defer d.Close()
 
-	const width, height = 64, 32
-	img := display.NewImage(width, height)
+	scene := scenes.Idle{}
 
-	half := width / 2
-	mid := height / 2
-
-	red := color.RGBA{R: 255, A: 255}
-	green := color.RGBA{G: 255, A: 255}
-	blue := color.RGBA{B: 255, A: 255}
-	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			switch {
-			case x < half && y < mid:
-				img.SetRGBA(x, y, red)
-			case x >= half && y < mid:
-				img.SetRGBA(x, y, green)
-			case x < half && y >= mid:
-				img.SetRGBA(x, y, blue)
-			default:
-				img.SetRGBA(x, y, white)
-			}
-		}
+	render := func() { d.SetImage(scene.Render(width, height, time.Now())) }
+	render()
+	if *once {
+		return
 	}
 
-	d.SetImage(img)
-	fmt.Println("Test pattern displayed. Press Ctrl+C to exit.")
+	ticker := time.NewTicker(time.Duration(*tickMs) * time.Millisecond)
+	defer ticker.Stop()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-	<-stop
+	fmt.Println("Rendering. Ctrl+C to exit.")
+
+	for {
+		select {
+		case <-ticker.C:
+			render()
+		case <-stop:
+			return
+		}
+	}
 }
