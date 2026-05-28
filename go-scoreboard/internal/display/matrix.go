@@ -56,7 +56,7 @@ func (m *MatrixDisplay) Init() error {
 		return fmt.Errorf("led_matrix_create_from_options_const_argv returned NULL (check flags)")
 	}
 	m.matrix = mat
-	m.canvas = C.led_matrix_get_canvas(mat)
+	m.canvas = C.led_matrix_create_offscreen_canvas(mat)
 	return nil
 }
 
@@ -77,6 +77,7 @@ func (m *MatrixDisplay) SetImage(img *image.RGBA) {
 			)
 		}
 	}
+	m.canvas = C.led_matrix_swap_on_vsync(m.matrix, m.canvas)
 }
 
 func (m *MatrixDisplay) Close() {
