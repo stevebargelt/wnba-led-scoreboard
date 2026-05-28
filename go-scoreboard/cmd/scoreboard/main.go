@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/config"
 	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/display"
 	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/scenes"
 	"github.com/stevebargelt/wnba-led-scoreboard/go-scoreboard/internal/sports"
@@ -24,9 +25,60 @@ func main() {
 	once := flag.Bool("once", false, "render a single frame and exit")
 	tickMs := flag.Int("tick-ms", 1000, "render interval in milliseconds")
 	fetchWNBA := flag.Bool("fetch-wnba", false, "fetch today's WNBA games and print, then exit")
+	fetchConfig := flag.Bool("fetch-config", false, "fetch device config from Supabase and print, then exit")
+	envFile := flag.String("env", "../.env", "path to .env file (existing vars take precedence)")
 	demo := flag.Bool("demo", false, "fetch live WNBA games and render the first one (falls back to Idle)")
 	assetsDir := flag.String("assets-dir", "../assets", "path to assets directory (for team logos)")
 	flag.Parse()
+
+	if err := config.LoadEnvFile(*envFile); err != nil {
+		fmt.Fprintf(os.Stderr, "env: %v\n", err)
+		os.Exit(1)
+	}
+
+	if *fetchConfig {
+		url, err := config.MustEnv("SUPABASE_URL")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+		anon, err := config.MustEnv("SUPABASE_ANON_KEY")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+		dev, err := config.MustEnv("DEVICE_ID")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		cfg, err := config.FetchDeviceConfig(ctx, url, anon, dev)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "fetch: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Timezone: %s\n", cfg.Timezone)
+		fmt.Printf("Matrix:   %dx%d brightness=%d mapper=%q\n",
+			cfg.Matrix.Width, cfg.Matrix.Height, cfg.Matrix.Brightness, cfg.Matrix.PixelMapperConfig)
+		fmt.Printf("Render:   layout=%s logo=%s\n", cfg.Render.LiveLayout, cfg.Render.LogoVariant)
+		fmt.Printf("Refresh:  pregame=%ds ingame=%ds final=%ds\n",
+			cfg.Refresh.PregameSec, cfg.Refresh.IngameSec, cfg.Refresh.FinalSec)
+		fmt.Printf("Leagues:  %d enabled\n", len(cfg.EnabledLeagues))
+		for _, l := range cfg.EnabledLeagues {
+			fmt.Printf("  - %s\n", l.Code)
+		}
+		fmt.Printf("Favorites:\n")
+		for league, teams := range cfg.FavoriteTeams {
+			abbrs := make([]string, 0, len(teams))
+			for _, t := range teams {
+				abbrs = append(abbrs, t.Abbreviation)
+			}
+			fmt.Printf("  - %s: %v\n", league, abbrs)
+		}
+		return
+	}
 
 	if *fetchWNBA {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
