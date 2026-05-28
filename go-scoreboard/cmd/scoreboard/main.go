@@ -22,6 +22,8 @@ const (
 	height = 32
 
 	liveMaxPollSec = 15
+	minPollSec     = 30
+	idleBackoffSec = 1800
 )
 
 func main() {
@@ -144,7 +146,6 @@ type appState struct {
 	refresh     config.RefreshConfig
 	games       []sports.GameSnapshot
 	chosen      *sports.GameSnapshot
-	lastChosen  sports.GameState
 }
 
 func newAppState(assetsDir, demoLeagues string) *appState {
@@ -215,9 +216,6 @@ func (s *appState) refreshGames() {
 	s.mu.Lock()
 	s.games = games
 	s.chosen = chosen
-	if chosen != nil {
-		s.lastChosen = chosen.State
-	}
 	s.mu.Unlock()
 	if chosen != nil {
 		log.Printf("selected: %s %s@%s state=%s", chosen.League, chosen.Away.Abbr, chosen.Home.Abbr, chosen.State)
@@ -247,30 +245,77 @@ func (s *appState) currentScene() scenes.Scene {
 
 func (s *appState) pollChannel() <-chan time.Time {
 	s.mu.RLock()
-	state := s.lastChosen
+	games := s.games
 	r := s.refresh
 	s.mu.RUnlock()
-	var secs int
-	switch state {
-	case sports.StateLive:
-		// Live games need a near-real-time clock. Cap the (often conservative)
-		// configured interval so the displayed period/clock stays current.
-		secs = r.IngameSec
+
+	secs := pollIntervalSec(games, r, time.Now())
+	t := time.NewTimer(time.Duration(secs) * time.Second)
+	return t.C
+}
+
+// pollIntervalSec chooses the delay until the next game fetch. A live game polls
+// fast to keep the on-screen clock current. Otherwise the cadence is aware of the
+// soonest tip-off: it tightens as a game approaches and backs off hard when the
+// nearest game is hours out — or when nothing is on today.
+func pollIntervalSec(games []sports.GameSnapshot, r config.RefreshConfig, now time.Time) int {
+	if hasState(games, sports.StateLive) {
+		secs := r.IngameSec
 		if secs <= 0 || secs > liveMaxPollSec {
 			secs = liveMaxPollSec
 		}
-	case sports.StatePre:
-		secs = r.PregameSec
-	case sports.StateFinal:
-		secs = r.FinalSec
-	default:
-		secs = r.PregameSec
+		return secs
 	}
-	if state != sports.StateLive && secs < 30 {
-		secs = 30
+
+	if next, ok := soonestTipoff(games); ok {
+		switch d := next.Sub(now); {
+		case d <= 5*time.Minute:
+			return minPollSec // imminent (or just passed) — catch the flip to live
+		case d <= 30*time.Minute:
+			return clampPoll(min(r.PregameSec, 120))
+		case d <= 2*time.Hour:
+			return clampPoll(r.PregameSec)
+		default:
+			return max(r.PregameSec, idleBackoffSec) // hours out — back off
+		}
 	}
-	t := time.NewTimer(time.Duration(secs) * time.Second)
-	return t.C
+
+	if hasState(games, sports.StateFinal) {
+		return clampPoll(r.FinalSec)
+	}
+	return idleBackoffSec // nothing on today
+}
+
+// soonestTipoff returns the earliest start time among pregame games.
+func soonestTipoff(games []sports.GameSnapshot) (time.Time, bool) {
+	var next time.Time
+	found := false
+	for _, g := range games {
+		if g.State != sports.StatePre || g.StartTime.IsZero() {
+			continue
+		}
+		if !found || g.StartTime.Before(next) {
+			next = g.StartTime
+			found = true
+		}
+	}
+	return next, found
+}
+
+func hasState(games []sports.GameSnapshot, st sports.GameState) bool {
+	for _, g := range games {
+		if g.State == st {
+			return true
+		}
+	}
+	return false
+}
+
+func clampPoll(secs int) int {
+	if secs < minPollSec {
+		return minPollSec
+	}
+	return secs
 }
 
 func fetchDeviceConfig() (*config.DeviceConfig, error) {
