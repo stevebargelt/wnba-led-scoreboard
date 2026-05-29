@@ -1,4 +1,23 @@
 import { ReactElement, useCallback, useEffect, useRef, useState } from 'react'
+import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabaseClient'
 import { Button, Card, CardHeader, CardTitle, Toggle } from '../ui'
 
@@ -48,6 +67,233 @@ function getLeagueStyles(sport: string): {
     pillText: 'text-[var(--color-accent-soft-fg)]',
     removeBtn: 'text-[var(--color-accent-soft-fg)] hover:opacity-70',
   }
+}
+
+// Grip handle icon — a 2×3 grid of dots (braille ⠿ look-alike via SVG for reliable rendering)
+function GripIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      width="12"
+      height="14"
+      viewBox="0 0 12 14"
+      fill="currentColor"
+      style={{ flexShrink: 0 }}
+    >
+      <circle cx="3" cy="2" r="1.25" />
+      <circle cx="9" cy="2" r="1.25" />
+      <circle cx="3" cy="7" r="1.25" />
+      <circle cx="9" cy="7" r="1.25" />
+      <circle cx="3" cy="12" r="1.25" />
+      <circle cx="9" cy="12" r="1.25" />
+    </svg>
+  )
+}
+
+interface SortablePillProps {
+  teamId: string
+  ordinal: number
+  label: string
+  name?: string
+  styles: ReturnType<typeof getLeagueStyles>
+  onRemove: () => void
+  isDragging?: boolean
+}
+
+function SortablePill({
+  teamId,
+  ordinal,
+  label,
+  name,
+  styles,
+  onRemove,
+  isDragging,
+}: SortablePillProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging: isSortableDragging,
+  } = useSortable({
+    id: teamId,
+  })
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isSortableDragging ? 0.4 : 1,
+    cursor: isSortableDragging ? 'grabbing' : undefined,
+  }
+
+  return (
+    <span
+      ref={setNodeRef}
+      style={style}
+      className={`inline-flex items-center gap-1 rounded-pill ${styles.pill} ${styles.pillText} px-3 py-1 text-sm font-medium ${isDragging ? 'shadow-lg ring-2 ring-[var(--color-accent)] opacity-100' : ''}`}
+    >
+      {/* Ordinal rank badge */}
+      <span
+        className="text-[10px] font-bold opacity-60 mr-0.5 leading-none"
+        aria-label={`rank ${ordinal}`}
+      >
+        {ordinal}
+      </span>
+      {/* Grip handle — keyboard focusable drag trigger */}
+      <button
+        type="button"
+        className={`opacity-40 hover:opacity-70 focus-visible:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)] rounded-sm ${styles.pillText}`}
+        style={{ cursor: isSortableDragging ? 'grabbing' : 'grab', lineHeight: 0, padding: '1px' }}
+        aria-label={`Drag to reorder ${label}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripIcon />
+      </button>
+      <span className="font-mono-machine text-xs font-semibold">{label}</span>
+      {name && <span className="opacity-80">{name}</span>}
+      <button
+        type="button"
+        onClick={onRemove}
+        className={`ml-1 ${styles.removeBtn} focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)] rounded-full`}
+        aria-label={`Remove ${label}`}
+      >
+        ×
+      </button>
+    </span>
+  )
+}
+
+// A static (non-sortable) version used in DragOverlay to show the floating clone
+function StaticPill({
+  label,
+  name,
+  styles,
+}: {
+  label: string
+  name?: string
+  styles: ReturnType<typeof getLeagueStyles>
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-pill ${styles.pill} ${styles.pillText} px-3 py-1 text-sm font-medium shadow-xl ring-2 ring-[var(--color-accent)]`}
+      style={{ cursor: 'grabbing' }}
+    >
+      <span className="opacity-40" style={{ lineHeight: 0, padding: '1px' }}>
+        <GripIcon />
+      </span>
+      <span className="font-mono-machine text-xs font-semibold">{label}</span>
+      {name && <span className="opacity-80">{name}</span>}
+    </span>
+  )
+}
+
+interface LeaguePillsProps {
+  sport: string
+  favoriteTeams: string[]
+  teamList: TeamEntry[]
+  styles: ReturnType<typeof getLeagueStyles>
+  onReorder: (newOrder: string[]) => void
+  onRemove: (teamId: string) => void
+}
+
+function LeaguePills({
+  sport,
+  favoriteTeams,
+  teamList,
+  styles,
+  onReorder,
+  onRemove,
+}: LeaguePillsProps) {
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id))
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveId(null)
+    if (!over || active.id === over.id) return
+    const oldIndex = favoriteTeams.indexOf(String(active.id))
+    const newIndex = favoriteTeams.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) return
+    onReorder(arrayMove(favoriteTeams, oldIndex, newIndex))
+  }
+
+  const activeTeam = activeId ? teamList.find(t => t.team_id === activeId) : null
+  const activeLabel =
+    activeTeam?.abbreviation || (activeId ? activeId.slice(0, 3).toUpperCase() : '')
+
+  return (
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        accessibility={{
+          announcements: {
+            onDragStart: ({ active }) => {
+              const t = teamList.find(x => x.team_id === active.id)
+              return `Picked up ${t?.name ?? active.id}. Use arrow keys to move, Space to drop.`
+            },
+            onDragOver: ({ active, over }) => {
+              if (!over) return
+              const t = teamList.find(x => x.team_id === over.id)
+              return `${teamList.find(x => x.team_id === active.id)?.name ?? active.id} is over ${t?.name ?? over.id}.`
+            },
+            onDragEnd: ({ active, over }) => {
+              if (!over)
+                return `${teamList.find(x => x.team_id === active.id)?.name ?? active.id} dropped.`
+              return `${teamList.find(x => x.team_id === active.id)?.name ?? active.id} dropped at position ${favoriteTeams.indexOf(String(over.id)) + 1}.`
+            },
+            onDragCancel: ({ active }) =>
+              `Drag cancelled. ${teamList.find(x => x.team_id === active.id)?.name ?? active.id} returned to original position.`,
+          },
+        }}
+      >
+        <SortableContext items={favoriteTeams} strategy={horizontalListSortingStrategy}>
+          <div className="flex flex-wrap gap-2 mb-1">
+            {favoriteTeams.map((teamId, index) => {
+              const team = teamList.find(t => t.team_id === teamId)
+              const label = team?.abbreviation || teamId.slice(0, 3).toUpperCase()
+              return (
+                <SortablePill
+                  key={teamId}
+                  teamId={teamId}
+                  ordinal={index + 1}
+                  label={label}
+                  name={team?.name}
+                  styles={styles}
+                  onRemove={() => onRemove(teamId)}
+                />
+              )
+            })}
+          </div>
+        </SortableContext>
+        <DragOverlay>
+          {activeId ? (
+            <StaticPill label={activeLabel} name={activeTeam?.name} styles={styles} />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+      {favoriteTeams.length >= 2 && (
+        <p className="text-xs text-[var(--color-text-muted)] mt-1 mb-2">
+          Drag to reorder — leftmost plays first.
+        </p>
+      )}
+    </>
+  )
 }
 
 export function DeviceTeamsTab({ deviceId }: { deviceId: string }): ReactElement {
@@ -119,6 +365,10 @@ export function DeviceTeamsTab({ deviceId }: { deviceId: string }): ReactElement
           : c
       )
     )
+  }
+
+  function reorderTeams(sport: string, newOrder: string[]) {
+    setConfigs(prev => prev.map(c => (c.sport === sport ? { ...c, favorite_teams: newOrder } : c)))
   }
 
   function addTeam(sport: string, teamId: string) {
@@ -220,29 +470,14 @@ export function DeviceTeamsTab({ deviceId }: { deviceId: string }): ReactElement
               {config.enabled ? (
                 <>
                   {config.favorite_teams.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {config.favorite_teams.map(teamId => {
-                        const team = teamList.find(t => t.team_id === teamId)
-                        const label = team?.abbreviation || teamId.slice(0, 3).toUpperCase()
-                        return (
-                          <span
-                            key={teamId}
-                            className={`inline-flex items-center gap-1 rounded-pill ${styles.pill} ${styles.pillText} px-3 py-1 text-sm font-medium`}
-                          >
-                            <span className="font-mono-machine text-xs font-semibold">{label}</span>
-                            {team?.name && <span className="opacity-80">{team.name}</span>}
-                            <button
-                              type="button"
-                              onClick={() => removeTeam(config.sport, teamId)}
-                              className={`ml-1 ${styles.removeBtn} focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)] rounded-full`}
-                              aria-label={`Remove ${label}`}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        )
-                      })}
-                    </div>
+                    <LeaguePills
+                      sport={config.sport}
+                      favoriteTeams={config.favorite_teams}
+                      teamList={teamList}
+                      styles={styles}
+                      onReorder={newOrder => reorderTeams(config.sport, newOrder)}
+                      onRemove={teamId => removeTeam(config.sport, teamId)}
+                    />
                   )}
                   <div className="flex gap-2">
                     <input
