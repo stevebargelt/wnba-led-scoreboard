@@ -29,7 +29,6 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>('light')
 
   useEffect(() => {
-    // Get theme from localStorage or use default
     const savedTheme = localStorage.getItem('theme') as Theme
     if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
       setTheme(savedTheme)
@@ -48,18 +47,18 @@ export function ThemeProvider({ children, defaultTheme = 'system' }: ThemeProvid
 
       setResolvedTheme(resolved)
 
-      // Update DOM
       const root = document.documentElement
       if (resolved === 'dark') {
         root.classList.add('dark')
+        root.setAttribute('data-theme', 'dark')
       } else {
         root.classList.remove('dark')
+        root.setAttribute('data-theme', 'light')
       }
     }
 
     updateResolvedTheme()
 
-    // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     mediaQuery.addEventListener('change', updateResolvedTheme)
 

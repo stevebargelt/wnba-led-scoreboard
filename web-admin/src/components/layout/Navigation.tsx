@@ -1,91 +1,203 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import {
   HomeIcon,
-  CpuChipIcon,
-  CogIcon,
-  PlusIcon,
-  ChartBarIcon,
   TrophyIcon,
+  ArrowRightOnRectangleIcon,
+  TvIcon,
+  Bars3Icon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 import { clsx } from 'clsx'
+import { supabase } from '@/lib/supabaseClient'
 
-const navigation = [
-  { name: 'Dashboard', href: '/', icon: HomeIcon },
-  { name: 'Devices', href: '/devices', icon: CpuChipIcon },
-  { name: 'Register Device', href: '/register', icon: PlusIcon },
-  { name: 'Sports & Leagues', href: '/admin/sports-leagues', icon: TrophyIcon },
-  { name: 'Analytics', href: '/analytics', icon: ChartBarIcon },
-  { name: 'Settings', href: '/settings', icon: CogIcon },
+const SIDEBAR_WIDTH = 'w-64'
+
+interface NavItem {
+  name: string
+  href: string
+  icon: React.ComponentType<React.SVGProps<SVGSVGElement>>
+}
+
+const baseNav: NavItem[] = [{ name: 'Dashboard', href: '/', icon: HomeIcon }]
+
+const adminNav: NavItem[] = [
+  { name: 'Admin', href: '/admin/sports-leagues', icon: TrophyIcon },
 ]
 
-export function Navigation() {
+interface SidebarContentProps {
+  isAdmin: boolean
+  email: string | null
+  onSignOut: () => void
+}
+
+function SidebarContent({ isAdmin, email, onSignOut }: SidebarContentProps) {
   const router = useRouter()
+  const navItems = isAdmin ? [...baseNav, ...adminNav] : baseNav
+
+  return (
+    <div className="flex flex-col h-full bg-[var(--color-surface)] border-r border-[var(--color-border)]">
+      {/* Brand */}
+      <div className="flex items-center gap-2.5 px-5 pt-5 pb-6">
+        <div className="flex-shrink-0 w-[34px] h-[34px] rounded-md bg-accent flex items-center justify-center">
+          <TvIcon className="w-5 h-5 text-accent-fg" aria-hidden="true" />
+        </div>
+        <span className="text-base font-bold text-[var(--color-text-primary)] leading-none">
+          LED Admin
+        </span>
+      </div>
+
+      {/* Nav items */}
+      <nav className="flex-1 px-3 space-y-0.5" aria-label="Main navigation">
+        {navItems.map(item => {
+          const isActive =
+            item.href === '/'
+              ? router.pathname === '/'
+              : router.pathname.startsWith(item.href)
+          return (
+            <Link
+              key={item.name}
+              href={item.href}
+              className={clsx(
+                'flex items-center gap-2.5 px-3 py-2.5 rounded-md text-[14px] font-medium transition-colors',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]',
+                isActive
+                  ? 'bg-accent-soft text-[var(--color-accent)] [&_svg]:text-[var(--color-accent)]'
+                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)]'
+              )}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <item.icon
+                className={clsx(
+                  'w-[18px] h-[18px] flex-shrink-0',
+                  isActive ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'
+                )}
+                aria-hidden="true"
+              />
+              {item.name}
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* Bottom: user chip + sign out */}
+      <div className="flex-shrink-0 mt-auto">
+        <div className="mx-4 border-t border-[var(--color-border)]" />
+        <div className="px-4 py-4 space-y-1">
+          {/* User chip */}
+          <div className="flex items-center gap-3 px-2 py-1.5">
+            <div
+              className="w-8 h-8 rounded-full bg-accent flex-shrink-0 flex items-center justify-center text-accent-fg text-[13px] font-semibold select-none"
+              aria-hidden="true"
+            >
+              {email ? email[0].toUpperCase() : '?'}
+            </div>
+            <span className="text-[13px] text-[var(--color-text-secondary)] truncate min-w-0">
+              {email ?? '—'}
+            </span>
+          </div>
+
+          {/* Sign out */}
+          <button
+            onClick={onSignOut}
+            className={clsx(
+              'flex items-center gap-2.5 w-full px-2 py-2 rounded-md text-[14px] font-medium',
+              'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)]',
+              'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]'
+            )}
+          >
+            <ArrowRightOnRectangleIcon className="w-[18px] h-[18px] flex-shrink-0" aria-hidden="true" />
+            Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface NavigationProps {
+  mobileOpen?: boolean
+  onMobileClose?: () => void
+}
+
+export function Navigation({ mobileOpen = false, onMobileClose }: NavigationProps) {
+  const router = useRouter()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [email, setEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function init() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!mounted) return
+
+      if (session?.user?.email) {
+        setEmail(session.user.email)
+      }
+
+      if (session?.access_token) {
+        try {
+          const res = await fetch('/api/auth/is-admin', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+          })
+          const data = await res.json()
+          if (mounted) setIsAdmin(data.isAdmin || false)
+        } catch {
+          // silently fail — admin item just won't render
+        }
+      }
+    }
+
+    init()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/')
+  }
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <nav className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
-        <div className="flex min-h-0 flex-1 flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-          {/* Logo */}
-          <div className="flex h-16 flex-shrink-0 items-center px-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="h-8 w-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">W</span>
-                </div>
-              </div>
-              <div className="ml-3">
-                <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  WNBA LED Admin
-                </h1>
-              </div>
+      {/* Desktop sidebar — always visible on lg+ */}
+      <aside className={clsx('hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:z-40', SIDEBAR_WIDTH)}>
+        <SidebarContent isAdmin={isAdmin} email={email} onSignOut={handleSignOut} />
+      </aside>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={onMobileClose}
+            aria-hidden="true"
+          />
+
+          {/* Drawer */}
+          <div className={clsx('relative flex flex-col', SIDEBAR_WIDTH)}>
+            <div className="absolute top-3 right-3 z-10">
+              <button
+                onClick={onMobileClose}
+                className="p-2 rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                aria-label="Close sidebar"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="h-full overflow-y-auto">
+              <SidebarContent isAdmin={isAdmin} email={email} onSignOut={handleSignOut} />
             </div>
           </div>
-
-          {/* Navigation */}
-          <div className="flex flex-1 flex-col overflow-y-auto pt-5 pb-4">
-            <nav className="flex-1 px-2 space-y-1">
-              {navigation.map(item => {
-                const isActive = router.pathname === item.href
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={clsx(
-                      'group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors duration-200',
-                      'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900',
-                      isActive
-                        ? 'bg-primary-50 dark:bg-primary-900/50 text-primary-600 dark:text-primary-400'
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white'
-                    )}
-                  >
-                    <item.icon
-                      className={clsx(
-                        'mr-3 h-5 w-5 flex-shrink-0',
-                        isActive
-                          ? 'text-primary-500 dark:text-primary-400'
-                          : 'text-gray-400 group-hover:text-gray-500'
-                      )}
-                      aria-hidden="true"
-                    />
-                    {item.name}
-                  </Link>
-                )
-              })}
-            </nav>
-          </div>
-
-          {/* Bottom section */}
-          <div className="flex flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
-            <div className="text-xs text-gray-500 dark:text-gray-400">Version 1.0.0</div>
-          </div>
         </div>
-      </nav>
-
-      {/* Mobile menu overlay */}
-      {/* This would be implemented with a modal/drawer component in a real app */}
+      )}
     </>
   )
 }

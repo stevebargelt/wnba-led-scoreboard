@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../lib/supabaseClient'
 import { Layout } from '../components/layout'
-import { Card, CardHeader, CardTitle, Button, Input, StatusBadge } from '../components/ui'
+import { Card, CardHeader, CardTitle, Button, Input } from '../components/ui'
+import { StatusBadge } from '../components/ui/StatusBadge'
 import { PlusIcon, UserIcon } from '@heroicons/react/24/outline'
 
 type Device = { id: string; name: string; last_seen_ts: string | null }
@@ -82,13 +83,6 @@ export default function Home() {
     })
     if (error) setMessage(error.message)
     else setMessage('Sign-up complete. Check your email for confirmation (if required).')
-  }
-
-  const isDeviceOnline = (last_seen_ts: string | null): boolean => {
-    if (!last_seen_ts) return false
-    const last = new Date(last_seen_ts).getTime()
-    const now = Date.now()
-    return now - last < 90_000 // 90s freshness window
   }
 
   if (!session) {
@@ -217,7 +211,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <StatusBadge online={isDeviceOnline(device.last_seen_ts)} />
+                    <StatusBadge lastSeenTs={device.last_seen_ts} />
                     <Link href={`/device/${device.id}`}>
                       <Button variant="secondary" size="sm">
                         Configure

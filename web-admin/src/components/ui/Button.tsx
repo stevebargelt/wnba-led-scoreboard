@@ -1,19 +1,27 @@
 import React from 'react'
 import { clsx } from 'clsx'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'ghost'
+export type ButtonVariant =
+  | 'primary'
+  | 'secondary'
+  | 'success'
+  | 'warning'
+  | 'error'
+  | 'ghost'
+  | 'destructive'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant
   size?: ButtonSize
   loading?: boolean
+  fullWidth?: boolean
   leftIcon?: React.ReactNode
   rightIcon?: React.ReactNode
   children: React.ReactNode
 }
 
-const buttonVariants = {
+const buttonVariants: Record<ButtonVariant, string> = {
   primary: 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500 text-white shadow-sm',
   secondary:
     'bg-white hover:bg-gray-50 focus:ring-primary-500 text-gray-700 border border-gray-300 shadow-sm dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-700',
@@ -22,11 +30,13 @@ const buttonVariants = {
   error: 'bg-error-600 hover:bg-error-700 focus:ring-error-500 text-white shadow-sm',
   ghost:
     'bg-transparent hover:bg-gray-100 focus:ring-primary-500 text-gray-700 dark:hover:bg-gray-800 dark:text-gray-200',
+  destructive:
+    'bg-danger hover:bg-danger-hover focus:ring-danger text-danger-fg shadow-sm',
 }
 
-const buttonSizes = {
+const buttonSizes: Record<ButtonSize, string> = {
   sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2 text-sm',
+  md: 'px-4 py-[10px] text-sm',
   lg: 'px-6 py-3 text-base',
 }
 
@@ -34,6 +44,7 @@ export function Button({
   variant = 'primary',
   size = 'md',
   loading = false,
+  fullWidth = false,
   leftIcon,
   rightIcon,
   children,
@@ -51,6 +62,7 @@ export function Button({
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none',
         buttonVariants[variant],
         buttonSizes[size],
+        fullWidth && 'w-full',
         className
       )}
       disabled={isDisabled}

@@ -10,22 +10,22 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 const paddingVariants = {
   none: '',
   sm: 'p-4',
-  md: 'p-6',
-  lg: 'p-8',
+  md: 'p-5',
+  lg: 'p-6',
 }
 
 const shadowVariants = {
   none: '',
-  sm: 'shadow-sm',
-  md: 'shadow',
-  lg: 'shadow-lg',
+  sm: 'shadow-[0_1px_3px_var(--color-shadow)]',
+  md: 'shadow-[0_1px_3px_var(--color-shadow)]',
+  lg: 'shadow-[0_4px_12px_var(--color-shadow)]',
 }
 
-export function Card({ padding = 'md', shadow = 'md', children, className, ...props }: CardProps) {
+export function Card({ padding = 'md', shadow = 'sm', children, className, ...props }: CardProps) {
   return (
     <div
       className={clsx(
-        'bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700',
+        'bg-[var(--color-surface)] rounded-card border border-[var(--color-border)]',
         paddingVariants[padding],
         shadowVariants[shadow],
         className
@@ -44,7 +44,7 @@ export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
 export function CardHeader({ children, className, ...props }: CardHeaderProps) {
   return (
     <div
-      className={clsx('border-b border-gray-200 dark:border-gray-700 pb-4 mb-4', className)}
+      className={clsx('border-b border-[var(--color-border)] pb-4 mb-4', className)}
       {...props}
     >
       {children}
@@ -60,7 +60,7 @@ export interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement>
 export function CardTitle({ children, className, as: Heading = 'h3', ...props }: CardTitleProps) {
   return (
     <Heading
-      className={clsx('text-lg font-medium text-gray-900 dark:text-white', className)}
+      className={clsx('text-lg font-semibold text-[var(--color-text-primary)]', className)}
       {...props}
     >
       {children}

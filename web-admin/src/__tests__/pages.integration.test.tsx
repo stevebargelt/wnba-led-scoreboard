@@ -8,12 +8,19 @@ const Providers = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider>{children}</ThemeProvider>
 )
 
-// Mock fetch for API calls
-global.fetch = jest.fn()
+// Mock fetch for API calls (e.g. /api/auth/is-admin)
+global.fetch = jest.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ({ isAdmin: false }),
+} as Response)
 
 describe('Page Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    ;(global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ isAdmin: false }),
+    })
   })
 
   describe('Home Page', () => {
@@ -64,11 +71,11 @@ describe('Page Integration Tests', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getByText(/register device/i)).toBeInTheDocument()
+        expect(screen.getByText(/register new device/i)).toBeInTheDocument()
       })
     })
 
-    it('displays application layout', async () => {
+    it('displays application layout with new branding', async () => {
       render(
         <Providers>
           <Register />
@@ -76,7 +83,7 @@ describe('Page Integration Tests', () => {
       )
 
       await waitFor(() => {
-        expect(screen.getAllByText('WNBA LED Admin').length).toBeGreaterThan(0)
+        expect(screen.getAllByText('LED Admin').length).toBeGreaterThan(0)
       })
     })
   })
@@ -89,7 +96,6 @@ describe('Page Integration Tests', () => {
         </Providers>
       )
 
-      // Check that theme context is provided (test passes if no errors)
       expect(screen.getByText('WNBA LED Web Admin')).toBeInTheDocument()
     })
   })
@@ -102,7 +108,7 @@ describe('Page Integration Tests', () => {
         </Providers>
       )
 
-      // Check for common elements
+      // Home page login form renders before layout (unauthenticated)
       expect(screen.getByText('WNBA LED Web Admin')).toBeInTheDocument()
 
       rerender(
@@ -111,8 +117,10 @@ describe('Page Integration Tests', () => {
         </Providers>
       )
 
-      // Layout should persist across page changes
-      expect(screen.getByRole('banner')).toBeInTheDocument()
+      // Layout header should be present on pages that use Layout
+      await waitFor(() => {
+        expect(screen.getByRole('banner')).toBeInTheDocument()
+      })
     })
   })
 })

@@ -4,6 +4,7 @@ import { useTheme } from '../../contexts/ThemeContext'
 import { Button } from './Button'
 import { clsx } from 'clsx'
 
+/** 3-way picker (light / dark / system) — keep for backward compat */
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
 
@@ -21,7 +22,7 @@ export function ThemeToggle() {
           onClick={() => setTheme(key)}
           className={clsx(
             'flex items-center justify-center px-3 py-1.5 text-sm font-medium transition-colors rounded-md',
-            'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]',
             theme === key
               ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
               : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
@@ -36,6 +37,7 @@ export function ThemeToggle() {
   )
 }
 
+/** Single icon button that cycles light → dark → system; used in the shell header */
 export function ThemeToggleButton() {
   const { theme, setTheme, resolvedTheme } = useTheme()
 
@@ -49,14 +51,17 @@ export function ThemeToggleButton() {
   const Icon = resolvedTheme === 'dark' ? SunIcon : MoonIcon
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
+    <button
       onClick={cycleTheme}
-      aria-label={`Switch to ${theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'} mode`}
-      leftIcon={<Icon className="h-4 w-4" />}
+      className={clsx(
+        'w-10 h-10 flex items-center justify-center rounded-md',
+        'bg-[var(--color-surface)] border border-[var(--color-border)]',
+        'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]',
+        'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]'
+      )}
+      aria-label={`Current: ${theme} theme. Click to switch.`}
     >
-      {theme === 'system' ? 'System' : theme === 'light' ? 'Light' : 'Dark'}
-    </Button>
+      <Icon className="w-[18px] h-[18px]" />
+    </button>
   )
 }

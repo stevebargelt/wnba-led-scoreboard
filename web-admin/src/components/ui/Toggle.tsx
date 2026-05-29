@@ -25,9 +25,9 @@ export function Toggle({
       thumbTranslate: checked ? 'translate-x-5' : 'translate-x-1',
     },
     md: {
-      toggle: 'h-6 w-11',
-      thumb: 'h-4 w-4',
-      thumbTranslate: checked ? 'translate-x-6' : 'translate-x-1',
+      toggle: 'h-[26px] w-11',
+      thumb: 'h-5 w-5',
+      thumbTranslate: checked ? 'translate-x-[22px]' : 'translate-x-[3px]',
     },
     lg: {
       toggle: 'h-7 w-12',
@@ -40,15 +40,20 @@ export function Toggle({
 
   return (
     <div className={clsx('flex items-center', className)}>
-      {label && <label className="mr-3 text-sm font-medium text-gray-700">{label}</label>}
+      {label && (
+        <label className="mr-3 text-sm font-medium text-[var(--color-text-secondary)]">
+          {label}
+        </label>
+      )}
       <button
         type="button"
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={clsx(
-          'relative inline-flex items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2',
+          'relative inline-flex items-center rounded-pill border-2 border-transparent transition-colors',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2',
           sizes.toggle,
-          checked ? 'bg-blue-600' : 'bg-gray-200',
+          checked ? 'bg-accent' : 'bg-[var(--color-border-strong)]',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
@@ -57,7 +62,7 @@ export function Toggle({
         </span>
         <span
           className={clsx(
-            'inline-block transform rounded-full bg-white transition-transform',
+            'inline-block transform rounded-full bg-white shadow-sm transition-transform',
             sizes.thumb,
             sizes.thumbTranslate
           )}

@@ -2,47 +2,161 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens: light (default) ── */
+:root {
+  --color-bg: #F5F7FA;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #EEF1F5;
+  --color-surface-3: #F8FAFC;
+  --color-border: #E2E6EC;
+  --color-border-strong: #CBD2DC;
+  --color-text-primary: #101826;
+  --color-text-secondary: #586172;
+  --color-text-muted: #828C9C;
+  --color-accent: #2563EB;
+  --color-accent-hover: #1D4ED8;
+  --color-accent-fg: #FFFFFF;
+  --color-accent-soft: #E8F0FE;
+  --color-accent-soft-fg: #1E40AF;
+  --color-success: #16A34A;
+  --color-success-soft: #E6F6EC;
+  --color-success-fg: #0B7A33;
+  --color-success-dot: #22C55E;
+  --color-danger: #DC2626;
+  --color-danger-hover: #B91C1C;
+  --color-danger-soft: #FCEBEB;
+  --color-danger-fg: #FFFFFF;
+  --color-amber: #C2780A;
+  --color-amber-soft: #FBF0DA;
+  --color-amber-fg: #825104;
+  --color-offline-dot: #94A3B8;
+  --color-league-wnba: #E8650E;
+  --color-league-wnba-soft: #FCEADD;
+  --color-league-wnba-fg: #FFFFFF;
+  --color-league-nhl: #1D4ED8;
+  --color-league-nhl-soft: #E7EEFC;
+  --color-league-nhl-fg: #FFFFFF;
+  --color-shadow: #1018281F;
+  --radius-card: 16px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+}
+
+/* ── Design tokens: explicit dark override ── */
+[data-theme='dark'] {
+  --color-bg: #0E1217;
+  --color-surface: #161B22;
+  --color-surface-2: #1C222B;
+  --color-surface-3: #222A34;
+  --color-border: #2A313C;
+  --color-border-strong: #3A4350;
+  --color-text-primary: #EDF1F6;
+  --color-text-secondary: #A7B1C0;
+  --color-text-muted: #6E7888;
+  --color-accent: #4C84F5;
+  --color-accent-hover: #6A9AF8;
+  --color-accent-fg: #08111F;
+  --color-accent-soft: #16243E;
+  --color-accent-soft-fg: #B8CEFB;
+  --color-success: #2FB866;
+  --color-success-soft: #11281B;
+  --color-success-fg: #7BE3A6;
+  --color-success-dot: #34D27B;
+  --color-danger: #EF5350;
+  --color-danger-hover: #F2706E;
+  --color-danger-soft: #2E1718;
+  --color-danger-fg: #1A0809;
+  --color-amber: #E7A33A;
+  --color-amber-soft: #2C2310;
+  --color-amber-fg: #F4D9A6;
+  --color-offline-dot: #5A6678;
+  --color-league-wnba: #F2802F;
+  --color-league-wnba-soft: #2E1C10;
+  --color-league-wnba-fg: #1A0E04;
+  --color-league-nhl: #5B8DEF;
+  --color-league-nhl-soft: #14233E;
+  --color-league-nhl-fg: #06101F;
+  --color-shadow: #00000066;
+}
+
+/* ── Design tokens: OS dark preference (when no explicit data-theme override) ── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: #0E1217;
+    --color-surface: #161B22;
+    --color-surface-2: #1C222B;
+    --color-surface-3: #222A34;
+    --color-border: #2A313C;
+    --color-border-strong: #3A4350;
+    --color-text-primary: #EDF1F6;
+    --color-text-secondary: #A7B1C0;
+    --color-text-muted: #6E7888;
+    --color-accent: #4C84F5;
+    --color-accent-hover: #6A9AF8;
+    --color-accent-fg: #08111F;
+    --color-accent-soft: #16243E;
+    --color-accent-soft-fg: #B8CEFB;
+    --color-success: #2FB866;
+    --color-success-soft: #11281B;
+    --color-success-fg: #7BE3A6;
+    --color-success-dot: #34D27B;
+    --color-danger: #EF5350;
+    --color-danger-hover: #F2706E;
+    --color-danger-soft: #2E1718;
+    --color-danger-fg: #1A0809;
+    --color-amber: #E7A33A;
+    --color-amber-soft: #2C2310;
+    --color-amber-fg: #F4D9A6;
+    --color-offline-dot: #5A6678;
+    --color-league-wnba: #F2802F;
+    --color-league-wnba-soft: #2E1C10;
+    --color-league-wnba-fg: #1A0E04;
+    --color-league-nhl: #5B8DEF;
+    --color-league-nhl-soft: #14233E;
+    --color-league-nhl-fg: #06101F;
+    --color-shadow: #00000066;
+  }
+}
+
 @layer base {
   html {
     @apply antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text-primary);
   }
 
-  /* Focus styles for accessibility */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
   :focus {
-    @apply outline-none ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900;
+    @apply outline-none;
   }
 
-  /* Skip link for screen readers */
   .skip-link {
-    @apply absolute -top-10 left-6 z-50 bg-primary-600 text-white px-4 py-2 rounded-md;
-    @apply focus:top-6 transition-all duration-300;
+    @apply absolute -top-10 left-6 z-50 px-4 py-2 rounded-md;
+    background-color: var(--color-accent);
+    color: var(--color-accent-fg);
   }
 
-  /* Fix dark mode contrast for all input, select, textarea elements */
-  input,
-  select,
-  textarea {
-    @apply dark:bg-gray-800 dark:text-white dark:border-gray-600;
+  .skip-link:focus {
+    @apply top-6;
   }
+}
 
-  input::placeholder,
-  textarea::placeholder {
-    @apply dark:text-gray-400;
-  }
-
-  /* Fix button contrast in dark mode */
-  button {
-    @apply dark:text-white;
+@layer utilities {
+  .font-mono-machine {
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
   }
 }
 
 @layer components {
-  /* Animation utilities */
   .animate-fade-in {
     animation: fadeIn 0.3s ease-in-out;
   }
@@ -50,37 +164,14 @@
   .animate-slide-in {
     animation: slideIn 0.4s ease-out;
   }
-
-  /* Status indicators */
-  .status-online {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100;
-  }
-
-  .status-offline {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300;
-  }
-
-  .status-error {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100;
-  }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }

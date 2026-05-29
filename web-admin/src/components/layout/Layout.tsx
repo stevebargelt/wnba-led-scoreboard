@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Navigation } from './Navigation'
 import { Header } from './Header'
 
@@ -7,21 +7,27 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Skip to main content link for accessibility */}
+    <div className="min-h-screen bg-[var(--color-bg)] flex">
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
 
-      <Header />
+      {/* Sidebar */}
+      <Navigation
+        mobileOpen={mobileSidebarOpen}
+        onMobileClose={() => setMobileSidebarOpen(false)}
+      />
 
-      <div className="flex">
-        <Navigation />
+      {/* Main column (offset for desktop sidebar) */}
+      <div className="flex flex-col flex-1 lg:pl-64 min-w-0">
+        <Header onMobileMenuToggle={() => setMobileSidebarOpen(true)} />
 
         <main
           id="main-content"
-          className="flex-1 p-4 lg:p-8 ml-0 lg:ml-64 transition-all duration-200 ease-in-out"
+          className="flex-1 p-4 lg:p-8"
         >
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
