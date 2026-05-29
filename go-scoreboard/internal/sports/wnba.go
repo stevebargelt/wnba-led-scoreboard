@@ -72,8 +72,9 @@ type espnStatus struct {
 }
 
 type espnStatusType struct {
-	State  string `json:"state"`
-	Detail string `json:"detail"`
+	State     string `json:"state"`
+	Completed bool   `json:"completed"`
+	Detail    string `json:"detail"`
 }
 
 func parseEvent(league string, e espnEvent) (GameSnapshot, bool) {
@@ -110,7 +111,7 @@ func parseEvent(league string, e espnEvent) (GameSnapshot, bool) {
 		League:       league,
 		EventID:      e.ID,
 		StartTime:    start,
-		State:        parseState(c.Status.Type.State),
+		State:        stateFor(c.Status.Type),
 		Home:         home,
 		Away:         away,
 		Period:       c.Status.Period,
@@ -119,8 +120,15 @@ func parseEvent(league string, e espnEvent) (GameSnapshot, bool) {
 	}, true
 }
 
-func parseState(s string) GameState {
-	switch s {
+// stateFor maps an ESPN status to a GameState. A completed game is Final even
+// when ESPN still reports state "in" at the final buzzer (period 4, clock
+// 0:00) — without the completed check that renders as "4th 0:00" and never
+// flips to Final.
+func stateFor(t espnStatusType) GameState {
+	if t.Completed {
+		return StateFinal
+	}
+	switch t.State {
 	case "pre":
 		return StatePre
 	case "in":
