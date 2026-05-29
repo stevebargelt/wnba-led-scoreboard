@@ -59,3 +59,9 @@ plans/
 # forge — per-developer claude-code config (machine-local, not committed)
 .claude/settings.local.json
 .claude/commands/
+
+# Playwright captured auth sessions — contain live Supabase tokens, never commit
+auth-state.localhost.json
+# Playwright run artifacts
+web-admin/test-results/
+web-admin/playwright-report/
