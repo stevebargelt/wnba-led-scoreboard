@@ -18,7 +18,8 @@ module.exports = {
       statements: 20,
     },
   },
-  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/'],
+  // e2e/ holds Playwright specs (run via `playwright test`, not jest) — keep them out of the jest run.
+  testPathIgnorePatterns: ['<rootDir>/.next/', '<rootDir>/node_modules/', '<rootDir>/e2e/'],
   transform: {
     '^.+\\.(js|jsx|ts|tsx)$': [
       '@swc/jest',
