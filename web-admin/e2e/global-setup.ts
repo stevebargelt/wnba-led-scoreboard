@@ -47,20 +47,22 @@ export default async function globalSetup() {
   }
 
   fs.writeFileSync(path.join(authDir, 'qa.json'), JSON.stringify(storageState, null, 2))
-
-  // Seed a device fixture so the spec can assert it appears in the list
-  const { data: deviceData, error: deviceError } = await supabase
-    .from('devices')
-    .insert({ name: 'e2e-smoke-device', user_id: session.user.id })
-    .select('id')
-    .single()
-
-  if (deviceError || !deviceData) {
-    throw new Error(`Device seeding failed: ${deviceError?.message ?? 'no data returned'}`)
-  }
-
-  fs.writeFileSync(path.join(authDir, 'e2e-device-id.txt'), deviceData.id)
-
   console.log(`[globalSetup] QA session written to .auth/qa.json (ls key: ${lsKey})`)
-  console.log(`[globalSetup] Seeded device id=${deviceData.id}`)
+
+  // Sweep orphaned e2e-* devices from crashed prior runs (ON DELETE CASCADE handles child rows)
+  const { data: swept, error: sweepError } = await supabase
+    .from('devices')
+    .delete()
+    .eq('user_id', session.user.id)
+    .like('name', 'e2e-%')
+    .select('id, name')
+
+  if (sweepError) {
+    console.warn(`[globalSetup] e2e-* sweep warning: ${sweepError.message}`)
+  } else {
+    console.log(`[globalSetup] Swept ${swept?.length ?? 0} orphaned e2e-* device(s)`)
+    if (swept?.length) {
+      for (const d of swept) console.log(`  swept: id=${d.id} name=${d.name}`)
+    }
+  }
 }

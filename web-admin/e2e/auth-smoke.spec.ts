@@ -1,6 +1,9 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
-test('authenticated shell shows signed-in user and seeded device', async ({ page }) => {
+test('authenticated shell shows signed-in user and seeded device', async ({
+  page,
+  seededDevice,
+}) => {
   await page.goto('/')
 
   // Must NOT be on the login form
@@ -11,5 +14,5 @@ test('authenticated shell shows signed-in user and seeded device', async ({ page
   await expect(page.getByText('qa@bargelt.com')).toBeVisible()
 
   // Device list shows the seeded fixture device
-  await expect(page.getByText('e2e-smoke-device')).toBeVisible()
+  await expect(page.getByText(seededDevice.name)).toBeVisible()
 })
