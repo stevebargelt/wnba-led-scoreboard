@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# build output
+.next/
+out/
+
+# env files (never commit)
+.env
+.env.local
+.env.*.local
+
+# playwright
+.auth/
+test-results/
+playwright-report/
+
+# coverage
+coverage/
+
+# misc
+.DS_Store
+*.tsbuildinfo

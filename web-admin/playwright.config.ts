@@ -2,9 +2,11 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e',
+  globalSetup: './e2e/global-setup.ts',
+  globalTeardown: './e2e/global-teardown.ts',
   use: {
     baseURL: 'http://localhost:3000',
-    storageState: 'e2e/fixtures/auth-state.localhost.json',
+    storageState: '.auth/qa.json',
     ...devices['Desktop Chrome'],
   },
   webServer: {
