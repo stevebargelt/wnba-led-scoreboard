@@ -35,7 +35,9 @@ module.exports = {
         },
 
         // New design tokens (CSS var–backed, respond to light/dark)
-        base: 'var(--color-bg)',
+        // NOTE: do NOT add a color named `base` — it collides with the built-in
+        // `text-base` font-size utility and emits a spurious `color: var(--color-bg)`.
+        // For the app background use `bg-[var(--color-bg)]` or the body rule in globals.css.
         surface: {
           DEFAULT: 'var(--color-surface)',
           2: 'var(--color-surface-2)',
