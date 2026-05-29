@@ -24,6 +24,11 @@ const (
 	liveMaxPollSec = 15
 	minPollSec     = 30
 	idleBackoffSec = 1800
+	// configReloadSec is how often the device re-fetches its config. This
+	// doubles as the heartbeat: get_device_configuration updates
+	// devices.last_seen_ts, so the web admin sees the device as online. Must
+	// stay under the admin's ~90s freshness window.
+	configReloadSec = 60
 )
 
 func main() {
@@ -113,6 +118,8 @@ func main() {
 	ticker := time.NewTicker(time.Duration(*tickMs) * time.Millisecond)
 	defer ticker.Stop()
 	pollC := state.pollChannel()
+	configTicker := time.NewTicker(configReloadSec * time.Second)
+	defer configTicker.Stop()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -133,6 +140,17 @@ func main() {
 			d.SetBrightness(state.currentBrightness())
 			state.refreshGames()
 			pollC = state.pollChannel()
+		case <-configTicker.C:
+			// Periodic config poll = heartbeat (get_device_configuration refreshes
+			// devices.last_seen_ts, so the web admin shows the device online) plus
+			// auto-applying web-admin config changes without a SIGHUP. Refetch games
+			// only when the enabled leagues changed, so #7's poll backoff isn't
+			// undone every minute.
+			if state.reloadConfig() {
+				state.refreshGames()
+				pollC = state.pollChannel()
+			}
+			d.SetBrightness(state.currentBrightness())
 		case <-stop:
 			return
 		}
@@ -168,17 +186,21 @@ func newAppState(assetsDir, demoLeagues string) *appState {
 	return s
 }
 
-func (s *appState) reloadConfig() {
+// reloadConfig re-fetches device config from Supabase (which also refreshes
+// the device's last_seen_ts heartbeat) and applies it. It returns true when the
+// set of enabled leagues changed, so the caller can refetch games without
+// re-hitting the sports APIs on every reload.
+func (s *appState) reloadConfig() bool {
 	if s.demoLeagues != nil {
 		s.mu.Lock()
 		s.leagues = s.demoLeagues
 		s.mu.Unlock()
-		return
+		return false
 	}
 	cfg, err := fetchDeviceConfig()
 	if err != nil {
 		log.Printf("config fetch failed (keeping previous): %v", err)
-		return
+		return false
 	}
 	leagues := make([]string, 0, len(cfg.EnabledLeagues))
 	for _, l := range cfg.EnabledLeagues {
@@ -194,6 +216,7 @@ func (s *appState) reloadConfig() {
 	}
 	loc := loadLocation(cfg.Timezone)
 	s.mu.Lock()
+	changed := !sameLeagues(s.leagues, leagues)
 	s.leagues = leagues
 	s.favorites = favs
 	s.refresh = cfg.Refresh
@@ -202,6 +225,24 @@ func (s *appState) reloadConfig() {
 	s.mu.Unlock()
 	log.Printf("config: %d leagues (%v), refresh pre=%ds in=%ds fin=%ds, brightness=%d, tz=%s",
 		len(leagues), leagues, cfg.Refresh.PregameSec, cfg.Refresh.IngameSec, cfg.Refresh.FinalSec, cfg.Matrix.Brightness, loc)
+	return changed
+}
+
+// sameLeagues reports whether two league-code slices contain the same set.
+func sameLeagues(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	set := make(map[string]bool, len(a))
+	for _, x := range a {
+		set[x] = true
+	}
+	for _, x := range b {
+		if !set[x] {
+			return false
+		}
+	}
+	return true
 }
 
 func (s *appState) refreshGames() {

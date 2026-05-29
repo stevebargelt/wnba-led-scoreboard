@@ -52,3 +52,21 @@ func TestLoadLocation(t *testing.T) {
 		t.Errorf("invalid tz should fall back to Local, got %v", got)
 	}
 }
+
+func TestSameLeagues(t *testing.T) {
+	cases := []struct {
+		a, b []string
+		want bool
+	}{
+		{[]string{"wnba", "nhl"}, []string{"nhl", "wnba"}, true},  // order-independent
+		{[]string{"wnba"}, []string{"wnba", "nhl"}, false},        // added
+		{[]string{"wnba", "nhl"}, []string{"wnba", "nba"}, false}, // swapped
+		{nil, nil, true},
+		{[]string{"wnba"}, []string{"wnba"}, true},
+	}
+	for _, c := range cases {
+		if got := sameLeagues(c.a, c.b); got != c.want {
+			t.Errorf("sameLeagues(%v, %v) = %v, want %v", c.a, c.b, got, c.want)
+		}
+	}
+}
