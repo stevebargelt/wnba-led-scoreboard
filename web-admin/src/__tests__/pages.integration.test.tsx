@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import { ThemeProvider } from '../contexts/ThemeContext'
 import Home from '../pages/index'
-import Register from '../pages/register'
+import NewDevice from '../pages/devices/new'
 
 const Providers = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider>{children}</ThemeProvider>
@@ -62,23 +62,23 @@ describe('Page Integration Tests', () => {
     })
   })
 
-  describe('Register Page', () => {
-    it('renders register page without crashing', async () => {
+  describe('NewDevice Page', () => {
+    it('renders new device page without crashing', async () => {
       render(
         <Providers>
-          <Register />
+          <NewDevice />
         </Providers>
       )
 
       await waitFor(() => {
-        expect(screen.getByText(/register new device/i)).toBeInTheDocument()
+        expect(screen.getByText(/add device/i)).toBeInTheDocument()
       })
     })
 
-    it('displays application layout with new branding', async () => {
+    it('displays application layout with branding', async () => {
       render(
         <Providers>
-          <Register />
+          <NewDevice />
         </Providers>
       )
 
@@ -113,7 +113,7 @@ describe('Page Integration Tests', () => {
 
       rerender(
         <Providers>
-          <Register />
+          <NewDevice />
         </Providers>
       )
 

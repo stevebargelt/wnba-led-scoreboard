@@ -88,24 +88,22 @@ describe('Home page', () => {
     renderWithProviders()
 
     expect(await screen.findByRole('heading', { level: 1, name: /dashboard/i })).toBeInTheDocument()
-    expect(screen.getByText(/living room/i)).toBeInTheDocument()
+    expect(await screen.findByText(/living room/i)).toBeInTheDocument()
+  })
 
-    fireEvent.change(screen.getByPlaceholderText(/device name/i), {
-      target: { value: 'Bedroom Display' },
-    })
-
-    mockAuth.getUser.mockResolvedValue({ data: { user: { id: '1' } } })
+  it('shows empty state when authenticated with no devices', async () => {
+    setupAuthMocks({ user: { id: '1' } })
     mockFrom.mockImplementationOnce(() => ({
-      insert: () => ({
-        select: () => ({
-          single: () =>
-            Promise.resolve({ data: { id: 'device2', name: 'Bedroom Display' }, error: null }),
-        }),
+      select: () => ({
+        order: () => Promise.resolve({ data: [], error: null }),
       }),
     }))
 
-    fireEvent.click(screen.getByText('Create Device'))
+    renderWithProviders()
 
-    await waitFor(() => expect(screen.getByText(/bedroom display/i)).toBeInTheDocument())
+    expect(await screen.findByText(/no devices yet/i)).toBeInTheDocument()
+    const addButtons = await screen.findAllByRole('link', { name: /add device/i })
+    expect(addButtons.length).toBeGreaterThan(0)
+    expect((addButtons[0] as HTMLAnchorElement).href).toContain('/devices/new')
   })
 })

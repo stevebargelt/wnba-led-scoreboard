@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { supabase } from '../lib/supabaseClient'
-import { Layout } from '../components/layout'
-import { Card, CardHeader, CardTitle, Button, Input, StatusBadge } from '../components/ui'
+import { supabase } from '../../lib/supabaseClient'
+import { Layout } from '../../components/layout'
+import { Card, CardHeader, CardTitle, Button, Input, StatusBadge } from '../../components/ui'
 import { PlusIcon, MagnifyingGlassIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 type Device = { id: string; name: string; last_seen_ts: string | null }
@@ -12,7 +12,6 @@ export default function Devices() {
   const [filteredDevices, setFilteredDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [newDeviceName, setNewDeviceName] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
@@ -39,32 +38,6 @@ export default function Devices() {
       setFilteredDevices(data as Device[])
     }
     setLoading(false)
-  }
-
-  const createDevice = async () => {
-    setMessage('')
-    if (!newDeviceName.trim()) {
-      setMessage('Enter a device name')
-      return
-    }
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) {
-      setMessage('Sign in first')
-      return
-    }
-    const { data, error } = await supabase
-      .from('devices')
-      .insert({ name: newDeviceName, user_id: userData.user.id })
-      .select('id,name')
-      .single()
-    if (error) {
-      setMessage(error.message)
-    } else {
-      const newDevice = { id: data!.id, name: data!.name, last_seen_ts: null }
-      setDevices(prev => [...prev, newDevice])
-      setNewDeviceName('')
-      setMessage('Device created successfully. Click Configure to set it up.')
-    }
   }
 
   const deleteDevice = async (deviceId: string, deviceName: string) => {
@@ -95,30 +68,12 @@ export default function Devices() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Devices</h1>
             <p className="text-gray-600 dark:text-gray-400">Manage your LED scoreboard devices</p>
           </div>
-          <Link href="/register">
-            <Button leftIcon={<PlusIcon className="h-4 w-4" />}>Register New Device</Button>
+          <Link href="/devices/new">
+            <Button leftIcon={<PlusIcon className="h-4 w-4" />}>Add Device</Button>
           </Link>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Device</CardTitle>
-          </CardHeader>
-          <div className="space-y-3">
-            <div className="flex space-x-3">
-              <Input
-                placeholder="Device name (e.g., Living Room Display)"
-                value={newDeviceName}
-                onChange={e => setNewDeviceName(e.target.value)}
-                className="flex-1"
-              />
-              <Button onClick={createDevice} loading={loading}>
-                Create
-              </Button>
-            </div>
-            {message && <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>}
-          </div>
-        </Card>
+        {message && <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>}
 
         <Card>
           <CardHeader>
@@ -145,7 +100,7 @@ export default function Devices() {
               <p className="text-gray-500 dark:text-gray-400">
                 {searchQuery
                   ? 'No devices match your search.'
-                  : 'No devices found. Create your first device above.'}
+                  : 'No devices found. Add your first device.'}
               </p>
             </div>
           ) : (

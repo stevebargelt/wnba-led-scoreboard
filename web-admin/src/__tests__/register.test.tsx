@@ -1,13 +1,13 @@
 import React from 'react'
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
-import RegisterDevice from '@/pages/register'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import NewDevice from '@/pages/devices/new'
 import { ThemeProvider } from '@/contexts/ThemeContext'
 
 jest.mock('@/lib/supabaseClient', () => ({
   supabase: {
     auth: {
       getUser: jest.fn(),
-      getSession: jest.fn(),
+      getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
     },
     from: jest.fn(),
   },
@@ -21,18 +21,18 @@ const mockFrom = supabase.from as jest.Mock
 const renderWithProviders = () =>
   render(
     <ThemeProvider defaultTheme="light">
-      <RegisterDevice />
+      <NewDevice />
     </ThemeProvider>
   )
 
-describe('RegisterDevice page', () => {
+describe('NewDevice page', () => {
   const originalClipboard = navigator.clipboard
 
   beforeEach(() => {
     jest.useFakeTimers()
     jest.clearAllMocks()
     mockAuth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
-    mockAuth.getSession.mockResolvedValue({ data: { session: { access_token: 'jwt-token' } } })
+    mockAuth.getSession.mockResolvedValue({ data: { session: null } })
     mockFrom.mockReturnValue({
       insert: () => ({
         select: () => ({
@@ -43,9 +43,8 @@ describe('RegisterDevice page', () => {
     ;(navigator as any).clipboard = {
       writeText: jest.fn().mockResolvedValue(undefined),
     }
-    process.env.NEXT_PUBLIC_FUNCTION_MINT_DEVICE_TOKEN = 'https://example.com/mint'
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon'
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.com'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key'
   })
 
   afterEach(() => {
@@ -53,41 +52,54 @@ describe('RegisterDevice page', () => {
     ;(navigator as any).clipboard = originalClipboard
   })
 
-  it('disables submit when name is empty', () => {
+  it('renders step 1 with device name input', () => {
     renderWithProviders()
-    expect(screen.getByText(/create device/i)).toBeDisabled()
+    expect(screen.getByText(/add device/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/device name/i)).toBeInTheDocument()
+  })
+
+  it('disables Create Device when name is empty', () => {
+    renderWithProviders()
+    expect(screen.getByRole('button', { name: /create device/i })).toBeDisabled()
   })
 
   it('requires authentication before creating device', async () => {
     mockAuth.getUser.mockResolvedValue({ data: { user: null } })
     renderWithProviders()
     fireEvent.change(screen.getByLabelText(/device name/i), { target: { value: 'Lobby Display' } })
-    fireEvent.click(screen.getByText(/create device/i))
+    fireEvent.click(screen.getByRole('button', { name: /create device/i }))
     await waitFor(() => expect(screen.getByText(/sign in first/i)).toBeInTheDocument())
   })
 
-  it('creates device, mints token, and allows copying identifiers', async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ token: 'demo-token-123' }),
-    }) as any
-
+  it('creates device and shows env vars in step 2', async () => {
     renderWithProviders()
     fireEvent.change(screen.getByLabelText(/device name/i), { target: { value: 'Lobby Display' } })
-    fireEvent.click(screen.getByText(/create device/i))
+    fireEvent.click(screen.getByRole('button', { name: /create device/i }))
 
-    await waitFor(() =>
-      expect(screen.getByText(/device created and token minted/i)).toBeInTheDocument()
-    )
+    await waitFor(() => expect(screen.getByText(/device created/i)).toBeInTheDocument())
 
     expect(screen.getByText('device-1')).toBeInTheDocument()
-    expect(screen.getAllByText(/demo-token-123/).length).toBeGreaterThan(0)
+    expect(screen.getByText('https://example.com')).toBeInTheDocument()
+    expect(screen.getByText('anon-key')).toBeInTheDocument()
+  })
 
-    const copyButtons = screen.getAllByRole('button', { name: /copy/i })
-    fireEvent.click(copyButtons[0])
-    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled())
-    act(() => {
-      jest.runOnlyPendingTimers()
-    })
+  it('shows no-device-token info callout in step 2', async () => {
+    renderWithProviders()
+    fireEvent.change(screen.getByLabelText(/device name/i), { target: { value: 'Lobby Display' } })
+    fireEvent.click(screen.getByRole('button', { name: /create device/i }))
+
+    await waitFor(() => expect(screen.getByText(/device created/i)).toBeInTheDocument())
+
+    expect(screen.getByText(/no device token is needed/i)).toBeInTheDocument()
+  })
+
+  it('does not show DEVICE_TOKEN anywhere', async () => {
+    renderWithProviders()
+    fireEvent.change(screen.getByLabelText(/device name/i), { target: { value: 'Lobby Display' } })
+    fireEvent.click(screen.getByRole('button', { name: /create device/i }))
+
+    await waitFor(() => expect(screen.getByText(/device created/i)).toBeInTheDocument())
+
+    expect(screen.queryByText(/DEVICE_TOKEN/)).not.toBeInTheDocument()
   })
 })

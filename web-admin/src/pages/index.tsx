@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { supabase } from '../lib/supabaseClient'
 import { Layout } from '../components/layout'
-import { Card, CardHeader, CardTitle, Button, Input } from '../components/ui'
-import { StatusBadge } from '../components/ui/StatusBadge'
-import { PlusIcon, UserIcon } from '@heroicons/react/24/outline'
+import { Card, CardHeader, CardTitle, Button, Input, DeviceCard } from '../components/ui'
+import { PlusIcon, UserIcon, TvIcon } from '@heroicons/react/24/outline'
 
 type Device = { id: string; name: string; last_seen_ts: string | null }
 
@@ -15,7 +14,6 @@ export default function Home() {
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [newDeviceName, setNewDeviceName] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session))
@@ -35,30 +33,6 @@ export default function Home() {
       setLoading(false)
     })()
   }, [session])
-
-  const createDevice = async () => {
-    setMessage('')
-    if (!newDeviceName.trim()) {
-      setMessage('Enter a device name')
-      return
-    }
-    const { data: userData } = await supabase.auth.getUser()
-    if (!userData.user) {
-      setMessage('Sign in first')
-      return
-    }
-    const { data, error } = await supabase
-      .from('devices')
-      .insert({ name: newDeviceName, user_id: userData.user.id })
-      .select('id,name')
-      .single()
-    if (error) setMessage(error.message)
-    else {
-      setDevices(prev => [...prev, { id: data!.id, name: data!.name, last_seen_ts: null }])
-      setNewDeviceName('')
-      setMessage('Device created. Open it and mint a token from its page.')
-    }
-  }
 
   const signIn = async () => {
     setMessage('')
@@ -133,97 +107,71 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Manage your LED scoreboards and devices
-            </p>
-          </div>
-          <div className="flex space-x-3">
-            <Link href="/register">
-              <Button leftIcon={<PlusIcon className="h-4 w-4" />}>Add Device</Button>
-            </Link>
-            <Button variant="secondary" onClick={() => supabase.auth.signOut()}>
-              Sign Out
-            </Button>
-          </div>
+      {/* Page header */}
+      <div className="flex items-center justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Dashboard</h1>
+          <p className="text-sm text-[var(--color-text-secondary)]">Manage your LED scoreboards</p>
         </div>
-
-        {/* Quick device creation */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Device Setup</CardTitle>
-          </CardHeader>
-          <div className="flex space-x-3">
-            <Input
-              placeholder="Device name (e.g., Living Room Display)"
-              value={newDeviceName}
-              onChange={e => setNewDeviceName(e.target.value)}
-              className="flex-1"
-            />
-            <Button onClick={createDevice} loading={loading}>
-              Create Device
-            </Button>
-          </div>
-          {message && <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p>}
-        </Card>
-
-        {/* Devices list */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Devices ({devices.length})</CardTitle>
-          </CardHeader>
-
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
-              <span className="ml-2 text-gray-600 dark:text-gray-400">Loading devices...</span>
-            </div>
-          ) : devices.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400">
-                No devices found. Create your first device above.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {devices.map(device => (
-                <div
-                  key={device.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div>
-                      <Link href={`/device/${device.id}`}>
-                        <span className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400 cursor-pointer">
-                          {device.name}
-                        </span>
-                      </Link>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Last seen:{' '}
-                        {device.last_seen_ts
-                          ? new Date(device.last_seen_ts).toLocaleString()
-                          : 'Never'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <StatusBadge lastSeenTs={device.last_seen_ts} />
-                    <Link href={`/device/${device.id}`}>
-                      <Button variant="secondary" size="sm">
-                        Configure
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+        <Link href="/devices/new">
+          <Button leftIcon={<PlusIcon className="h-4 w-4" />}>Add Device</Button>
+        </Link>
       </div>
+
+      {loading ? (
+        /* Loading skeleton */
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 gap-4"
+          aria-label="Loading devices"
+          aria-busy="true"
+        >
+          {[1, 2, 3, 4].map(i => (
+            <div
+              key={i}
+              className="bg-[var(--color-surface)] rounded-card border border-[var(--color-border)] p-5 animate-pulse"
+              aria-hidden="true"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 bg-[var(--color-surface-2)] rounded w-3/4" />
+                  <div className="h-5 bg-[var(--color-surface-2)] rounded w-16" />
+                </div>
+                <div className="w-10 h-10 rounded-md bg-[var(--color-surface-2)]" />
+              </div>
+              <div className="mt-3 h-3 bg-[var(--color-surface-2)] rounded w-2/3" />
+              <div className="mt-4 h-9 bg-[var(--color-surface-2)] rounded-[var(--radius-md)]" />
+            </div>
+          ))}
+        </div>
+      ) : devices.length === 0 ? (
+        /* Empty state */
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-14 h-14 rounded-card bg-[var(--color-surface-2)] flex items-center justify-center mb-4">
+            <TvIcon className="w-7 h-7 text-[var(--color-text-muted)]" aria-hidden="true" />
+          </div>
+          <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-1">
+            No devices yet
+          </h2>
+          <p className="text-sm text-[var(--color-text-secondary)] mb-6 max-w-xs">
+            Add your first LED scoreboard to get started.
+          </p>
+          <Link href="/devices/new">
+            <Button leftIcon={<PlusIcon className="h-4 w-4" />}>Add Device</Button>
+          </Link>
+        </div>
+      ) : (
+        /* Device grid */
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {devices.map(device => (
+            <DeviceCard
+              key={device.id}
+              id={device.id}
+              name={device.name}
+              lastSeenTs={device.last_seen_ts}
+            />
+          ))}
+        </div>
+      )}
     </Layout>
   )
 }
