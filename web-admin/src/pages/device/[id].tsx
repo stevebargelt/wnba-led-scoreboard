@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { supabase } from '../../lib/supabaseClient'
 import { Layout } from '../../components/layout'
@@ -49,6 +49,12 @@ export default function DevicePage() {
   const [settingsClean, setSettingsClean] = useState<SettingsState>(SETTINGS_DEFAULTS)
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [message, setMessage] = useState('')
+
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteNameInput, setDeleteNameInput] = useState('')
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
+  const deleteInputRef = useRef<HTMLInputElement>(null)
 
   const settingsIsDirty = !settingsEqual(settings, settingsClean)
 
@@ -134,6 +140,49 @@ export default function DevicePage() {
   function discardSettings() {
     setSettings(settingsClean)
     setMessage('')
+  }
+
+  function openDeleteConfirm() {
+    setDeleteNameInput('')
+    setDeleteError('')
+    setShowDeleteConfirm(true)
+    setTimeout(() => deleteInputRef.current?.focus(), 50)
+  }
+
+  function cancelDelete() {
+    setShowDeleteConfirm(false)
+    setDeleteNameInput('')
+    setDeleteError('')
+  }
+
+  async function confirmDelete() {
+    if (!id) return
+    setDeleteLoading(true)
+    setDeleteError('')
+    try {
+      const { data: sess } = await supabase.auth.getSession()
+      const jwt = sess.session?.access_token
+      if (!jwt) {
+        setDeleteError('Not signed in')
+        return
+      }
+      const resp = await fetch(`/api/device/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${jwt}` },
+      })
+      if (resp.ok || resp.status === 204) {
+        router.push('/')
+      } else {
+        const body = resp.headers.get('content-type')?.includes('application/json')
+          ? await resp.json()
+          : {}
+        setDeleteError(body?.error || `Delete failed (${resp.status})`)
+      }
+    } catch (e: any) {
+      setDeleteError(`Error: ${e.message}`)
+    } finally {
+      setDeleteLoading(false)
+    }
   }
 
   const isDeviceOnline = useMemo(() => {
@@ -349,6 +398,111 @@ export default function DevicePage() {
                 </Button>
               </div>
               {message && <p className="text-sm text-[var(--color-text-secondary)]">{message}</p>}
+
+              {/* Danger Zone */}
+              <div
+                className="rounded-card border border-[var(--color-danger)] bg-[var(--color-danger-soft)] p-5"
+                aria-label="Danger zone"
+              >
+                <h3 className="text-base font-semibold text-[var(--color-danger)] mb-1">
+                  Danger Zone
+                </h3>
+                <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+                  Irreversible and destructive actions.
+                </p>
+
+                {!showDeleteConfirm ? (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                        Delete this device
+                      </p>
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Permanently removes the device and all its configuration.
+                      </p>
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={openDeleteConfirm}
+                      leftIcon={
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          aria-hidden="true"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                          />
+                        </svg>
+                      }
+                    >
+                      Delete this device
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-[var(--color-text-primary)]">
+                      This action <strong>cannot be undone</strong>. This will permanently delete
+                      the device <strong>&ldquo;{device?.name}&rdquo;</strong> and all associated
+                      configuration.
+                    </p>
+                    <p className="text-sm text-[var(--color-text-secondary)]">
+                      Please type{' '}
+                      <code className="rounded px-1 py-0.5 text-xs font-mono bg-[var(--color-surface-2)] border border-[var(--color-border)]">
+                        {device?.name}
+                      </code>{' '}
+                      to confirm.
+                    </p>
+                    <div className="space-y-1">
+                      <label
+                        htmlFor="delete-confirm-input"
+                        className="block text-sm font-medium text-[var(--color-text-secondary)]"
+                      >
+                        Device name
+                      </label>
+                      <input
+                        id="delete-confirm-input"
+                        ref={deleteInputRef}
+                        type="text"
+                        value={deleteNameInput}
+                        onChange={e => setDeleteNameInput(e.target.value)}
+                        placeholder={device?.name ?? ''}
+                        autoComplete="off"
+                        aria-describedby={deleteError ? 'delete-error' : undefined}
+                        className="block w-full h-[42px] rounded-token-sm border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)]"
+                      />
+                    </div>
+                    {deleteError && (
+                      <p
+                        id="delete-error"
+                        role="alert"
+                        className="text-sm text-[var(--color-danger)]"
+                      >
+                        {deleteError}
+                      </p>
+                    )}
+                    <div className="flex gap-3">
+                      <Button
+                        variant="destructive"
+                        disabled={deleteNameInput.trim() !== (device?.name ?? '') || deleteLoading}
+                        loading={deleteLoading}
+                        onClick={confirmDelete}
+                      >
+                        Delete this device
+                      </Button>
+                      <Button variant="secondary" onClick={cancelDelete} disabled={deleteLoading}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </TabsContent>
         </Tabs>
