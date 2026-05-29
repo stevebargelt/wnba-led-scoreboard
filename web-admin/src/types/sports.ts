@@ -78,6 +78,7 @@ export interface LeagueConfig {
   conferenceStructure?: Record<string, string[]>
   teamAssetsUrl?: string
   logoUrlTemplate?: string
+  enabled?: boolean
 }
 
 export interface LeagueWithSport extends LeagueConfig {

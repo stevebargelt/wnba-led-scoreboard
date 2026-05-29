@@ -62,6 +62,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse, user: Authenti
         conferenceStructure: league.conference_structure || {},
         timingOverrides: league.timing_overrides || {},
         currentSeason: currentSeason,
+        enabled: league.is_active !== false,
       }
 
       return res.status(200).json(transformedLeague)
@@ -137,6 +138,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse, user: Authenti
         timing_overrides: updatedLeague.timingOverrides,
         current_season: cleanCurrentSeason,
         updated_at: new Date().toISOString(),
+      }
+      if (updatedLeague.enabled !== undefined) {
+        updateData.is_active = updatedLeague.enabled
       }
 
       // Only update sport_id if we have one

@@ -1,94 +1,146 @@
 import { useState, useEffect } from 'react'
 import { Layout } from '@/components/layout'
 import { Card } from '@/components/ui/Card'
-import { SimpleTabs } from '@/components/ui/SimpleTabs'
-import { SportHierarchyView } from '@/components/sports/SportHierarchyView'
-import { LeagueConfigEditor } from '@/components/sports/LeagueConfigEditor'
-import { SportConfigViewer } from '@/components/sports/SportConfigViewer'
-import { fetchSportsAndLeagues, updateLeague } from '@/lib/sportsLeagues'
-import type { SportConfig, LeagueConfig, SportHierarchy } from '@/types/sports'
+import { Toggle } from '@/components/ui/Toggle'
+import { supabase } from '@/lib/supabaseClient'
+import { fetchSportsAndLeagues } from '@/lib/sportsLeagues'
+import type { SportConfig, LeagueConfig } from '@/types/sports'
+import {
+  ChevronRightIcon,
+  ExclamationTriangleIcon,
+  ShieldExclamationIcon,
+} from '@heroicons/react/24/outline'
+
+interface AdminLeague extends LeagueConfig {
+  id?: string
+}
 
 export default function SportsLeaguesPage() {
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
   const [sports, setSports] = useState<SportConfig[]>([])
-  const [leagues, setLeagues] = useState<LeagueConfig[]>([])
-  const [selectedSport, setSelectedSport] = useState<SportConfig | null>(null)
-  const [selectedLeague, setSelectedLeague] = useState<LeagueConfig | null>(null)
-  const [activeTab, setActiveTab] = useState('hierarchy')
+  const [leagues, setLeagues] = useState<AdminLeague[]>([])
+  const [selectedSportCode, setSelectedSportCode] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [updatingLeague, setUpdatingLeague] = useState<string | null>(null)
 
   useEffect(() => {
-    loadSportsAndLeagues()
-  }, [])
+    let mounted = true
 
-  const loadSportsAndLeagues = async () => {
-    try {
-      const data = await fetchSportsAndLeagues()
-      setSports(data.sports || [])
-      setLeagues(data.leagues || [])
-    } catch (error) {
-      console.error('Failed to fetch sports and leagues:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    async function init() {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
 
-  const handleSportSelect = (sport: SportConfig) => {
-    setSelectedSport(sport)
-    setSelectedLeague(null)
-    setActiveTab('sport')
-  }
-
-  const handleLeagueSelect = (league: LeagueConfig) => {
-    const sport = sports.find(s => s.code === league.sportCode)
-    setSelectedSport(sport || null)
-    setSelectedLeague(league)
-    setActiveTab('league')
-  }
-
-  const handleLeagueUpdate = async (league: LeagueConfig) => {
-    try {
-      setIsLoading(true)
-      await updateLeague(league.code, league)
-
-      // Reload all data
-      const data = await fetchSportsAndLeagues()
-      setSports(data.sports || [])
-      setLeagues(data.leagues || [])
-
-      // Update the selected league with fresh data
-      const updatedLeague = data.leagues?.find(l => l.code === league.code)
-      if (updatedLeague) {
-        setSelectedLeague(updatedLeague)
+      if (!token) {
+        if (mounted) {
+          setIsAdmin(false)
+          setIsLoading(false)
+        }
+        return
       }
 
-      // Show success message
-      console.log('League updated successfully')
-    } catch (error) {
-      console.error('Failed to update league:', error)
-      // You could add a toast notification here
-      alert('Failed to update league. Please try again.')
+      try {
+        const adminRes = await fetch('/api/auth/is-admin', {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        const adminData = await adminRes.json()
+        if (!mounted) return
+        const isAdminUser = adminData.isAdmin || false
+        setIsAdmin(isAdminUser)
+
+        if (isAdminUser) {
+          const data = await fetchSportsAndLeagues()
+          if (!mounted) return
+          const sportsData: SportConfig[] = data.sports || []
+          setSports(sportsData)
+          setLeagues(data.leagues || [])
+          if (sportsData.length > 0) {
+            setSelectedSportCode(sportsData[0].code)
+          }
+        }
+      } finally {
+        if (mounted) setIsLoading(false)
+      }
+    }
+
+    init()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const selectedSport = sports.find(s => s.code === selectedSportCode) ?? null
+  const filteredLeagues = leagues.filter(l => l.sportCode === selectedSportCode)
+
+  async function handleToggleEnabled(league: AdminLeague, enabled: boolean) {
+    setUpdatingLeague(league.code)
+    // Optimistic update
+    setLeagues(prev => prev.map(l => (l.code === league.code ? { ...l, enabled } : l)))
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+      const token = session?.access_token
+      if (!token) throw new Error('Not authenticated')
+
+      const resp = await fetch(`/api/admin/sports-leagues/league/${league.code}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ...league, enabled }),
+      })
+      if (!resp.ok) throw new Error('Update failed')
+    } catch {
+      // Revert on failure
+      setLeagues(prev => prev.map(l => (l.code === league.code ? { ...l, enabled: !enabled } : l)))
     } finally {
-      setIsLoading(false)
+      setUpdatingLeague(null)
     }
   }
 
-  // Build hierarchy data
-  const hierarchyData: SportHierarchy[] = sports.map(sport => ({
-    sport,
-    leagues: leagues.filter(league => league.sportCode === sport.code),
-  }))
-
-  const tabs = [
-    { id: 'hierarchy', label: 'Overview', icon: '🏆' },
-    { id: 'sport', label: 'Sport Details', icon: '⚙️', disabled: !selectedSport },
-    { id: 'league', label: 'League Config', icon: '🎯', disabled: !selectedLeague },
-  ]
+  async function handleDeleteLeague(league: AdminLeague) {
+    if (!confirm(`Delete league "${league.name}"? This cannot be undone.`)) return
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
+    const token = session?.access_token
+    if (!token) return
+    await fetch(`/api/admin/sports-leagues/league/${league.code}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    setLeagues(prev => prev.filter(l => l.code !== league.code))
+  }
 
   if (isLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-64">
-          <div className="text-gray-500">Loading sports and leagues...</div>
+          <span className="text-[var(--color-text-muted)] text-sm">Loading…</span>
+        </div>
+      </Layout>
+    )
+  }
+
+  if (isAdmin === false) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[50vh] px-4">
+          <div
+            role="alert"
+            className="rounded-card bg-danger-soft border border-danger p-8 max-w-sm w-full text-center"
+          >
+            <div
+              className="w-12 h-12 rounded-full bg-danger-soft border border-danger flex items-center justify-center mx-auto mb-4"
+              aria-hidden="true"
+            >
+              <ShieldExclamationIcon className="w-6 h-6 text-danger" />
+            </div>
+            <h2 className="text-base font-semibold text-danger mb-2">Access Restricted</h2>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              You don&apos;t have permission to access this area.
+            </p>
+          </div>
         </div>
       </Layout>
     )
@@ -96,42 +148,176 @@ export default function SportsLeaguesPage() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Sports & Leagues Management
-          </h1>
-          <p className="mt-2 text-gray-600 dark:text-gray-400">
-            Configure sport rules and league-specific settings
-          </p>
-        </div>
+      {/* Admin banner */}
+      <div
+        role="status"
+        className="mb-6 px-3 py-2 rounded-token-sm bg-amber-soft border border-[var(--color-amber)] flex items-center gap-2"
+      >
+        <ExclamationTriangleIcon className="w-4 h-4 text-amber flex-shrink-0" aria-hidden="true" />
+        <span className="text-sm text-amber-fg">
+          Admin view — changes affect all users&apos; devices.
+        </span>
+      </div>
 
-        <SimpleTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} className="mb-6" />
+      {/* Page heading */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+          Sports &amp; Leagues
+        </h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1">
+          Global catalog — manage the sports and leagues available to all devices.
+        </p>
+      </div>
 
-        <div className="space-y-6">
-          {activeTab === 'hierarchy' && (
-            <SportHierarchyView
-              hierarchyData={hierarchyData}
-              onSportSelect={handleSportSelect}
-              onLeagueSelect={handleLeagueSelect}
-            />
+      {/* Two-column layout */}
+      <div className="flex gap-6 items-start">
+        {/* Left: sports list */}
+        <nav
+          aria-label="Sports"
+          className="w-64 flex-shrink-0 bg-[var(--color-surface)] rounded-card border border-[var(--color-border)] overflow-hidden"
+        >
+          {sports.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-[var(--color-text-muted)]">No sports found.</p>
+          ) : (
+            <ul>
+              {sports.map((sport, i) => {
+                const leagueCount = leagues.filter(l => l.sportCode === sport.code).length
+                const isSelected = sport.code === selectedSportCode
+                return (
+                  <li
+                    key={sport.code}
+                    className={i > 0 ? 'border-t border-[var(--color-border)]' : ''}
+                  >
+                    <button
+                      onClick={() => setSelectedSportCode(sport.code)}
+                      className={[
+                        'w-full text-left flex items-center justify-between px-4 py-3 transition-colors',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-accent)]',
+                        isSelected
+                          ? 'bg-accent-soft text-[var(--color-accent-soft-fg)]'
+                          : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text-primary)]',
+                      ].join(' ')}
+                      aria-pressed={isSelected}
+                    >
+                      <span className="text-sm font-medium">
+                        {sport.name || sport.code.toUpperCase()}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span
+                          className={[
+                            'inline-flex items-center rounded-pill px-2 py-0.5 text-xs font-semibold',
+                            isSelected
+                              ? 'bg-accent text-accent-fg'
+                              : 'bg-[var(--color-surface-2)] text-[var(--color-text-muted)]',
+                          ].join(' ')}
+                        >
+                          {leagueCount}
+                        </span>
+                        <ChevronRightIcon
+                          className={[
+                            'w-4 h-4 flex-shrink-0',
+                            isSelected
+                              ? 'text-[var(--color-accent)]'
+                              : 'text-[var(--color-text-muted)]',
+                          ].join(' ')}
+                          aria-hidden="true"
+                        />
+                      </div>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
           )}
+        </nav>
 
-          {activeTab === 'sport' && selectedSport && (
-            <SportConfigViewer
-              sport={selectedSport}
-              leagues={leagues.filter(l => l.sportCode === selectedSport.code)}
-            />
-          )}
+        {/* Right: league table */}
+        <div className="flex-1 min-w-0">
+          <Card padding="none">
+            {/* Table header */}
+            <div className="px-5 py-4 border-b border-[var(--color-border)]">
+              <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+                {selectedSport?.name || 'Select a sport'}
+              </h2>
+            </div>
 
-          {activeTab === 'league' && selectedLeague && selectedSport && (
-            <LeagueConfigEditor
-              league={selectedLeague}
-              sport={selectedSport}
-              onSave={handleLeagueUpdate}
-              onCancel={() => setActiveTab('hierarchy')}
-            />
-          )}
+            {filteredLeagues.length === 0 ? (
+              <p className="px-5 py-10 text-center text-sm text-[var(--color-text-muted)]">
+                No leagues found for this sport.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--color-border)]">
+                      <th
+                        scope="col"
+                        className="px-5 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide"
+                      >
+                        League Name
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-5 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide"
+                      >
+                        Code
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-5 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide"
+                      >
+                        Enabled
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-5 py-3 text-left text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide"
+                      >
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredLeagues.map((league, i) => (
+                      <tr
+                        key={league.code}
+                        className={[
+                          'transition-colors hover:bg-accent-soft',
+                          i < filteredLeagues.length - 1
+                            ? 'border-b border-[var(--color-border)]'
+                            : '',
+                        ].join(' ')}
+                      >
+                        <td className="px-5 py-3 font-medium text-[var(--color-text-primary)]">
+                          {league.name}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="font-mono-machine text-xs bg-accent-soft text-[var(--color-accent-soft-fg)] px-2 py-0.5 rounded-token-sm">
+                            {league.code}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <Toggle
+                            checked={league.enabled !== false}
+                            onChange={enabled => handleToggleEnabled(league, enabled)}
+                            disabled={updatingLeague === league.code}
+                            label={league.enabled !== false ? 'Enabled' : 'Disabled'}
+                          />
+                        </td>
+                        <td className="px-5 py-3">
+                          <button
+                            onClick={() => handleDeleteLeague(league)}
+                            className="text-xs font-medium text-danger hover:text-danger-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-danger)] rounded"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
         </div>
       </div>
     </Layout>

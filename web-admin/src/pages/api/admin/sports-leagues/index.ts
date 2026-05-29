@@ -68,6 +68,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse, user: Authenti
             conferenceStructure: league.conference_structure || {},
             timingOverrides: league.timing_overrides || {},
             currentSeason: currentSeason,
+            enabled: league.is_active !== false,
           }
         }) || []
 

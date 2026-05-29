@@ -19,6 +19,37 @@ function isEqual(a: SportConfig[], b: SportConfig[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b)
 }
 
+function getLeagueStyles(sport: string): {
+  badge: string
+  pill: string
+  pillText: string
+  removeBtn: string
+} {
+  const code = sport.toLowerCase()
+  if (code === 'wnba') {
+    return {
+      badge: 'bg-[var(--color-league-wnba)] text-[var(--color-league-wnba-fg)]',
+      pill: 'bg-[var(--color-league-wnba-soft)]',
+      pillText: 'text-[var(--color-league-wnba)]',
+      removeBtn: 'text-[var(--color-league-wnba)] hover:opacity-70',
+    }
+  }
+  if (code === 'nhl') {
+    return {
+      badge: 'bg-[var(--color-league-nhl)] text-[var(--color-league-nhl-fg)]',
+      pill: 'bg-[var(--color-league-nhl-soft)]',
+      pillText: 'text-[var(--color-league-nhl)]',
+      removeBtn: 'text-[var(--color-league-nhl)] hover:opacity-70',
+    }
+  }
+  return {
+    badge: 'bg-accent text-accent-fg',
+    pill: 'bg-accent-soft',
+    pillText: 'text-[var(--color-accent-soft-fg)]',
+    removeBtn: 'text-[var(--color-accent-soft-fg)] hover:opacity-70',
+  }
+}
+
 export function DeviceTeamsTab({ deviceId }: { deviceId: string }): ReactElement {
   const [configs, setConfigs] = useState<SportConfig[]>([])
   const [clean, setClean] = useState<SportConfig[]>([])
@@ -77,9 +108,7 @@ export function DeviceTeamsTab({ deviceId }: { deviceId: string }): ReactElement
   }, [deviceId])
 
   function toggleEnabled(sport: string, enabled: boolean) {
-    setConfigs(prev =>
-      prev.map(c => (c.sport === sport ? { ...c, enabled } : c))
-    )
+    setConfigs(prev => prev.map(c => (c.sport === sport ? { ...c, enabled } : c)))
   }
 
   function removeTeam(sport: string, teamId: string) {
@@ -159,87 +188,96 @@ export function DeviceTeamsTab({ deviceId }: { deviceId: string }): ReactElement
       {isDirty && (
         <div
           role="alert"
-          className="rounded-md bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 px-4 py-2 text-sm text-amber-800 dark:text-amber-200"
+          className="rounded-token-sm bg-amber-soft border border-[var(--color-amber)] px-4 py-2 text-sm text-amber-fg"
         >
           Unsaved changes
         </div>
       )}
-      {message && (
-        <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
-      )}
+      {message && <p className="text-sm text-[var(--color-text-secondary)]">{message}</p>}
       {sorted.map(config => {
         const teamList = directory[config.sport] || []
         const favSet = new Set(config.favorite_teams)
+        const styles = getLeagueStyles(config.sport)
+
         return (
           <Card key={config.sport}>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>{config.sport.toUpperCase()}</CardTitle>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-pill px-2.5 py-0.5 text-xs font-semibold ${styles.badge}`}
+                  >
+                    {config.sport.toUpperCase()}
+                  </span>
+                </div>
                 <Toggle
                   checked={config.enabled}
                   onChange={enabled => toggleEnabled(config.sport, enabled)}
                 />
               </div>
             </CardHeader>
-            <div className={config.enabled ? '' : 'opacity-50'}>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {config.favorite_teams.map(teamId => {
-                  const team = teamList.find(t => t.team_id === teamId)
-                  const label = team?.abbreviation || teamId.slice(0, 3).toUpperCase()
-                  return (
-                    <span
-                      key={teamId}
-                      className="inline-flex items-center gap-1 rounded-full bg-blue-100 dark:bg-blue-900 px-3 py-1 text-sm text-blue-800 dark:text-blue-200"
-                    >
-                      {label}
-                      <button
-                        type="button"
-                        disabled={!config.enabled}
-                        onClick={() => removeTeam(config.sport, teamId)}
-                        className="ml-1 text-blue-600 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100 disabled:pointer-events-none"
-                        aria-label={`Remove ${label}`}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  )
-                })}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  id={`add-team-${config.sport}`}
-                  list={`teams-${config.sport}`}
-                  ref={makeRefCallback(config.sport)}
-                  disabled={!config.enabled}
-                  placeholder="Add team…"
-                  aria-label={`Add ${config.sport.toUpperCase()} team`}
-                  className="flex-1 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-1.5 text-sm disabled:opacity-50"
-                  onChange={e => handleAddInput(config.sport, e.target.value)}
-                />
-                <datalist id={`teams-${config.sport}`}>
-                  {teamList.filter(t => !favSet.has(t.team_id)).map(t => (
-                    <option key={t.team_id} value={t.name} />
-                  ))}
-                </datalist>
-              </div>
+            <div>
+              {config.enabled ? (
+                <>
+                  {config.favorite_teams.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {config.favorite_teams.map(teamId => {
+                        const team = teamList.find(t => t.team_id === teamId)
+                        const label = team?.abbreviation || teamId.slice(0, 3).toUpperCase()
+                        return (
+                          <span
+                            key={teamId}
+                            className={`inline-flex items-center gap-1 rounded-pill ${styles.pill} ${styles.pillText} px-3 py-1 text-sm font-medium`}
+                          >
+                            <span className="font-mono-machine text-xs font-semibold">{label}</span>
+                            {team?.name && <span className="opacity-80">{team.name}</span>}
+                            <button
+                              type="button"
+                              onClick={() => removeTeam(config.sport, teamId)}
+                              className={`ml-1 ${styles.removeBtn} focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)] rounded-full`}
+                              aria-label={`Remove ${label}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input
+                      id={`add-team-${config.sport}`}
+                      list={`teams-${config.sport}`}
+                      ref={makeRefCallback(config.sport)}
+                      placeholder="Add team…"
+                      aria-label={`Add ${config.sport.toUpperCase()} team`}
+                      className="flex-1 h-[38px] rounded-token-sm border border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+                      onChange={e => handleAddInput(config.sport, e.target.value)}
+                    />
+                    <datalist id={`teams-${config.sport}`}>
+                      {teamList
+                        .filter(t => !favSet.has(t.team_id))
+                        .map(t => (
+                          <option key={t.team_id} value={t.name} />
+                        ))}
+                    </datalist>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-[var(--color-text-muted)] italic">
+                  Enable {config.sport.toUpperCase()} to pick favorite teams.
+                </p>
+              )}
             </div>
           </Card>
         )
       })}
       <div className="flex justify-end gap-3">
-        <Button
-          variant="secondary"
-          disabled={!isDirty}
-          onClick={discard}
-        >
+        <Button variant="secondary" disabled={!isDirty} onClick={discard}>
           Discard
         </Button>
-        <Button
-          disabled={!isDirty || isSaving}
-          loading={isSaving}
-          onClick={save}
-        >
-          Save
+        <Button disabled={!isDirty || isSaving} loading={isSaving} onClick={save}>
+          Save Teams
         </Button>
       </div>
     </div>

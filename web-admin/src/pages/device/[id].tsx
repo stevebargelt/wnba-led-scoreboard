@@ -163,15 +163,15 @@ export default function DevicePage() {
               Back
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Device Configuration
+              <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+                {device?.name || 'Device Configuration'}
               </h1>
               <div className="flex items-center space-x-4">
-                <p className="text-gray-600 dark:text-gray-400">Device ID: {id}</p>
+                <p className="text-[var(--color-text-secondary)] text-sm">ID: {id}</p>
                 {device && (
                   <div className="flex items-center space-x-2">
                     <StatusBadge online={isDeviceOnline} size="sm" />
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-xs text-[var(--color-text-muted)]">
                       Last seen:{' '}
                       {device.last_seen_ts ? new Date(device.last_seen_ts).toLocaleString() : '—'}
                     </span>
@@ -194,26 +194,31 @@ export default function DevicePage() {
 
           <TabsContent value="settings">
             <div className="space-y-6">
+              {settingsIsDirty && (
+                <div
+                  role="alert"
+                  className="rounded-token-sm bg-amber-soft border border-[var(--color-amber)] px-4 py-2 text-sm text-amber-fg"
+                >
+                  Unsaved changes
+                </div>
+              )}
+
+              {/* Display card: Brightness + Timezone */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Device Settings</CardTitle>
+                  <CardTitle>Display</CardTitle>
                 </CardHeader>
-                {settingsIsDirty && (
-                  <div
-                    role="alert"
-                    className="rounded-md bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 px-4 py-2 text-sm text-amber-800 dark:text-amber-200 mb-4"
-                  >
-                    Unsaved changes
-                  </div>
-                )}
                 <form
                   className="space-y-4"
-                  onSubmit={e => { e.preventDefault(); saveSettings() }}
+                  onSubmit={e => {
+                    e.preventDefault()
+                    saveSettings()
+                  }}
                 >
                   <div className="space-y-1">
                     <label
                       htmlFor="brightness"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                      className="block text-sm font-medium text-[var(--color-text-secondary)]"
                     >
                       Brightness: {settings.brightness}
                     </label>
@@ -230,13 +235,13 @@ export default function DevicePage() {
                       onChange={e =>
                         setSettings(s => ({ ...s, brightness: Number(e.target.value) }))
                       }
-                      className="w-full"
+                      className="w-full accent-[var(--color-accent)]"
                     />
                   </div>
                   <div className="space-y-1">
                     <label
                       htmlFor="timezone"
-                      className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+                      className="block text-sm font-medium text-[var(--color-text-secondary)]"
                     >
                       Timezone
                     </label>
@@ -246,70 +251,93 @@ export default function DevicePage() {
                       value={settings.timezone}
                       onChange={e => setSettings(s => ({ ...s, timezone: e.target.value }))}
                       placeholder="America/Los_Angeles"
-                      className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
+                      className="block w-full h-[42px] rounded-token-sm border border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-1">
-                      <label
-                        htmlFor="pregame-refresh"
-                        className="block text-sm font-medium text-gray-700 dark:text-gray-200"
+
+                  {/* Advanced — Refresh Cadence accordion */}
+                  <details className="group rounded-token-sm border border-[var(--color-border)] bg-[var(--color-surface-2)]">
+                    <summary className="flex items-center justify-between cursor-pointer px-4 py-3 text-sm font-medium text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] select-none list-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-accent)] rounded-token-sm">
+                      <span>Advanced</span>
+                      <svg
+                        className="w-4 h-4 transition-transform group-open:rotate-180"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        aria-hidden="true"
                       >
-                        Pregame Refresh (sec)
-                      </label>
-                      <input
-                        id="pregame-refresh"
-                        type="number"
-                        value={settings.pregameSec}
-                        onChange={e =>
-                          setSettings(s => ({ ...s, pregameSec: Number(e.target.value) }))
-                        }
-                        className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
-                      />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </summary>
+                    <div className="px-4 pb-4 pt-2 space-y-4 border-t border-[var(--color-border)]">
+                      <p className="text-xs text-[var(--color-text-muted)]">
+                        Refresh Cadence — The device automatically backs off polling.
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-1">
+                          <label
+                            htmlFor="pregame-refresh"
+                            className="block text-sm font-medium text-[var(--color-text-secondary)]"
+                          >
+                            Pre-game (sec)
+                          </label>
+                          <input
+                            id="pregame-refresh"
+                            type="number"
+                            value={settings.pregameSec}
+                            onChange={e =>
+                              setSettings(s => ({ ...s, pregameSec: Number(e.target.value) }))
+                            }
+                            className="block w-full h-[42px] rounded-token-sm border border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-text-primary)] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label
+                            htmlFor="ingame-refresh"
+                            className="block text-sm font-medium text-[var(--color-text-secondary)]"
+                          >
+                            In-game (sec)
+                          </label>
+                          <input
+                            id="ingame-refresh"
+                            type="number"
+                            value={settings.ingameSec}
+                            onChange={e =>
+                              setSettings(s => ({ ...s, ingameSec: Number(e.target.value) }))
+                            }
+                            className="block w-full h-[42px] rounded-token-sm border border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-text-primary)] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label
+                            htmlFor="final-refresh"
+                            className="block text-sm font-medium text-[var(--color-text-secondary)]"
+                          >
+                            Final (sec)
+                          </label>
+                          <input
+                            id="final-refresh"
+                            type="number"
+                            value={settings.finalSec}
+                            onChange={e =>
+                              setSettings(s => ({ ...s, finalSec: Number(e.target.value) }))
+                            }
+                            className="block w-full h-[42px] rounded-token-sm border border-[var(--color-border)] bg-[var(--color-surface-3)] text-[var(--color-text-primary)] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]"
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <label
-                        htmlFor="ingame-refresh"
-                        className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-                      >
-                        Ingame Refresh (sec)
-                      </label>
-                      <input
-                        id="ingame-refresh"
-                        type="number"
-                        value={settings.ingameSec}
-                        onChange={e =>
-                          setSettings(s => ({ ...s, ingameSec: Number(e.target.value) }))
-                        }
-                        className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label
-                        htmlFor="final-refresh"
-                        className="block text-sm font-medium text-gray-700 dark:text-gray-200"
-                      >
-                        Final Refresh (sec)
-                      </label>
-                      <input
-                        id="final-refresh"
-                        type="number"
-                        value={settings.finalSec}
-                        onChange={e =>
-                          setSettings(s => ({ ...s, finalSec: Number(e.target.value) }))
-                        }
-                        className="block w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white px-3 py-2 text-sm"
-                      />
-                    </div>
-                  </div>
+                  </details>
                 </form>
               </Card>
+
               <div className="flex justify-end gap-3">
-                <Button
-                  variant="secondary"
-                  disabled={!settingsIsDirty}
-                  onClick={discardSettings}
-                >
+                <Button variant="secondary" disabled={!settingsIsDirty} onClick={discardSettings}>
                   Discard
                 </Button>
                 <Button
@@ -320,9 +348,7 @@ export default function DevicePage() {
                   Save
                 </Button>
               </div>
-              {message && (
-                <p className="text-sm text-gray-600 dark:text-gray-400">{message}</p>
-              )}
+              {message && <p className="text-sm text-[var(--color-text-secondary)]">{message}</p>}
             </div>
           </TabsContent>
         </Tabs>
