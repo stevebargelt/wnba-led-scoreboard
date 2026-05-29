@@ -45,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Load enabled leagues for this device with league details
       const { data: leagues, error: leaguesError } = await userScoped
         .from('device_leagues')
-        .select('enabled, priority, league:leagues(code)')
+        .select('enabled, priority, league:leagues(code, is_active)')
         .eq('device_id', deviceId)
         .order('priority', { ascending: true })
 
@@ -75,7 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       // Build sport configs from leagues data
       const existingConfigs = (leagues || [])
-        .filter((league: any) => league.league?.code)
+        .filter((league: any) => league.league?.code && league.league?.is_active === true)
         .map((league: any) => ({
           sport: league.league.code,
           enabled: league.enabled,

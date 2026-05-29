@@ -164,7 +164,7 @@ INSERT INTO leagues (code, name, sport_id, api_config, current_season, team_coun
     "description": "Regular season starts May 16"
   }'::JSONB,
   12,
-  false
+  true
 ),
 
 ('nba', 'NBA',
@@ -188,7 +188,7 @@ INSERT INTO leagues (code, name, sport_id, api_config, current_season, team_coun
     "description": "2024-25 Season"
   }'::JSONB,
   30,
-  true
+  false
 ),
 
 -- Hockey League
@@ -263,7 +263,7 @@ INSERT INTO leagues (code, name, sport_id, api_config, current_season, team_coun
     "description": "2024-25 Season including playoffs"
   }'::JSONB,
   32,
-  true
+  false
 )
 ON CONFLICT (code) DO UPDATE SET
   name = EXCLUDED.name,
