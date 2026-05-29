@@ -53,25 +53,37 @@ func FetchAll(ctx context.Context, day time.Time, leagues []string) ([]GameSnaps
 	return all, failures
 }
 
-// SelectGame picks the most interesting game to display from a list, using
-// favorite team IDs (per league) as a tie-breaker. Preference order:
-//   1) Live game with a favorite team
-//   2) Any live game
-//   3) Pregame with a favorite team starting soonest
-//   4) Any pregame starting soonest
-//   5) Final with a favorite team (most recently ended)
-//   6) Any final
-// Returns nil if no games match.
-func SelectGame(games []GameSnapshot, favorites map[string]map[string]bool) *GameSnapshot {
+// favRank returns the best (lowest) favorite rank among a game's two teams and
+// whether either is a favorite. Rank is the team's position in the device's
+// per-league favorite order — 0 is the top favorite, so lower wins.
+func favRank(g GameSnapshot, favorites map[string]map[string]int) (int, bool) {
+	teams := favorites[g.League]
+	if teams == nil {
+		return 0, false
+	}
+	best, ok := 0, false
+	if r, has := teams[g.Home.ID]; has {
+		best, ok = r, true
+	}
+	if r, has := teams[g.Away.ID]; has && (!ok || r < best) {
+		best, ok = r, true
+	}
+	return best, ok
+}
+
+// SelectGame picks the most interesting game to display from a list. Game state
+// is the primary axis (live > pregame > final); within a state, a favorite team
+// outranks a non-favorite, and among favorites the higher-ranked one (lower
+// favorite rank) wins. Preference order:
+//   1) Live: favorite by rank, else any live
+//   2) Pregame: favorite by rank, else soonest start
+//   3) Final: favorite by rank, else most recently started
+//
+// favorites maps league -> teamID -> rank (0 = top favorite). Returns nil if no
+// games match.
+func SelectGame(games []GameSnapshot, favorites map[string]map[string]int) *GameSnapshot {
 	if len(games) == 0 {
 		return nil
-	}
-	isFav := func(g GameSnapshot) bool {
-		teams := favorites[g.League]
-		if teams == nil {
-			return false
-		}
-		return teams[g.Home.ID] || teams[g.Away.ID]
 	}
 
 	byState := map[GameState][]GameSnapshot{}
@@ -79,36 +91,34 @@ func SelectGame(games []GameSnapshot, favorites map[string]map[string]bool) *Gam
 		byState[g.State] = append(byState[g.State], g)
 	}
 
-	// Live: favorite first, else first by event id.
+	// pick sorts a same-state tier so favorites lead (by rank), then non-favorites
+	// by the tier's secondary key, and returns the top game.
+	pick := func(tier []GameSnapshot, secondaryLess func(a, b GameSnapshot) bool) *GameSnapshot {
+		sort.SliceStable(tier, func(i, j int) bool {
+			ri, fi := favRank(tier[i], favorites)
+			rj, fj := favRank(tier[j], favorites)
+			if fi != fj {
+				return fi // a favorite outranks a non-favorite
+			}
+			if fi && fj && ri != rj {
+				return ri < rj // both favorites: lower rank wins
+			}
+			return secondaryLess(tier[i], tier[j])
+		})
+		return &tier[0]
+	}
+
+	// Live: keep input order for non-favorites (stable sort just floats favorites up).
 	if live := byState[StateLive]; len(live) > 0 {
-		for _, g := range live {
-			if isFav(g) {
-				return &g
-			}
-		}
-		return &live[0]
+		return pick(live, func(a, b GameSnapshot) bool { return false })
 	}
-
-	// Pregame: soonest start first, favorite breaks ties.
+	// Pregame: soonest start first among non-favorites.
 	if pre := byState[StatePre]; len(pre) > 0 {
-		sort.SliceStable(pre, func(i, j int) bool {
-			if isFav(pre[i]) != isFav(pre[j]) {
-				return isFav(pre[i])
-			}
-			return pre[i].StartTime.Before(pre[j].StartTime)
-		})
-		return &pre[0]
+		return pick(pre, func(a, b GameSnapshot) bool { return a.StartTime.Before(b.StartTime) })
 	}
-
-	// Final: favorite first, else most recently started (proxy for most recent).
+	// Final: most recently started first among non-favorites.
 	if fin := byState[StateFinal]; len(fin) > 0 {
-		sort.SliceStable(fin, func(i, j int) bool {
-			if isFav(fin[i]) != isFav(fin[j]) {
-				return isFav(fin[i])
-			}
-			return fin[i].StartTime.After(fin[j].StartTime)
-		})
-		return &fin[0]
+		return pick(fin, func(a, b GameSnapshot) bool { return a.StartTime.After(b.StartTime) })
 	}
 
 	return nil

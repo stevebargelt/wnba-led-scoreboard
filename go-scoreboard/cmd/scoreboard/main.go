@@ -162,7 +162,7 @@ type appState struct {
 	assetsDir   string
 	demoLeagues []string
 	leagues     []string
-	favorites   map[string]map[string]bool
+	favorites   map[string]map[string]int
 	refresh     config.RefreshConfig
 	brightness  int
 	loc         *time.Location
@@ -173,7 +173,7 @@ type appState struct {
 func newAppState(assetsDir, demoLeagues string) *appState {
 	s := &appState{
 		assetsDir: assetsDir,
-		favorites: map[string]map[string]bool{},
+		favorites: map[string]map[string]int{},
 		refresh: config.RefreshConfig{
 			PregameSec: 600,
 			IngameSec:  120,
@@ -206,13 +206,15 @@ func (s *appState) reloadConfig() bool {
 	for _, l := range cfg.EnabledLeagues {
 		leagues = append(leagues, l.Code)
 	}
-	favs := map[string]map[string]bool{}
+	// The config RPC returns favorites already ordered by priority, so a team's
+	// index in the slice is its rank (0 = top favorite). SelectGame honors it.
+	favs := map[string]map[string]int{}
 	for league, teams := range cfg.FavoriteTeams {
-		set := map[string]bool{}
-		for _, t := range teams {
-			set[t.TeamID] = true
+		ranks := map[string]int{}
+		for i, t := range teams {
+			ranks[t.TeamID] = i
 		}
-		favs[league] = set
+		favs[league] = ranks
 	}
 	loc := loadLocation(cfg.Timezone)
 	s.mu.Lock()
